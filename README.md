@@ -1,0 +1,171 @@
+# Cairn
+
+**AI path-dependency constraint system.**
+
+Cairn structures your project's historical decisions, rejected paths, and accepted
+trade-offs into a three-layer format that AI coding assistants read automatically —
+so they work within your project's real constraints instead of suggesting in a vacuum.
+
+---
+
+## The Problem
+
+Every AI coding session starts from zero. The assistant doesn't know:
+
+- Which directions were already tried and rejected (and why)
+- What technical debt was intentionally accepted and should not be touched
+- What stage the project is in and what trade-offs are appropriate right now
+
+The result: AI tools repeatedly suggest directions you've already ruled out, propose
+refactors you've deliberately deferred, and give advice calibrated for a project they
+can't actually see.
+
+Cairn solves this by placing structured constraint files in your repository that AI
+tools read at the start of every session.
+
+---
+
+## How It Works
+
+Cairn uses a three-layer directory at your repository root:
+
+```
+.cairn/
+├── output.md          # Layer 1: global constraints, read every session
+├── domains/           # Layer 2: domain design context, read during planning
+│   ├── api-layer.md
+│   └── auth.md
+└── history/           # Layer 3: raw decision events, queried on demand
+    ├── 2023-09_trpc-experiment-rejection.md
+    └── 2024-01_auth-debt-accepted.md
+```
+
+| Layer | File | When AI Reads | Token Budget |
+|-------|------|---------------|--------------|
+| Global Constraints | `.cairn/output.md` | Every session, always | 500 target / 800 max |
+| Domain Context | `.cairn/domains/*.md` | During planning & design | 200–400 per file |
+| Decision History | `.cairn/history/*.md` | On-demand precise queries | Unlimited |
+
+The AI reads `output.md` first to establish what's off-limits and what the current
+project stage is. When planning a feature, it reads the relevant domain file to
+understand the evolution of that area and the pitfalls to avoid. When it needs to
+know exactly why a past decision was made, it queries `history/`.
+
+---
+
+## Key Concepts
+
+Three types of constraints, each producing different AI behavior:
+
+| Concept | What It Means | AI Behavior |
+|---------|---------------|-------------|
+| **no-go** | A direction that was evaluated and excluded | Do not suggest it |
+| **accepted debt** | A known defect that was intentionally left in place | Do not attempt to fix it |
+| **known pitfalls** | An operational trap in a specific domain | Actively avoid trigger conditions |
+
+---
+
+## Quick Start
+
+### Option A: Interactive init script (recommended)
+
+```bash
+# Download and run
+curl -sL https://raw.githubusercontent.com/zzf2333/Cairn/main/scripts/cairn-init.sh -o cairn-init.sh
+chmod +x cairn-init.sh
+./cairn-init.sh
+```
+
+The script guides you through 5 steps in about 30 minutes:
+1. Choose your project's domains (from 11 standard options)
+2. Fill in `output.md` (stage, no-go, stack, accepted debt)
+3. Initialize `history/` with an entry template
+4. Initialize `domains/` (empty — this is normal)
+5. Install the Skill adapter for your AI tool
+
+### Option B: Manual setup
+
+1. Create `.cairn/output.md` with the five required sections. See [`spec/FORMAT.md`](spec/FORMAT.md) for the exact format and [`examples/saas-18mo/.cairn/output.md`](examples/saas-18mo/.cairn/output.md) for a complete example.
+
+2. Create `.cairn/domains/` and `.cairn/history/` directories (both empty to start).
+
+3. Copy the appropriate Skill adapter file to your AI tool's expected location (see table below).
+
+---
+
+## Supported AI Tools
+
+| Tool | Adapter Location in Your Project |
+|------|----------------------------------|
+| Claude Code | `.claude/skills/cairn/SKILL.md` |
+| Cursor | `.cursor/rules/cairn.mdc` |
+| Cline / Roo Code | `.clinerules` (append) |
+| Windsurf | `.windsurfrules` (append) |
+| GitHub Copilot | `.github/copilot-instructions.md` (append) |
+
+Adapter templates are in [`skills/`](skills/). Copy the file for your tool and place it at the location above relative to your project root.
+
+---
+
+## Example
+
+[`examples/saas-18mo/`](examples/saas-18mo/) contains a complete three-layer example
+from an 18-month SaaS project, including:
+
+- `output.md` with stage, no-go rules (tRPC, Redux, Kubernetes), active stack, and accepted debts
+- Three domain files: `api-layer`, `auth`, `state-management`
+- Four history events: state management migration, tRPC experiment rejection, auth debt acceptance, growth stage transition
+
+---
+
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| [`spec/FORMAT.md`](spec/FORMAT.md) | Complete format reference for all three layers |
+| [`spec/DESIGN.md`](spec/DESIGN.md) | Why Cairn is designed the way it is |
+| [`spec/vs-adr.md`](spec/vs-adr.md) | How Cairn relates to Architecture Decision Records |
+| [`spec/adoption-guide.md`](spec/adoption-guide.md) | Step-by-step Init and Reactive adoption guide |
+
+---
+
+## Repository Structure
+
+```
+cairn/
+├── spec/
+│   ├── FORMAT.md               # Three-layer format specification
+│   ├── DESIGN.md               # Design rationale
+│   ├── vs-adr.md               # Cairn vs. ADR comparison
+│   └── adoption-guide.md       # Init + Reactive adoption guide
+├── skills/
+│   ├── claude-code/SKILL.md    # Claude Code adapter
+│   ├── cursor.mdc              # Cursor adapter
+│   ├── cline.md                # Cline / Roo Code adapter
+│   ├── windsurf.md             # Windsurf adapter
+│   └── copilot-instructions.md # GitHub Copilot adapter
+├── examples/
+│   └── saas-18mo/              # 18-month SaaS project example
+│       └── .cairn/
+│           ├── output.md
+│           ├── domains/
+│           └── history/
+├── scripts/
+│   └── cairn-init.sh           # Interactive initialization script
+└── docs/
+    └── design.md               # Internal design working draft (Chinese)
+```
+
+---
+
+## Roadmap
+
+- **Phase 1 (current):** Protocol — format specification, tool adapters, examples, init script
+- **Phase 2:** CLI — `cairn init`, `cairn status`, `cairn log`, `cairn sync`
+- **Phase 3:** MCP Server — structured tool calls for AI-native Cairn access
+
+---
+
+## License
+
+MIT
