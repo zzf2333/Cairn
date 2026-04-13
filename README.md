@@ -180,7 +180,7 @@ Cairn includes a command-line tool for working with the three-layer directory.
 Add the `cli/` directory to your `PATH`, or symlink `cli/cairn` to `/usr/local/bin/cairn`:
 
 ```bash
-git clone https://github.com/your-org/cairn
+git clone https://github.com/zzf2333/Cairn
 ln -s "$(pwd)/cairn/cli/cairn" /usr/local/bin/cairn
 ```
 

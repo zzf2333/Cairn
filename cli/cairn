@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-CAIRN_VERSION="0.2.0"
+CAIRN_VERSION="0.0.1"
 CAIRN_CLI_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # =============================================================================

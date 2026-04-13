@@ -1,8 +1,34 @@
 {
     "name": "cairn-mcp",
-    "version": "0.3.0",
+    "version": "0.0.1",
     "description": "MCP server for Cairn — AI path-dependency constraint system",
     "type": "module",
+    "license": "MIT",
+    "author": "Cairn Contributors",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/zzf2333/Cairn.git",
+        "directory": "mcp"
+    },
+    "homepage": "https://github.com/zzf2333/Cairn/tree/main/mcp",
+    "bugs": {
+        "url": "https://github.com/zzf2333/Cairn/issues"
+    },
+    "keywords": [
+        "mcp",
+        "cairn",
+        "ai",
+        "constraints",
+        "model-context-protocol"
+    ],
+    "files": [
+        "dist/**/*.js",
+        "dist/**/*.d.ts",
+        "README.md"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
     "bin": {
         "cairn-mcp": "dist/index.js"
     },
