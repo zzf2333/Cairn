@@ -335,7 +335,7 @@ needed. The format of the adapter file differs per tool; the semantics do not.
 
 Cairn is developed in three phases.
 
-**Phase 1 — Protocol.** The current phase. Deliverables are the format specification
+**Phase 1 — Protocol.** Complete. Deliverables are the format specification
 (`spec/FORMAT.md`), this design document, Skill adapter files for the five supported
 tools, a real project example with 18+ months of history across all three layers, and
 an interactive `cairn-init.sh` shell script. Success criteria: a team of three or more
@@ -343,17 +343,19 @@ can independently run `cairn init` and get a working setup without additional ex
 recorded `no-go` entries reliably prevent the AI from re-suggesting those directions;
 domain file context visibly improves AI suggestion quality during planning.
 
-**Phase 2 — CLI.** A `cairn` command-line tool with four subcommands:
+**Phase 2 — CLI.** Complete. A `cairn` command-line tool with four subcommands:
 `cairn init` (interactive initialization), `cairn status` (summary of all three layers),
 `cairn log` (manually append a history entry), and `cairn sync` (AI-assisted: regenerate
 domain files from accumulated history entries, with human confirmation). The `sync`
 command is the key addition over the shell script — it closes the loop between raw
 history accumulation and domain file maintenance without requiring manual rewriting.
 
-**Phase 3 — MCP Server.** A Model Context Protocol server that exposes structured
-access to all three layers via typed tool calls: `cairn_output()` to read `output.md`,
-`cairn_domain(name)` to read a specific domain file, `cairn_query(domain, type?)` to
-search history entries, `cairn_propose(entry)` for the AI to draft a new history entry
-into a staging area for human review, and `cairn_sync_domain(name)` to regenerate a
-domain file from its history entries. The MCP layer enables richer tool integration
-and removes the need for each AI tool to handle raw file injection manually.
+**Phase 3 — MCP Server.** Complete. A Model Context Protocol server (`mcp/`) that
+exposes structured access to all three layers via typed tool calls: `cairn_output()` to
+read `output.md`, `cairn_domain(name)` to read a specific domain file,
+`cairn_query(domain, type?)` to search history entries, `cairn_propose(entry)` for the
+AI to draft a new history entry into a staging area for human review,
+`cairn_sync_domain(name)` to regenerate a domain file from its history entries, and
+`cairn_match(keywords)` for precise hooks-based domain matching without AI inference.
+The MCP layer enables richer tool integration and removes the need for each AI tool to
+handle raw file injection manually. See `mcp/README.md` for configuration.

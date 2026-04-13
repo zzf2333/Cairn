@@ -237,7 +237,7 @@ history: 4 entries total
 
 - **Phase 1 ✓:** Protocol — format specification, tool adapters, examples, init script
 - **Phase 2 ✓:** CLI — `cairn init`, `cairn status`, `cairn log`, `cairn sync`
-- **Phase 3:** MCP Server — structured tool calls for AI-native Cairn access
+- **Phase 3 ✓:** MCP Server — 6 typed tool calls + 2 resources for AI-native Cairn access (`mcp/`)
 
 ---
 
