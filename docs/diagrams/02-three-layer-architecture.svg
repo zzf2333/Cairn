@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" width="960" height="620">
+  <style>
+    text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9ca3af"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+  </defs>
+  <rect width="960" height="620" fill="#ffffff"/>
+  <text x="480" y="38" text-anchor="middle" font-size="20" font-weight="600" fill="#111827">Three-Layer Memory Architecture</text>
+  <text x="480" y="60" text-anchor="middle" font-size="13" fill="#6b7280">Each layer serves a different purpose and is read at a different time.</text>
+  <!-- Layer 1 background -->
+  <rect x="30" y="78" width="620" height="140" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2"/>
+  <rect x="30" y="78" width="96" height="28" rx="10" fill="#2563eb"/>
+  <rect x="86" y="78" width="40" height="28" fill="#2563eb"/>
+  <text x="80" y="97" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff">Layer 1</text>
+  <text x="145" y="100" font-size="15" font-weight="600" fill="#1d4ed8">.cairn/output.md</text>
+  <text x="145" y="118" font-size="12" fill="#3b82f6">Global Constraints · Injected every session · 500 target / 800 max tokens</text>
+  <rect x="60" y="128" width="72" height="72" rx="8" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="96" y="168" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">## stage</text>
+  <rect x="140" y="128" width="72" height="72" rx="8" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="176" y="168" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">## no-go</text>
+  <rect x="220" y="128" width="72" height="72" rx="8" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="256" y="168" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">## hooks</text>
+  <rect x="300" y="128" width="72" height="72" rx="8" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="336" y="168" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">## stack</text>
+  <rect x="380" y="128" width="72" height="72" rx="8" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="416" y="168" text-anchor="middle" font-size="13" font-weight="600" fill="#1e40af">## debt</text>
+  <text x="480" y="152" font-size="12" fill="#6b7280">5 required sections</text>
+  <!-- Layer 2 background -->
+  <rect x="30" y="240" width="620" height="150" rx="10" fill="#faf5ff" stroke="#d8b4fe" stroke-width="2"/>
+  <rect x="30" y="240" width="96" height="28" rx="10" fill="#9333ea"/>
+  <rect x="86" y="240" width="40" height="28" fill="#9333ea"/>
+  <text x="80" y="259" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff">Layer 2</text>
+  <text x="145" y="262" font-size="15" font-weight="600" fill="#7e22ce">.cairn/domains/*.md</text>
+  <text x="145" y="280" font-size="12" fill="#a855f7">Domain Context · Read during planning &amp; design · 200–400 tokens each</text>
+  <rect x="60" y="292" width="110" height="80" rx="8" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5"/>
+  <polygon points="150,292 170,312 170,292" fill="#c4b5fd"/>
+  <text x="115" y="318" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">api-layer.md</text>
+  <text x="115" y="334" text-anchor="middle" font-size="10" fill="#7c3aed">hooks:</text>
+  <text x="115" y="348" text-anchor="middle" font-size="10" fill="#6b7280">no-go / pitfalls</text>
+  <rect x="180" y="292" width="110" height="80" rx="8" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5"/>
+  <polygon points="270,292 290,312 290,292" fill="#c4b5fd"/>
+  <text x="235" y="318" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">auth.md</text>
+  <text x="235" y="334" text-anchor="middle" font-size="10" fill="#7c3aed">hooks:</text>
+  <text x="235" y="348" text-anchor="middle" font-size="10" fill="#6b7280">no-go / pitfalls</text>
+  <rect x="300" y="292" width="110" height="80" rx="8" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5"/>
+  <polygon points="390,292 410,312 410,292" fill="#c4b5fd"/>
+  <text x="355" y="318" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">state-mgmt.md</text>
+  <text x="355" y="334" text-anchor="middle" font-size="10" fill="#7c3aed">hooks:</text>
+  <text x="355" y="348" text-anchor="middle" font-size="10" fill="#6b7280">no-go / pitfalls</text>
+  <text x="430" y="335" font-size="12" fill="#9ca3af">+ more domains</text>
+  <text x="430" y="352" font-size="11" fill="#9ca3af">(per project)</text>
+  <!-- Layer 3 background -->
+  <rect x="30" y="412" width="620" height="150" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/>
+  <rect x="30" y="412" width="96" height="28" rx="10" fill="#16a34a"/>
+  <rect x="86" y="412" width="40" height="28" fill="#16a34a"/>
+  <text x="80" y="431" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff">Layer 3</text>
+  <text x="145" y="434" font-size="15" font-weight="600" fill="#15803d">.cairn/history/*.md</text>
+  <text x="145" y="452" font-size="12" fill="#22c55e">Decision Events · Queried on demand · Unlimited depth</text>
+  <rect x="30" y="464" width="128" height="72" rx="8" fill="#dcfce7" stroke="#86efac" stroke-width="1.5"/>
+  <text x="94" y="485" text-anchor="middle" font-size="10" fill="#374151">2023-03</text>
+  <rect x="44" y="492" width="100" height="18" rx="4" fill="#86efac"/>
+  <text x="94" y="505" text-anchor="middle" font-size="10" font-weight="600" fill="#111827">transition</text>
+  <text x="94" y="526" text-anchor="middle" font-size="10" fill="#6b7280">rejected / why</text>
+  <rect x="172" y="464" width="128" height="72" rx="8" fill="#fee2e2" stroke="#fca5a5" stroke-width="1.5"/>
+  <text x="236" y="485" text-anchor="middle" font-size="10" fill="#374151">2023-09</text>
+  <rect x="186" y="492" width="100" height="18" rx="4" fill="#fca5a5"/>
+  <text x="236" y="505" text-anchor="middle" font-size="10" font-weight="600" fill="#111827">rejection</text>
+  <text x="236" y="526" text-anchor="middle" font-size="10" fill="#6b7280">rejected / why</text>
+  <rect x="314" y="464" width="128" height="72" rx="8" fill="#fef9c3" stroke="#fde047" stroke-width="1.5"/>
+  <text x="378" y="485" text-anchor="middle" font-size="10" fill="#374151">2024-01</text>
+  <rect x="328" y="492" width="100" height="18" rx="4" fill="#fde047"/>
+  <text x="378" y="505" text-anchor="middle" font-size="10" font-weight="600" fill="#111827">debt</text>
+  <text x="378" y="526" text-anchor="middle" font-size="10" fill="#6b7280">rejected / why</text>
+  <rect x="456" y="464" width="128" height="72" rx="8" fill="#dcfce7" stroke="#86efac" stroke-width="1.5"/>
+  <text x="520" y="485" text-anchor="middle" font-size="10" fill="#374151">2024-09</text>
+  <rect x="470" y="492" width="100" height="18" rx="4" fill="#86efac"/>
+  <text x="520" y="505" text-anchor="middle" font-size="10" font-weight="600" fill="#111827">transition</text>
+  <text x="520" y="526" text-anchor="middle" font-size="10" fill="#6b7280">rejected / why</text>
+  <!-- Right side: reading order panel -->
+  <rect x="670" y="78" width="260" height="484" rx="10" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text x="800" y="104" text-anchor="middle" font-size="13" font-weight="600" fill="#374151">When AI Reads Each Layer</text>
+  <circle cx="710" cy="138" r="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="730" y="133" font-size="12" font-weight="600" fill="#111827">Session Start</text>
+  <text x="730" y="149" font-size="11" fill="#6b7280">Always — before any response</text>
+  <circle cx="710" cy="250" r="10" fill="#ede9fe" stroke="#9333ea" stroke-width="2"/>
+  <text x="730" y="245" font-size="12" font-weight="600" fill="#111827">Planning Phase</text>
+  <text x="730" y="261" font-size="11" fill="#6b7280">User asks for feature design</text>
+  <circle cx="710" cy="362" r="10" fill="#ede9fe" stroke="#9333ea" stroke-width="2"/>
+  <text x="730" y="357" font-size="12" font-weight="600" fill="#111827">Design Review</text>
+  <text x="730" y="373" font-size="11" fill="#6b7280">Keyword matched via hooks</text>
+  <circle cx="710" cy="474" r="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="730" y="469" font-size="12" font-weight="600" fill="#111827">Deep Research</text>
+  <text x="730" y="485" font-size="11" fill="#6b7280">Need full decision history</text>
+  <line x1="710" y1="148" x2="710" y2="240" stroke="#e5e7eb" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="710" y1="262" x2="710" y2="352" stroke="#e5e7eb" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="710" y1="374" x2="710" y2="464" stroke="#e5e7eb" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="670" y1="148" x2="660" y2="148" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <line x1="670" y1="300" x2="660" y2="320" stroke="#9333ea" stroke-width="1.5" marker-end="url(#arrow-purple)"/>
+  <line x1="670" y1="474" x2="660" y2="500" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+</svg>

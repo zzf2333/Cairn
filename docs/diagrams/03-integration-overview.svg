@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" width="960" height="580">
+  <style>
+    text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    </marker>
+  </defs>
+  <rect width="960" height="580" fill="#ffffff"/>
+  <text x="480" y="38" text-anchor="middle" font-size="20" font-weight="600" fill="#111827">Three Integration Modes</text>
+  <text x="480" y="60" text-anchor="middle" font-size="13" fill="#6b7280">The .cairn/ data layer is tool-agnostic. Choose how AI tools read it.</text>
+  <!-- Center .cairn/ box -->
+  <rect x="370" y="220" width="220" height="130" rx="12" fill="#f9fafb" stroke="#374151" stroke-width="2.5"/>
+  <rect x="370" y="220" width="220" height="36" rx="12" fill="#111827"/>
+  <rect x="370" y="242" width="220" height="14" fill="#111827"/>
+  <text x="480" y="243" text-anchor="middle" font-size="13" font-weight="600" fill="#f9fafb">.cairn/</text>
+  <text x="395" y="272" font-size="11" fill="#6b7280" font-family="monospace">├── output.md</text>
+  <text x="395" y="289" font-size="11" fill="#6b7280" font-family="monospace">├── domains/</text>
+  <text x="395" y="306" font-size="11" fill="#6b7280" font-family="monospace">└── history/</text>
+  <text x="480" y="334" text-anchor="middle" font-size="11" fill="#9ca3af">version-controlled with your project</text>
+  <!-- Left panel: Skill Adapters -->
+  <rect x="20" y="90" width="300" height="390" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <rect x="20" y="90" width="300" height="36" rx="10" fill="#2563eb"/>
+  <rect x="20" y="112" width="300" height="14" fill="#2563eb"/>
+  <text x="170" y="113" text-anchor="middle" font-size="13" font-weight="600" fill="#ffffff">Skill Adapters</text>
+  <text x="170" y="144" text-anchor="middle" font-size="11" fill="#3b82f6">Copy one file · Works immediately</text>
+  <text x="170" y="158" text-anchor="middle" font-size="11" fill="#3b82f6">AI reads .cairn/ files directly</text>
+  <rect x="40" y="174" width="260" height="26" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="170" y="191" text-anchor="middle" font-size="12" fill="#1e40af">Claude Code</text>
+  <rect x="40" y="208" width="260" height="26" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="170" y="225" text-anchor="middle" font-size="12" fill="#1e40af">Cursor</text>
+  <rect x="40" y="242" width="260" height="26" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="170" y="259" text-anchor="middle" font-size="12" fill="#1e40af">Cline / Roo Code</text>
+  <rect x="40" y="276" width="260" height="26" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="170" y="293" text-anchor="middle" font-size="12" fill="#1e40af">Windsurf</text>
+  <rect x="40" y="310" width="260" height="26" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="170" y="327" text-anchor="middle" font-size="12" fill="#1e40af">GitHub Copilot</text>
+  <rect x="40" y="344" width="260" height="26" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="170" y="361" text-anchor="middle" font-size="12" fill="#1e40af">Codex CLI</text>
+  <rect x="40" y="378" width="260" height="26" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="170" y="395" text-anchor="middle" font-size="12" fill="#1e40af">Gemini CLI</text>
+  <rect x="40" y="412" width="260" height="26" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="170" y="429" text-anchor="middle" font-size="12" fill="#1e40af">OpenCode</text>
+  <!-- Top panel: CLI -->
+  <rect x="340" y="90" width="280" height="112" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <rect x="340" y="90" width="280" height="36" rx="10" fill="#ea580c"/>
+  <rect x="340" y="112" width="280" height="14" fill="#ea580c"/>
+  <text x="480" y="113" text-anchor="middle" font-size="13" font-weight="600" fill="#ffffff">CLI (cairn)</text>
+  <text x="480" y="143" text-anchor="middle" font-size="11" fill="#ea580c">Bash 3.2+ · Works offline</text>
+  <rect x="356" y="152" width="62" height="34" rx="6" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
+  <text x="387" y="173" text-anchor="middle" font-size="10" font-weight="600" fill="#7c2d12">cairn init</text>
+  <rect x="424" y="152" width="62" height="34" rx="6" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
+  <text x="455" y="173" text-anchor="middle" font-size="10" font-weight="600" fill="#7c2d12">cairn status</text>
+  <rect x="492" y="152" width="62" height="34" rx="6" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
+  <text x="523" y="173" text-anchor="middle" font-size="10" font-weight="600" fill="#7c2d12">cairn log</text>
+  <rect x="560" y="152" width="62" height="34" rx="6" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
+  <text x="591" y="173" text-anchor="middle" font-size="10" font-weight="600" fill="#7c2d12">cairn sync</text>
+  <!-- Right panel: MCP Server -->
+  <rect x="640" y="90" width="300" height="390" rx="10" fill="#faf5ff" stroke="#d8b4fe" stroke-width="1.5"/>
+  <rect x="640" y="90" width="300" height="36" rx="10" fill="#9333ea"/>
+  <rect x="640" y="112" width="300" height="14" fill="#9333ea"/>
+  <text x="790" y="113" text-anchor="middle" font-size="13" font-weight="600" fill="#ffffff">MCP Server</text>
+  <text x="790" y="144" text-anchor="middle" font-size="11" fill="#a855f7">cairn-mcp-server · TypeScript</text>
+  <text x="790" y="158" text-anchor="middle" font-size="11" fill="#a855f7">Precise keyword matching via hooks</text>
+  <rect x="658" y="174" width="264" height="38" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="790" y="188" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">cairn_output()</text>
+  <text x="790" y="203" text-anchor="middle" font-size="10" fill="#7c3aed">Read Layer 1 — global constraints</text>
+  <rect x="658" y="222" width="264" height="38" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="790" y="236" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">cairn_domain()</text>
+  <text x="790" y="251" text-anchor="middle" font-size="10" fill="#7c3aed">Read Layer 2 — domain context</text>
+  <rect x="658" y="270" width="264" height="38" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="790" y="284" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">cairn_query()</text>
+  <text x="790" y="299" text-anchor="middle" font-size="10" fill="#7c3aed">Search Layer 3 — history events</text>
+  <rect x="658" y="318" width="264" height="38" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="790" y="332" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">cairn_match()</text>
+  <text x="790" y="347" text-anchor="middle" font-size="10" fill="#7c3aed">Match keywords → domain files</text>
+  <rect x="658" y="366" width="264" height="38" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="790" y="380" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">cairn_propose()</text>
+  <text x="790" y="395" text-anchor="middle" font-size="10" fill="#7c3aed">Draft entry for human review</text>
+  <rect x="658" y="414" width="264" height="38" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="790" y="428" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">cairn_sync_domain()</text>
+  <text x="790" y="443" text-anchor="middle" font-size="10" fill="#7c3aed">Regenerate stale domain file</text>
+  <text x="790" y="472" text-anchor="middle" font-size="11" fill="#9ca3af">+ 2 MCP resources (cairn://output, cairn://domain/)</text>
+  <text x="170" y="500" text-anchor="middle" font-size="12" fill="#6b7280">File injection via skill rules</text>
+  <text x="480" y="500" text-anchor="middle" font-size="12" fill="#6b7280">Terminal / automation</text>
+  <text x="790" y="500" text-anchor="middle" font-size="12" fill="#6b7280">Typed tool calls, AI-native</text>
+  <path d="M 320,285 L 368,285" stroke="#2563eb" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M 480,202 L 480,218" stroke="#ea580c" stroke-width="2" fill="none" marker-end="url(#arrow-orange)"/>
+  <path d="M 640,285 L 592,285" stroke="#9333ea" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
+  <rect x="20" y="516" width="380" height="48" rx="8" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
+  <line x1="36" y1="540" x2="66" y2="540" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <text x="72" y="544" font-size="11" fill="#6b7280">Skill adapters (file injection)</text>
+  <line x1="200" y1="540" x2="230" y2="540" stroke="#ea580c" stroke-width="2" marker-end="url(#arrow-orange)"/>
+  <text x="236" y="544" font-size="11" fill="#6b7280">CLI commands</text>
+  <line x1="316" y1="540" x2="346" y2="540" stroke="#9333ea" stroke-width="2" marker-end="url(#arrow-purple)"/>
+  <text x="352" y="544" font-size="11" fill="#6b7280">MCP tool calls</text>
+</svg>
