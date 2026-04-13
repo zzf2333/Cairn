@@ -150,6 +150,6 @@ Confirm the tag and branch with the user. Never force-push.
 After the push, remind the user:
 
 - The `release.yml` workflow will run automatically on the tag push
-- It will: verify version consistency → verify CHANGELOG entry → publish `cairn-mcp` to npm → create a GitHub Release with CLI and skills archives
+- It will: verify version consistency → verify CHANGELOG entry → publish `cairn-mcp-server` to npm → create a GitHub Release with CLI and skills archives
 - Monitor progress at: `https://github.com/zzf2333/Cairn/actions`
 - If `NPM_TOKEN` is not set in repo secrets, the publish step will fail
