@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Node (for potential future CLI tooling)
+node_modules/
+npm-debug.log*
+
+# Python (for potential future tooling)
+__pycache__/
+*.pyc
+.venv/
+
+# Environment
+.env
+.env.local
+
+# Build artifacts
+dist/
+build/
