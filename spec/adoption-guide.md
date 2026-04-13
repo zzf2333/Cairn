@@ -487,5 +487,4 @@ Cairn format, with all rejected paths from history included. After the AI genera
 the new file, save it to `.cairn/domains/<domain>.md` and run `cairn status` to
 confirm the domain is up to date.
 
-**Phase 2 note:** `cairn sync` generates a prompt for manual use with any AI tool.
-Phase 3 (MCP Server) will add direct AI integration.
+**Phase 3 note:** If you are using the Cairn MCP Server (`mcp/`), use `cairn_sync_domain("api-layer")` instead — it returns the same prompt context directly to the AI without a copy-paste step.

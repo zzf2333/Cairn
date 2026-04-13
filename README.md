@@ -165,6 +165,10 @@ cairn/
 │       ├── status.sh           # cairn status — three-layer summary + stale detection
 │       ├── log.sh              # cairn log — record history entries
 │       └── sync.sh             # cairn sync — generate AI prompt for domain updates
+├── mcp/
+│   ├── src/                    # MCP Server source (TypeScript)
+│   ├── tests/                  # Vitest test suite (100+ assertions)
+│   └── README.md               # MCP Server configuration guide
 └── docs/
     └── design.md               # Internal design working draft (Chinese)
 ```
