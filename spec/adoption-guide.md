@@ -399,3 +399,93 @@ is a re-derivable summary.
 
 This pattern keeps domain files accurate without manual line-by-line editing. The AI
 does the compression; the human does the confirmation.
+
+---
+
+## Using the CLI (Phase 2)
+
+The Cairn CLI automates the most common workflow steps. All commands require a
+`.cairn/` directory to exist in the current project (created by `cairn init`).
+
+### `cairn init`
+
+Runs the interactive initialization wizard. Creates `.cairn/output.md`,
+`.cairn/history/`, `.cairn/domains/`, and installs the Skill adapter file for your
+AI tool. Equivalent to running `scripts/cairn-init.sh` directly.
+
+```bash
+cairn init
+```
+
+### `cairn status`
+
+Prints a three-layer summary of the current project state. Detects stale domain
+files by comparing each domain's `updated:` frontmatter field against the
+`recorded_date` of its history entries.
+
+```bash
+cairn status
+
+# Output:
+# stage:   early-growth (2024-09+)
+# domains: 3 active, 1 not created
+#
+# ⚠  api-layer   last updated 2024-03 · 2 new history entries since
+#                run: cairn sync api-layer
+# ✓  auth        up to date (2024-06)
+```
+
+Use `cairn status` at the start of a work session to check if any domain files
+need updating before asking the AI for planning help.
+
+### `cairn log`
+
+Records a history entry. Supports interactive mode (guided prompts) and flag mode
+(for scripting or quick entries from the command line).
+
+```bash
+# Interactive mode
+cairn log
+
+# Flag mode
+cairn log \
+    --type rejection \
+    --domain api-layer \
+    --summary "Rejected GraphQL after evaluation" \
+    --rejected "GraphQL: data complexity doesn't justify it" \
+    --reason "Current team size makes GraphQL overhead unwarranted" \
+    --revisit-when "Frontend needs regular cross-resource aggregation"
+```
+
+Use `cairn log` after any of the five reactive trigger events (A–E). In flag mode,
+all required fields must be provided: `--type`, `--domain`, `--summary`,
+`--rejected`, `--reason`. The `--revisit-when` field is optional.
+
+After creating an entry, run `cairn status` to check if the domain file needs sync.
+
+### `cairn sync`
+
+Generates an AI prompt containing the current domain file and all related history
+entries. Paste the prompt into your AI tool to generate an updated domain file.
+
+```bash
+# Generate prompt for a specific domain (prints to stdout)
+cairn sync api-layer
+
+# Generate prompts for all stale domains
+cairn sync --stale
+
+# Preview what would be included (no prompt output)
+cairn sync api-layer --dry-run
+
+# Copy prompt directly to clipboard
+cairn sync api-layer --copy
+```
+
+The generated prompt instructs the AI to overwrite the domain file following the
+Cairn format, with all rejected paths from history included. After the AI generates
+the new file, save it to `.cairn/domains/<domain>.md` and run `cairn status` to
+confirm the domain is up to date.
+
+**Phase 2 note:** `cairn sync` generates a prompt for manual use with any AI tool.
+Phase 3 (MCP Server) will add direct AI integration.

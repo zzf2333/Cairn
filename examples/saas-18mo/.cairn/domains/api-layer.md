@@ -1,3 +1,10 @@
+---
+domain: api-layer
+hooks: ["api", "endpoint", "tRPC", "GraphQL", "REST", "OpenAPI"]
+updated: 2024-03
+status: stable
+---
+
 # api-layer
 
 ## current design

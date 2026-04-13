@@ -1,3 +1,10 @@
+---
+domain: state-management
+hooks: ["state", "store", "Zustand", "Redux", "context"]
+updated: 2024-03
+status: stable
+---
+
 # state-management
 
 ## current design

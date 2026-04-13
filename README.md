@@ -157,17 +157,86 @@ cairn/
 │           ├── domains/
 │           └── history/
 ├── scripts/
-│   └── cairn-init.sh           # Interactive initialization script
+│   └── cairn-init.sh           # Standalone interactive initialization script
+├── cli/
+│   ├── cairn                   # CLI entry point (cairn init/status/log/sync)
+│   └── cmd/
+│       ├── init.sh             # cairn init — delegates to scripts/cairn-init.sh
+│       ├── status.sh           # cairn status — three-layer summary + stale detection
+│       ├── log.sh              # cairn log — record history entries
+│       └── sync.sh             # cairn sync — generate AI prompt for domain updates
 └── docs/
     └── design.md               # Internal design working draft (Chinese)
 ```
 
 ---
 
+## CLI (Phase 2)
+
+Cairn includes a command-line tool for working with the three-layer directory.
+
+### Installation
+
+Add the `cli/` directory to your `PATH`, or symlink `cli/cairn` to `/usr/local/bin/cairn`:
+
+```bash
+git clone https://github.com/your-org/cairn
+ln -s "$(pwd)/cairn/cli/cairn" /usr/local/bin/cairn
+```
+
+Requires Bash 3.2+ (macOS system bash is sufficient).
+
+### Commands
+
+```bash
+# Initialize .cairn/ in the current project (interactive)
+cairn init
+
+# Show three-layer summary and stale domain warnings
+cairn status
+
+# Record a history entry (interactive or flag mode)
+cairn log
+cairn log --type rejection --domain api-layer --summary "Rejected GraphQL after evaluation" \
+    --rejected "GraphQL: data complexity doesn't justify it" \
+    --reason "Current team size makes GraphQL overhead unwarranted" \
+    --revisit-when "Frontend needs regular cross-resource aggregation"
+
+# Generate an AI prompt to update a domain file from its history entries
+cairn sync api-layer            # specific domain
+cairn sync --stale              # all stale domains
+cairn sync api-layer --dry-run  # preview what would be included
+cairn sync api-layer --copy     # copy prompt to clipboard
+```
+
+### Stale Detection
+
+`cairn status` compares each domain file's `updated:` frontmatter field against the
+`recorded_date` of its history entries. A domain is stale when history entries have
+been added after the domain file's last update:
+
+```
+$ cairn status
+
+stage:   early-growth (2024-09+)
+domains: 3 active, 1 not created
+
+⚠  api-layer   last updated 2024-03 · 2 new history entries since
+               run: cairn sync api-layer
+
+✓  auth        up to date (2024-06)
+✓  state-management  up to date (2024-03)
+·  database    not yet created (0 history entries)
+
+history: 4 entries total
+```
+
+---
+
 ## Roadmap
 
-- **Phase 1 (current):** Protocol — format specification, tool adapters, examples, init script
-- **Phase 2:** CLI — `cairn init`, `cairn status`, `cairn log`, `cairn sync`
+- **Phase 1 ✓:** Protocol — format specification, tool adapters, examples, init script
+- **Phase 2 ✓:** CLI — `cairn init`, `cairn status`, `cairn log`, `cairn sync`
 - **Phase 3:** MCP Server — structured tool calls for AI-native Cairn access
 
 ---

@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+# =============================================================================
+# cairn — Cairn CLI
+#
+# Usage:
+#   cairn <command> [arguments]
+#
+# Commands:
+#   init      Interactively initialize .cairn/ in the current project
+#   status    Show three-layer summary and stale domain warnings
+#   log       Record a history entry (interactive or flag mode)
+#   sync      Generate an AI prompt to update a domain file from history
+#   version   Print version
+#   help      Print this help message
+#
+# Installation:
+#   Add the cli/ directory to your PATH, or symlink cli/cairn to /usr/local/bin/cairn
+# =============================================================================
+
+set -euo pipefail
+
+CAIRN_VERSION="0.2.0"
+CAIRN_CLI_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# =============================================================================
+# Color support
+# =============================================================================
+
+if [ -t 1 ] && command -v tput >/dev/null 2>&1 && tput colors >/dev/null 2>&1 && [ "$(tput colors)" -ge 8 ]; then
+    C_RESET="\033[0m"
+    C_BOLD="\033[1m"
+    C_GREEN="\033[0;32m"
+    C_YELLOW="\033[0;33m"
+    C_BLUE="\033[0;34m"
+    C_CYAN="\033[0;36m"
+    C_DIM="\033[2m"
+    C_RED="\033[0;31m"
+else
+    C_RESET=""
+    C_BOLD=""
+    C_GREEN=""
+    C_YELLOW=""
+    C_BLUE=""
+    C_CYAN=""
+    C_DIM=""
+    C_RED=""
+fi
+
+# =============================================================================
+# Shared utilities
+# =============================================================================
+
+# Find the project root containing .cairn/
+# Walks up from PWD until it finds .cairn/ or reaches filesystem root.
+# Prints the path and returns 0 on success, returns 1 if not found.
+find_cairn_root() {
+    local dir="$PWD"
+    while [ "$dir" != "/" ]; do
+        if [ -d "$dir/.cairn" ]; then
+            echo "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    return 1
+}
+
+# Require .cairn/ to exist; print error and exit if not found.
+require_cairn_root() {
+    local root
+    if ! root="$(find_cairn_root)"; then
+        echo -e "${C_RED}error:${C_RESET} no .cairn/ directory found in this directory or any parent." >&2
+        echo -e "  Run ${C_BOLD}cairn init${C_RESET} to initialize Cairn in the current project." >&2
+        exit 1
+    fi
+    echo "$root"
+}
+
+# Extract a specific field from output.md's ## stage section.
+# Usage: parse_stage_field "phase" < output.md
+parse_stage_field() {
+    local field="$1"
+    # Read between ## stage and the next ## section
+    awk '/^## stage/{found=1; next} /^## [a-z]/{found=0} found && /^'"$field"':/{print; exit}' | \
+        sed "s/^${field}: //"
+}
+
+# Extract locked domain names from output.md's ## hooks section.
+# One domain name per line (e.g., "api-layer", "auth").
+# Usage: parse_domain_list < output.md
+parse_domain_list() {
+    grep -oE '→ read domains/[a-z][a-z0-9-]+\.md first' | \
+        sed 's/→ read domains\///;s/\.md first//'
+}
+
+# Extract a frontmatter field from a domain file (--- delimited YAML).
+# Usage: parse_domain_field "updated" < domains/api-layer.md
+parse_domain_field() {
+    local field="$1"
+    # Read lines between first and second --- delimiters
+    awk '/^---$/{count++; next} count==1{print}' | \
+        grep "^${field}:" | head -1 | sed "s/^${field}: //"
+}
+
+# Extract a field from a history file (bare key-value, no --- delimiters).
+# Only reads first-line value (single-line fields like domain, type, dates).
+# Usage: parse_history_field "domain" < history/2023-09_trpc.md
+parse_history_field() {
+    local field="$1"
+    grep "^${field}:" | head -1 | sed "s/^${field}: //"
+}
+
+# =============================================================================
+# Help text
+# =============================================================================
+
+show_help() {
+    echo ""
+    echo -e "${C_BOLD}cairn${C_RESET} — AI path-dependency constraint system"
+    echo ""
+    echo -e "${C_BOLD}Usage:${C_RESET}"
+    echo -e "  cairn <command> [arguments]"
+    echo ""
+    echo -e "${C_BOLD}Commands:${C_RESET}"
+    echo -e "  ${C_CYAN}init${C_RESET}     Interactively initialize .cairn/ in the current project"
+    echo -e "  ${C_CYAN}status${C_RESET}   Show three-layer summary and stale domain warnings"
+    echo -e "  ${C_CYAN}log${C_RESET}      Record a history entry"
+    echo -e "  ${C_CYAN}sync${C_RESET}     Generate an AI prompt to update a domain file from history"
+    echo -e "  ${C_CYAN}version${C_RESET}  Print version"
+    echo -e "  ${C_CYAN}help${C_RESET}     Print this help message"
+    echo ""
+    echo -e "${C_BOLD}Examples:${C_RESET}"
+    echo -e "  cairn init"
+    echo -e "  cairn status"
+    echo -e "  cairn log --type rejection --domain api-layer --summary \"Rejected GraphQL\""
+    echo -e "  cairn sync api-layer"
+    echo ""
+    echo -e "${C_DIM}See spec/FORMAT.md for the full Cairn format specification.${C_RESET}"
+    echo ""
+}
+
+# =============================================================================
+# Subcommand dispatch
+# =============================================================================
+
+CMD="${1:-}"
+shift 2>/dev/null || true
+
+case "$CMD" in
+    init)
+        source "$CAIRN_CLI_DIR/cmd/init.sh"
+        cmd_init "$@"
+        ;;
+    status)
+        source "$CAIRN_CLI_DIR/cmd/status.sh"
+        cmd_status "$@"
+        ;;
+    log)
+        source "$CAIRN_CLI_DIR/cmd/log.sh"
+        cmd_log "$@"
+        ;;
+    sync)
+        source "$CAIRN_CLI_DIR/cmd/sync.sh"
+        cmd_sync "$@"
+        ;;
+    version|--version|-v)
+        echo "cairn $CAIRN_VERSION"
+        ;;
+    help|--help|-h|"")
+        show_help
+        ;;
+    *)
+        echo -e "${C_RED}error:${C_RESET} unknown command '${CMD}'" >&2
+        echo -e "  Run ${C_BOLD}cairn help${C_RESET} for usage." >&2
+        exit 1
+        ;;
+esac

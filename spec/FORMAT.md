@@ -212,6 +212,26 @@ keyword in `output.md`'s `## hooks` section.
 |----------|
 | 200–400 tokens |
 
+### Frontmatter
+
+Domain files MUST include YAML frontmatter before the `# <domain-name>` title heading:
+
+```yaml
+---
+domain: <domain-key>
+hooks: ["keyword1", "keyword2", "..."]
+updated: <YYYY-MM>
+status: <active | stable>
+---
+```
+
+| Field | Required | Format | Purpose |
+|-------|----------|--------|---------|
+| `domain` | MUST | kebab-case | Must match the filename stem and the `# title` heading |
+| `hooks` | MUST | JSON array of strings | Keywords that trigger injection. Referenced by `output.md` hooks section. Used by Phase 3 MCP Server for precise matching without AI inference. |
+| `updated` | MUST | `YYYY-MM` | Date of last substantive update. Used by `cairn status` for stale detection. |
+| `status` | SHOULD | `active` or `stable` | `active` — design is evolving; `stable` — design is settled. Staleness is always computed from `updated` vs. history dates; it is never declared manually. |
+
 ### Required Sections
 
 ```markdown
@@ -295,6 +315,13 @@ MAY be empty.
 ### Complete Example
 
 ```markdown
+---
+domain: api-layer
+hooks: ["api", "endpoint", "tRPC", "GraphQL", "REST", "OpenAPI"]
+updated: 2024-03
+status: stable
+---
+
 # api-layer
 
 ## current design

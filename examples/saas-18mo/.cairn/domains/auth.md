@@ -1,3 +1,10 @@
+---
+domain: auth
+hooks: ["auth", "login", "JWT", "session", "token", "OAuth"]
+updated: 2024-06
+status: active
+---
+
 # auth
 
 ## current design
