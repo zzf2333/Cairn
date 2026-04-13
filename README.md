@@ -95,15 +95,18 @@ The script guides you through 5 steps in about 30 minutes:
 
 ## Supported AI Tools
 
-| Tool | Adapter Location in Your Project |
-|------|----------------------------------|
-| Claude Code | `.claude/skills/cairn/SKILL.md` |
-| Cursor | `.cursor/rules/cairn.mdc` |
-| Cline / Roo Code | `.clinerules` (append) |
-| Windsurf | `.windsurfrules` (append) |
-| GitHub Copilot | `.github/copilot-instructions.md` (append) |
+| Tool | Adapter File | Install Location |
+|------|-------------|-----------------|
+| Claude Code | `skills/claude-code/SKILL.md` | `.claude/skills/cairn/SKILL.md` |
+| Cursor | `skills/cursor.mdc` | `.cursor/rules/cairn.mdc` |
+| Cline / Roo Code | `skills/cline.md` | `.clinerules` (append) |
+| Windsurf | `skills/windsurf.md` | `.windsurfrules` (append) |
+| GitHub Copilot | `skills/copilot-instructions.md` | `.github/copilot-instructions.md` (append) |
+| Codex CLI | `skills/codex.md` | `AGENTS.md` (append) |
+| Gemini CLI | `skills/gemini-cli.md` | `GEMINI.md` (append) |
+| OpenCode | `skills/opencode.md` | `AGENTS.md` (append, shared with Codex) |
 
-Adapter templates are in [`skills/`](skills/). Copy the file for your tool and place it at the location above relative to your project root.
+Adapter templates are in [`skills/`](skills/). Copy the relevant file and place it at the install location above, relative to your project root. `cairn-init.sh` handles this automatically for all eight tools.
 
 ---
 
@@ -143,7 +146,10 @@ cairn/
 │   ├── cursor.mdc              # Cursor adapter
 │   ├── cline.md                # Cline / Roo Code adapter
 │   ├── windsurf.md             # Windsurf adapter
-│   └── copilot-instructions.md # GitHub Copilot adapter
+│   ├── copilot-instructions.md # GitHub Copilot adapter
+│   ├── codex.md                # Codex CLI adapter (AGENTS.md)
+│   ├── gemini-cli.md           # Gemini CLI adapter (GEMINI.md)
+│   └── opencode.md             # OpenCode adapter (AGENTS.md)
 ├── examples/
 │   └── saas-18mo/              # 18-month SaaS project example
 │       └── .cairn/

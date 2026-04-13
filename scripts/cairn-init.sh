@@ -524,6 +524,79 @@ After tasks, assess if a history entry is warranted (decision / rejection / tran
 SKILL_EOF
 )
 
+# AGENTS.md 内容（Codex CLI 和 OpenCode 共用，写入 AGENTS.md）
+SKILL_AGENTS=$(cat << 'SKILL_EOF'
+
+# Cairn — AI Path-Dependency Constraint System
+
+## ON SESSION START
+
+Read `.cairn/output.md` before responding to any request. Use it to establish the constraint framework for the entire session:
+
+- `## stage` — current project phase and decision-making mode
+- `## no-go` — directions you MUST NOT suggest
+- `## hooks` — keyword-to-domain mappings for when to load deeper context
+- `## stack` — active technology choices
+- `## debt` — accepted debts you MUST NOT attempt to fix
+
+## ON PLANNING / DESIGN / ARCHITECTURE TASKS
+
+Match user request keywords against `## hooks` in `output.md`. If matched, read the corresponding `domains/*.md` file before responding.
+
+## ON PRECISE HISTORICAL QUERIES
+
+For past decision details, read `.cairn/history/YYYY-MM_<short-slug>.md`.
+
+## CONSTRAINT PROCESSING
+
+- `no-go`: never suggest; explain exclusion if asked directly
+- `debt`: never fix; work within the constraint
+- `known pitfalls` in domains/: actively avoid trigger conditions
+
+## REACTIVE EVOLUTION
+
+After tasks, assess if a history entry is warranted (decision / rejection / transition / debt / experiment). If yes, draft it with fields: `type`, `domain`, `decision_date`, `recorded_date`, `summary`, `rejected`, `reason`, `revisit_when`. Propose to user before writing.
+SKILL_EOF
+)
+
+# GEMINI.md 内容（Gemini CLI 专用）
+SKILL_GEMINI=$(cat << 'SKILL_EOF'
+
+# Cairn — AI Path-Dependency Constraint System
+
+## ON SESSION START
+
+Read `.cairn/output.md` before responding to any request. Use it to establish the constraint framework for the entire session:
+
+- `## stage` — current project phase and decision-making mode
+- `## no-go` — directions you MUST NOT suggest
+- `## hooks` — keyword-to-domain mappings for when to load deeper context
+- `## stack` — active technology choices
+- `## debt` — accepted debts you MUST NOT attempt to fix
+
+## ON PLANNING / DESIGN / ARCHITECTURE TASKS
+
+Match user request keywords against `## hooks` in `output.md`. If matched, read the corresponding `domains/*.md` file before responding.
+
+## ON PRECISE HISTORICAL QUERIES
+
+For past decision details, read `.cairn/history/YYYY-MM_<short-slug>.md`.
+
+## CONSTRAINT PROCESSING
+
+- `no-go`: never suggest; explain exclusion if asked directly
+- `debt`: never fix; work within the constraint
+- `known pitfalls` in domains/: actively avoid trigger conditions
+
+## REACTIVE EVOLUTION
+
+After tasks, assess if a history entry is warranted (decision / rejection / transition / debt / experiment). If yes, draft it with fields: `type`, `domain`, `decision_date`, `recorded_date`, `summary`, `rejected`, `reason`, `revisit_when`. Propose to user before writing.
+SKILL_EOF
+)
+
+# 标记 AGENTS.md 是否已经写入（避免 Codex + OpenCode 同时选中时重复写入）
+AGENTS_MD_WRITTEN=0
+
 step5_install_skills() {
     print_step "5" "安装 Skill 适配文件"
 
@@ -535,6 +608,9 @@ step5_install_skills() {
     echo -e "    ${C_DIM}3)${C_RESET} ${C_BOLD}Cline/Roo Code${C_RESET}  (.clinerules，追加)"
     echo -e "    ${C_DIM}4)${C_RESET} ${C_BOLD}Windsurf${C_RESET}        (.windsurfrules，追加)"
     echo -e "    ${C_DIM}5)${C_RESET} ${C_BOLD}GitHub Copilot${C_RESET}  (.github/copilot-instructions.md，追加)"
+    echo -e "    ${C_DIM}6)${C_RESET} ${C_BOLD}Codex CLI${C_RESET}       (AGENTS.md，追加)"
+    echo -e "    ${C_DIM}7)${C_RESET} ${C_BOLD}Gemini CLI${C_RESET}      (GEMINI.md，追加)"
+    echo -e "    ${C_DIM}8)${C_RESET} ${C_BOLD}OpenCode${C_RESET}        (AGENTS.md，追加，与 Codex 共用)"
     echo ""
     print_info "直接回车跳过此步骤"
     echo ""
@@ -590,6 +666,37 @@ step5_install_skills() {
                 echo "$SKILL_GENERIC" >> "$target_file"
                 CREATED_FILES+=("${target_file}（追加）")
                 print_ok "已追加到 ${target_file}"
+                ;;
+            6)
+                # Codex CLI — AGENTS.md
+                local target_file="AGENTS.md"
+                if [ "$AGENTS_MD_WRITTEN" -eq 0 ]; then
+                    echo "$SKILL_AGENTS" >> "$target_file"
+                    AGENTS_MD_WRITTEN=1
+                    CREATED_FILES+=("${target_file}（追加）")
+                    print_ok "已追加到 ${target_file}"
+                else
+                    print_info "AGENTS.md 已写入（Codex/OpenCode 共用），跳过重复写入"
+                fi
+                ;;
+            7)
+                # Gemini CLI — GEMINI.md
+                local target_file="GEMINI.md"
+                echo "$SKILL_GEMINI" >> "$target_file"
+                CREATED_FILES+=("${target_file}（追加）")
+                print_ok "已追加到 ${target_file}"
+                ;;
+            8)
+                # OpenCode — AGENTS.md（与 Codex 共用）
+                local target_file="AGENTS.md"
+                if [ "$AGENTS_MD_WRITTEN" -eq 0 ]; then
+                    echo "$SKILL_AGENTS" >> "$target_file"
+                    AGENTS_MD_WRITTEN=1
+                    CREATED_FILES+=("${target_file}（追加）")
+                    print_ok "已追加到 ${target_file}"
+                else
+                    print_info "AGENTS.md 已写入（Codex/OpenCode 共用），跳过重复写入"
+                fi
                 ;;
             *)
                 print_warn "未知选项 $token，已忽略"
