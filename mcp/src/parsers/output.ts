@@ -55,12 +55,14 @@ export function parseOutput(content: string): OutputSections {
 
 /**
  * Extract locked domain names from output.md's hooks section.
- * Looks for the pattern: → read domains/<name>.md first
+ * Matches both formats (language-agnostic — only the path matters):
+ *   - New format: → domains/<name>.md
+ *   - Old format: → read domains/<name>.md first (backward-compatible)
  *
  * Mirrors cli/cairn's parse_domain_list() function.
  */
 export function extractLockedDomains(content: string): string[] {
-    const DOMAIN_RE = /→ read domains\/([a-z][a-z0-9-]+)\.md first/g;
+    const DOMAIN_RE = /→\s+(?:read\s+)?domains\/([a-z][a-z0-9-]+)\.md/g;
     const matches = [...content.matchAll(DOMAIN_RE)];
     return matches.map((m) => m[1]!);
 }

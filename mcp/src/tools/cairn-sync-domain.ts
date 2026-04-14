@@ -178,6 +178,7 @@ status: active
 5. "known pitfalls" are operational traps, NOT accepted debts or direction exclusions
 6. Set \`updated:\` in frontmatter to the latest history entry's \`decision_date\`: ${latestDate}
 7. Choose \`status: active\` if the domain is still evolving, \`status: stable\` if settled
+8. Write all content in the same language as the existing history entries for this domain. Section headers (\`## current design\`, \`## trajectory\`, \`## rejected paths\`, \`## known pitfalls\`, \`## open questions\`) and frontmatter field names must stay in English regardless of content language.
 
 When done, save the output to: .cairn/domains/${domain}.md
 Then run: cairn status`;

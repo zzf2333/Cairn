@@ -31,7 +31,7 @@ _log_read_multiline() {
     local prompt_text="$1"
     local result=""
     local first=true
-    echo -e "  ${C_BOLD}${prompt_text}${C_RESET} ${C_DIM}(end with empty line)${C_RESET}"
+    echo -e "  ${C_BOLD}${prompt_text}${C_RESET} ${C_DIM}$(msg_log_multiline_end)${C_RESET}"
     while IFS= read -r line; do
         [ -z "$line" ] && break
         if [ "$first" = true ]; then
@@ -76,8 +76,8 @@ cmd_log() {
             --reason)     flag_reason="$2";   shift 2 ;;
             --revisit-when) flag_revisit="$2"; shift 2 ;;
             *)
-                echo -e "${C_RED}error:${C_RESET} unknown flag '$1'" >&2
-                echo -e "  Run ${C_BOLD}cairn help${C_RESET} for usage." >&2
+                echo -e "${C_RED}error:${C_RESET} $(msg_err_unknown_flag "$1")" >&2
+                echo -e "$(msg_err_run_help)" >&2
                 exit 1
                 ;;
         esac
@@ -101,15 +101,15 @@ cmd_log() {
         entry_type="$flag_type"
     elif [ "$flag_mode" = false ]; then
         echo ""
-        echo -e "  ${C_BOLD}── type ──${C_RESET}"
+        echo -e "  ${C_BOLD}$(msg_log_type_header)${C_RESET}"
         echo ""
-        echo -e "    ${C_DIM}1)${C_RESET} decision    — a technology choice was made"
-        echo -e "    ${C_DIM}2)${C_RESET} rejection   — a direction was excluded"
-        echo -e "    ${C_DIM}3)${C_RESET} transition  — approach changed from A to B"
-        echo -e "    ${C_DIM}4)${C_RESET} debt        — technical debt accepted or resolved"
-        echo -e "    ${C_DIM}5)${C_RESET} experiment  — exploratory attempt concluded"
+        echo -e "    ${C_DIM}1)${C_RESET} $(msg_log_type_decision)"
+        echo -e "    ${C_DIM}2)${C_RESET} $(msg_log_type_rejection)"
+        echo -e "    ${C_DIM}3)${C_RESET} $(msg_log_type_transition)"
+        echo -e "    ${C_DIM}4)${C_RESET} $(msg_log_type_debt)"
+        echo -e "    ${C_DIM}5)${C_RESET} $(msg_log_type_experiment)"
         echo ""
-        echo -ne "  ${C_BOLD}Entry type (1-5 or name):${C_RESET} "
+        msg_log_type_prompt
         read -r type_input
         case "$type_input" in
             1|decision)   entry_type="decision" ;;
@@ -125,8 +125,8 @@ cmd_log() {
     case "$entry_type" in
         decision|rejection|transition|debt|experiment) ;;
         *)
-            echo -e "${C_RED}error:${C_RESET} invalid type '${entry_type}'" >&2
-            echo -e "  Valid types: decision, rejection, transition, debt, experiment" >&2
+            echo -e "${C_RED}error:${C_RESET} $(msg_err_invalid_type "$entry_type")" >&2
+            echo -e "$(msg_err_valid_types)" >&2
             exit 1
             ;;
     esac
@@ -137,7 +137,7 @@ cmd_log() {
         entry_domain="$flag_domain"
     elif [ "$flag_mode" = false ]; then
         echo ""
-        echo -e "  ${C_BOLD}── domain ──${C_RESET}"
+        echo -e "  ${C_BOLD}$(msg_log_domain_header)${C_RESET}"
         if [ -n "$locked_domains" ]; then
             echo ""
             local idx=1
@@ -148,7 +148,7 @@ cmd_log() {
             done <<< "$locked_domains"
             echo ""
         fi
-        echo -ne "  ${C_BOLD}Domain (name or number):${C_RESET} "
+        msg_log_domain_prompt
         read -r domain_input
         # If numeric input, map to domain name
         if echo "$domain_input" | grep -qE '^[0-9]+$'; then
@@ -162,7 +162,7 @@ cmd_log() {
                 didx=$(( didx + 1 ))
             done <<< "$locked_domains"
             if [ -z "$entry_domain" ]; then
-                echo -e "${C_RED}error:${C_RESET} no domain at index ${domain_input}" >&2
+                echo -e "${C_RED}error:${C_RESET} $(msg_err_no_domain_idx "$domain_input")" >&2
                 exit 1
             fi
         else
@@ -172,10 +172,10 @@ cmd_log() {
 
     # Validate domain against locked list (warn if not in list, but allow)
     if [ -n "$locked_domains" ] && ! echo "$locked_domains" | grep -qx "$entry_domain"; then
-        echo -e "${C_YELLOW}warning:${C_RESET} '${entry_domain}' is not in the locked domain list." >&2
-        echo -e "  Locked domains: $(echo "$locked_domains" | tr '\n' ' ')" >&2
+        echo -e "${C_YELLOW}warning:${C_RESET} $(msg_warn_domain_not_locked "$entry_domain")" >&2
+        echo -e "$(msg_warn_locked_domains "$(echo "$locked_domains" | tr '\n' ' ')")" >&2
         if [ "$flag_mode" = false ]; then
-            echo -ne "  ${C_BOLD}Continue anyway? (yes/no):${C_RESET} "
+            echo -ne "${C_BOLD}$(msg_warn_continue_prompt)${C_RESET}"
             read -r confirm
             [ "$confirm" != "yes" ] && exit 0
         else
@@ -184,7 +184,7 @@ cmd_log() {
     fi
 
     if [ -z "$entry_domain" ]; then
-        echo -e "${C_RED}error:${C_RESET} domain is required" >&2
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_domain_required)" >&2
         exit 1
     fi
 
@@ -194,14 +194,14 @@ cmd_log() {
         entry_date="$flag_date"
     elif [ "$flag_mode" = false ]; then
         echo ""
-        echo -ne "  ${C_BOLD}Decision date${C_RESET} ${C_DIM}[${current_month}]${C_RESET} (YYYY-MM): "
+        msg_log_date_prompt "$current_month"
         read -r date_input
         [ -n "$date_input" ] && entry_date="$date_input"
     fi
 
     # Validate YYYY-MM format
     if ! echo "$entry_date" | grep -qE '^[0-9]{4}-[0-9]{2}$'; then
-        echo -e "${C_RED}error:${C_RESET} invalid date format '${entry_date}' — expected YYYY-MM" >&2
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_invalid_date "$entry_date")" >&2
         exit 1
     fi
 
@@ -211,12 +211,12 @@ cmd_log() {
         entry_summary="$flag_summary"
     elif [ "$flag_mode" = false ]; then
         echo ""
-        echo -ne "  ${C_BOLD}Summary${C_RESET} (one sentence — what happened): "
+        msg_log_summary_prompt
         read -r entry_summary
     fi
 
     if [ -z "$entry_summary" ]; then
-        echo -e "${C_RED}error:${C_RESET} summary is required" >&2
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_summary_required)" >&2
         exit 1
     fi
 
@@ -226,13 +226,13 @@ cmd_log() {
         entry_rejected="$flag_rejected"
     elif [ "$flag_mode" = false ]; then
         echo ""
-        echo -e "  ${C_BOLD}── rejected ──${C_RESET} ${C_YELLOW}(most critical field)${C_RESET}"
-        echo -e "  ${C_DIM}What alternatives were considered and not chosen?${C_RESET}"
-        entry_rejected="$(_log_read_multiline "rejected:")"
+        echo -e "  ${C_BOLD}$(msg_log_rejected_header)${C_RESET}"
+        echo -e "  ${C_DIM}$(msg_log_rejected_hint)${C_RESET}"
+        entry_rejected="$(_log_read_multiline "$(msg_log_rejected_label)")"
     fi
 
     if [ -z "$entry_rejected" ]; then
-        echo -e "${C_RED}error:${C_RESET} rejected field is required (most critical field)" >&2
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_rejected_required)" >&2
         exit 1
     fi
 
@@ -242,13 +242,13 @@ cmd_log() {
         entry_reason="$flag_reason"
     elif [ "$flag_mode" = false ]; then
         echo ""
-        echo -e "  ${C_BOLD}── reason ──${C_RESET}"
-        echo -e "  ${C_DIM}Why was this path taken?${C_RESET}"
-        entry_reason="$(_log_read_multiline "reason:")"
+        echo -e "  ${C_BOLD}$(msg_log_reason_header)${C_RESET}"
+        echo -e "  ${C_DIM}$(msg_log_reason_hint)${C_RESET}"
+        entry_reason="$(_log_read_multiline "$(msg_log_reason_label)")"
     fi
 
     if [ -z "$entry_reason" ]; then
-        echo -e "${C_RED}error:${C_RESET} reason is required" >&2
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_reason_required)" >&2
         exit 1
     fi
 
@@ -258,8 +258,8 @@ cmd_log() {
         entry_revisit="$flag_revisit"
     elif [ "$flag_mode" = false ]; then
         echo ""
-        echo -e "  ${C_DIM}revisit_when: condition for re-evaluation (optional, press Enter to skip)${C_RESET}"
-        echo -ne "  ${C_BOLD}revisit_when:${C_RESET} "
+        echo -e "  ${C_DIM}$(msg_log_revisit_hint)${C_RESET}"
+        msg_log_revisit_prompt
         read -r entry_revisit
     fi
 
@@ -271,8 +271,8 @@ cmd_log() {
 
     # Avoid overwriting existing file
     if [ -f "$output_file" ]; then
-        echo -e "${C_YELLOW}warning:${C_RESET} file already exists: $output_file" >&2
-        echo -e "  Use a different --summary to generate a unique filename." >&2
+        echo -e "${C_YELLOW}warning:${C_RESET} $(msg_warn_file_exists "$output_file")" >&2
+        echo -e "$(msg_warn_unique_summary)" >&2
         exit 1
     fi
 
@@ -314,12 +314,12 @@ cmd_log() {
 
     # ---- Success message ----
     echo ""
-    echo -e "  ${C_GREEN}✓${C_RESET} Created ${C_BOLD}${output_file}${C_RESET}"
+    echo -e "  ${C_GREEN}✓${C_RESET} $(msg_log_success "$output_file")"
     echo ""
-    echo -e "  ${C_DIM}Next steps:${C_RESET}"
-    echo -e "  · Run ${C_BOLD}cairn status${C_RESET} to check for stale domain files"
+    echo -e "  ${C_DIM}$(msg_log_next_steps_header)${C_RESET}"
+    echo -e "$(msg_log_next_status)"
     if [ -f "$cairn_dir/domains/${entry_domain}.md" ]; then
-        echo -e "  · Run ${C_BOLD}cairn sync ${entry_domain}${C_RESET} to generate an updated domain file"
+        echo -e "$(msg_log_next_sync "$entry_domain")"
     fi
     echo ""
 }

@@ -1,3 +1,5 @@
+[中文](vs-adr.zh.md) | English
+
 # Cairn vs. ADR
 
 ## TL;DR

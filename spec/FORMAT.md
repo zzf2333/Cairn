@@ -1,3 +1,5 @@
+[中文](FORMAT.zh.md) | English
+
 # Cairn Format Specification
 
 This document defines the complete format for all three layers of the `.cairn/` directory.

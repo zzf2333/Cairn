@@ -1,3 +1,5 @@
+[中文](DESIGN.zh.md) | English
+
 # Cairn — Design Document
 
 > Status: Three-layer architecture finalized.

@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-CAIRN_VERSION="0.0.1"
+CAIRN_VERSION="0.0.2"
 CAIRN_CLI_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # =============================================================================
@@ -46,6 +46,14 @@ else
     C_RED=""
 fi
 
+# ── language loader ──────────────────────────────────────────────────────────
+_CAIRN_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_CAIRN_LANG_RAW="${CAIRN_LANG:-${LANG%%_*}}"
+case "$_CAIRN_LANG_RAW" in
+    zh*) source "$_CAIRN_SCRIPT_DIR/lang/zh.sh" ;;
+    *)   source "$_CAIRN_SCRIPT_DIR/lang/en.sh" ;;
+esac
+
 # =============================================================================
 # Shared utilities
 # =============================================================================
@@ -69,8 +77,8 @@ find_cairn_root() {
 require_cairn_root() {
     local root
     if ! root="$(find_cairn_root)"; then
-        echo -e "${C_RED}error:${C_RESET} no .cairn/ directory found in this directory or any parent." >&2
-        echo -e "  Run ${C_BOLD}cairn init${C_RESET} to initialize Cairn in the current project." >&2
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_no_cairn)" >&2
+        echo -e "$(msg_err_run_init)" >&2
         exit 1
     fi
     echo "$root"
@@ -87,10 +95,13 @@ parse_stage_field() {
 
 # Extract locked domain names from output.md's ## hooks section.
 # One domain name per line (e.g., "api-layer", "auth").
+# Matches both formats (language-agnostic):
+#   New: → domains/<name>.md
+#   Old: → read domains/<name>.md first  (backward-compatible)
 # Usage: parse_domain_list < output.md
 parse_domain_list() {
-    grep -oE '→ read domains/[a-z][a-z0-9-]+\.md first' | \
-        sed 's/→ read domains\///;s/\.md first//'
+    grep -oE 'domains/[a-z][a-z0-9-]+\.md' | \
+        sed 's|domains/||;s|\.md||'
 }
 
 # Extract a frontmatter field from a domain file (--- delimited YAML).
@@ -116,26 +127,26 @@ parse_history_field() {
 
 show_help() {
     echo ""
-    echo -e "${C_BOLD}cairn${C_RESET} — AI path-dependency constraint system"
+    echo -e "${C_BOLD}$(msg_help_tagline)${C_RESET}"
     echo ""
-    echo -e "${C_BOLD}Usage:${C_RESET}"
-    echo -e "  cairn <command> [arguments]"
+    echo -e "${C_BOLD}$(msg_help_usage_label)${C_RESET}"
+    echo -e "$(msg_help_usage_line)"
     echo ""
-    echo -e "${C_BOLD}Commands:${C_RESET}"
-    echo -e "  ${C_CYAN}init${C_RESET}     Interactively initialize .cairn/ in the current project"
-    echo -e "  ${C_CYAN}status${C_RESET}   Show three-layer summary and stale domain warnings"
-    echo -e "  ${C_CYAN}log${C_RESET}      Record a history entry"
-    echo -e "  ${C_CYAN}sync${C_RESET}     Generate an AI prompt to update a domain file from history"
-    echo -e "  ${C_CYAN}version${C_RESET}  Print version"
-    echo -e "  ${C_CYAN}help${C_RESET}     Print this help message"
+    echo -e "${C_BOLD}$(msg_help_commands_label)${C_RESET}"
+    echo -e "  ${C_CYAN}init${C_RESET}     $(msg_help_cmd_init)"
+    echo -e "  ${C_CYAN}status${C_RESET}   $(msg_help_cmd_status)"
+    echo -e "  ${C_CYAN}log${C_RESET}      $(msg_help_cmd_log)"
+    echo -e "  ${C_CYAN}sync${C_RESET}     $(msg_help_cmd_sync)"
+    echo -e "  ${C_CYAN}version${C_RESET}  $(msg_help_cmd_version)"
+    echo -e "  ${C_CYAN}help${C_RESET}     $(msg_help_cmd_help)"
     echo ""
-    echo -e "${C_BOLD}Examples:${C_RESET}"
+    echo -e "${C_BOLD}$(msg_help_examples_label)${C_RESET}"
     echo -e "  cairn init"
     echo -e "  cairn status"
     echo -e "  cairn log --type rejection --domain api-layer --summary \"Rejected GraphQL\""
     echo -e "  cairn sync api-layer"
     echo ""
-    echo -e "${C_DIM}See spec/FORMAT.md for the full Cairn format specification.${C_RESET}"
+    echo -e "${C_DIM}$(msg_help_spec_hint)${C_RESET}"
     echo ""
 }
 
@@ -170,8 +181,8 @@ case "$CMD" in
         show_help
         ;;
     *)
-        echo -e "${C_RED}error:${C_RESET} unknown command '${CMD}'" >&2
-        echo -e "  Run ${C_BOLD}cairn help${C_RESET} for usage." >&2
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_unknown_cmd "$CMD")" >&2
+        echo -e "$(msg_err_run_help)" >&2
         exit 1
         ;;
 esac

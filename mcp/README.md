@@ -1,3 +1,5 @@
+[中文](README.zh.md) | English
+
 # Cairn MCP Server
 
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that exposes structured tool access to the Cairn three-layer memory system (`.cairn/` directory).

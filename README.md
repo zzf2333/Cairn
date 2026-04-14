@@ -1,3 +1,5 @@
+[中文](README.zh.md) | English
+
 <div align="center">
 
 <img src="docs/diagrams/logo.png" width="120" alt="Cairn" />
@@ -128,6 +130,12 @@ re-propose.
 **Behavior layer (adapters):** Each AI tool gets a skill file that instructs it when and how
 to read the `.cairn/` layers. The data layer is tool-agnostic; the behavior layer is maintained
 per-tool to preserve semantic equivalence.
+
+**Language support (v0.0.2):** `.cairn/` content can be maintained in any language.
+The CLI and init script follow `CAIRN_LANG` (auto-detected from `$LANG`). AI skill
+adapters include language-continuity rules so new entries match existing file language.
+Format contracts (section headers, field names) remain English ASCII regardless of
+content language.
 
 ---
 

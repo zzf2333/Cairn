@@ -57,6 +57,15 @@ Only reopen the discussion when the `revisit_when` condition is met.
 
 ---
 
+## LANGUAGE CONTINUITY
+
+When drafting new `history/*.md` entries or updating `domains/*.md` content:
+- **Match the language** of existing `.cairn/` files. Detect from `output.md` and existing history entries. If the project uses Chinese, write Chinese. If English, write English.
+- **Always use ASCII slugs** for history filenames, even when content is non-English (e.g., `2024-03_state-mgmt-transition.md`, not `2024-03_状态管理迁移.md`).
+- **Keep format contracts in English**: section headers (`## stage`, `## no-go`, `## hooks`, `## current design`, `## trajectory`, `## rejected paths`, `## known pitfalls`, `## open questions`) and all frontmatter field names (`type:`, `domain:`, `decision_date:`, `recorded_date:`, `summary:`, `rejected:`, `reason:`, `revisit_when:`, `updated:`, `status:`, `hooks:`) stay English regardless of content language.
+
+---
+
 ## REACTIVE EVOLUTION
 
 After completing a task, evaluate whether a recordable event occurred (decision,

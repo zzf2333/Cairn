@@ -65,25 +65,25 @@ cmd_status() {
     if [ -n "$stage_phase" ]; then
         printf "stage:   %s\n" "$stage_phase"
     else
-        printf "stage:   (unknown)\n"
+        printf "stage:   %s\n" "$(msg_status_stage_unknown)"
     fi
 
     local domains_summary
     if [ -z "$locked_domains" ]; then
-        domains_summary="none configured"
+        domains_summary="$(msg_status_no_domains)"
     elif [ "$not_created_count" -eq 0 ]; then
-        domains_summary="${active_count} active"
+        domains_summary="$(msg_status_active "$active_count")"
     elif [ "$active_count" -eq 0 ]; then
-        domains_summary="${not_created_count} not created"
+        domains_summary="$(msg_status_not_created "$not_created_count")"
     else
-        domains_summary="${active_count} active, ${not_created_count} not created"
+        domains_summary="$(msg_status_active_and_not "$active_count" "$not_created_count")"
     fi
     printf "domains: %s\n" "$domains_summary"
     echo ""
 
     # ---- Per-domain status ----
     if [ -z "$locked_domains" ]; then
-        echo -e "  ${C_DIM}No domains configured in .cairn/output.md hooks section.${C_RESET}"
+        echo -e "  ${C_DIM}$(msg_status_no_domains_hint)${C_RESET}"
     fi
 
     while IFS= read -r d; do
@@ -114,8 +114,8 @@ cmd_status() {
         fi
 
         if [ ! -f "$domain_file" ]; then
-            printf "  ${C_DIM}·${C_RESET}  %-28s not yet created (%d history %s)\n" \
-                "$d" "$hist_count" "$([ "$hist_count" -eq 1 ] && echo 'entry' || echo 'entries')"
+            printf "  ${C_DIM}·${C_RESET}  %-28s %s (%d %s)\n" \
+                "$d" "$(msg_status_not_yet_created)" "$hist_count" "$(msg_plural_history_entry "$hist_count")"
             continue
         fi
 
@@ -126,7 +126,7 @@ cmd_status() {
             | grep "^updated:" | head -1 | sed 's/^updated: //' | tr -d '[:space:]' || true)"
 
         if [ -z "$domain_updated" ]; then
-            printf "  ${C_DIM}?${C_RESET}  %-28s no updated date in frontmatter\n" "$d"
+            printf "  ${C_DIM}?${C_RESET}  %-28s %s\n" "$d" "$(msg_status_no_updated_date)"
             continue
         fi
 
@@ -149,17 +149,15 @@ cmd_status() {
         fi
 
         if [ "$new_entries" -gt 0 ]; then
-            printf "  ${C_YELLOW}⚠${C_RESET}  %-28s last updated %s · %d new %s since\n" \
-                "$d" "$domain_updated" "$new_entries" \
-                "$([ "$new_entries" -eq 1 ] && echo 'history entry' || echo 'history entries')"
-            printf "     %-28s ${C_DIM}run: cairn sync %s${C_RESET}\n" "" "$d"
+            printf "  ${C_YELLOW}⚠${C_RESET}  %-28s %s · %s\n" \
+                "$d" "$(msg_status_last_updated "$domain_updated")" "$(msg_status_new_since "$new_entries")"
+            printf "     %-28s ${C_DIM}%s${C_RESET}\n" "" "$(msg_status_run_sync "$d")"
         else
-            printf "  ${C_GREEN}✓${C_RESET}  %-28s up to date (%s)\n" "$d" "$domain_updated"
+            printf "  ${C_GREEN}✓${C_RESET}  %-28s %s (%s)\n" "$d" "$(msg_status_up_to_date)" "$domain_updated"
         fi
     done <<< "$locked_domains"
 
     echo ""
-    printf "history: %d %s total\n" "$total_history" \
-        "$([ "$total_history" -eq 1 ] && echo 'entry' || echo 'entries')"
+    printf "%s\n" "$(msg_status_history_total "$total_history")"
     echo ""
 }

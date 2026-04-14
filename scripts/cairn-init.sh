@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # =============================================================================
-# cairn-init.sh — Cairn 交互式初始化脚本
+# cairn-init.sh — Cairn interactive initialization script
 #
-# 使用方法：
+# Usage:
 #   chmod +x cairn-init.sh
 #   ./cairn-init.sh
 #
-# 在当前目录下创建 .cairn/ 三层结构，并安装 AI 工具 Skill 适配文件。
+# Creates the .cairn/ three-layer structure in the current directory,
+# and installs AI tool Skill adapter files.
 # =============================================================================
 
 set -euo pipefail
 
-# ---- 颜色支持检测 ----
+# ---- color support detection ----
 
 if [ -t 1 ] && command -v tput >/dev/null 2>&1 && tput colors >/dev/null 2>&1 && [ "$(tput colors)" -ge 8 ]; then
     C_RESET="\033[0m"
@@ -33,7 +34,16 @@ else
     C_RED=""
 fi
 
-# ---- 工具函数 ----
+# ── language loader ────────────────────────────────────────────────────────────
+_INIT_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_CAIRN_LANG_DIR="$_INIT_SCRIPT_DIR/../cli/lang"
+_CAIRN_LANG_RAW="${CAIRN_LANG:-${LANG%%_*}}"
+case "$_CAIRN_LANG_RAW" in
+    zh*) source "$_CAIRN_LANG_DIR/zh.sh" ;;
+    *)   source "$_CAIRN_LANG_DIR/en.sh" ;;
+esac
+
+# ---- utility functions ----
 
 print_header() {
     echo ""
@@ -63,7 +73,7 @@ print_error() {
 }
 
 prompt() {
-    # 用法: prompt "提示文字" [默认值]
+    # usage: prompt "prompt text" [default]
     local msg="$1"
     local default="${2:-}"
     if [ -n "$default" ]; then
@@ -73,13 +83,13 @@ prompt() {
     fi
 }
 
-# 全局状态
+# global state
 SELECTED_DOMAINS=()
 CREATED_FILES=()
 
-# ---- 预设域关键词映射 ----
+# ---- preset domain keyword mapping ----
 
-# 按域名返回对应关键词字符串（/ 分隔）
+# returns keyword string for a domain (/ separated)
 get_domain_keywords() {
     local domain="$1"
     case "$domain" in
@@ -94,20 +104,20 @@ get_domain_keywords() {
         architecture)       echo "architecture / pattern / module / service / layer" ;;
         performance)        echo "performance / latency / cache / optimize / bundle" ;;
         security)           echo "security / XSS / CSRF / injection / vulnerability" ;;
-        *)                  echo "$domain" ;;  # 自定义域：用域名本身作为关键词
+        *)                  echo "$domain" ;;  # custom domain: use domain name itself as keyword
     esac
 }
 
 # ============================================================================
-# Step 1: 选择 Domain 列表
+# Step 1: Select domain list
 # ============================================================================
 
 step1_select_domains() {
-    print_step "1" "选择 Domain 列表"
+    print_step "1" "$(msg_init_step_domains)"
 
     echo ""
-    echo -e "  以下是 11 个标准域，请输入编号（逗号分隔，如 ${C_CYAN}1,2,4,5,9${C_RESET}）："
-    echo -e "  也可直接输入自定义域名（kebab-case，空格或逗号分隔）："
+    echo -e "  $(msg_init_domains_intro)"
+    echo -e "  $(msg_init_domains_custom)"
     echo ""
     echo -e "    ${C_DIM} 1)${C_RESET} ${C_BOLD}state-management${C_RESET}    Frontend state management"
     echo -e "    ${C_DIM} 2)${C_RESET} ${C_BOLD}api-layer${C_RESET}           API design and communication"
@@ -122,12 +132,12 @@ step1_select_domains() {
     echo -e "    ${C_DIM}11)${C_RESET} ${C_BOLD}security${C_RESET}            Security strategy"
     echo ""
 
-    prompt "请选择（推荐选 3-7 个）："
+    msg_init_domains_prompt
     read -r domain_input
 
-    # 标准域名数组（按编号）
+    # standard domain names array (indexed from 1)
     local std_domains=(
-        ""  # 占位，使编号从 1 开始
+        ""  # placeholder so numbering starts at 1
         "state-management"
         "api-layer"
         "database"
@@ -143,7 +153,7 @@ step1_select_domains() {
 
     SELECTED_DOMAINS=()
 
-    # 将逗号替换为空格，然后按空格分词
+    # replace commas with spaces, then split by space
     local normalized
     normalized=$(echo "$domain_input" | tr ',' ' ')
 
@@ -151,25 +161,25 @@ step1_select_domains() {
         token=$(echo "$token" | tr -d '[:space:]')
         [ -z "$token" ] && continue
 
-        # 判断是否为纯数字
+        # check if purely numeric
         if echo "$token" | grep -qE '^[0-9]+$'; then
             local idx="$token"
             if [ "$idx" -ge 1 ] && [ "$idx" -le 11 ]; then
                 SELECTED_DOMAINS+=("${std_domains[$idx]}")
             else
-                print_warn "编号 $idx 超出范围（1-11），已忽略"
+                print_warn "$(msg_init_domain_out_of_range "$idx")"
             fi
         else
-            # 自定义域名：检查格式
+            # custom domain name: validate format
             if echo "$token" | grep -qE '^[a-z][a-z0-9-]*$'; then
                 SELECTED_DOMAINS+=("$token")
             else
-                print_warn "域名 '$token' 格式无效（需为 kebab-case），已忽略"
+                print_warn "$(msg_init_domain_invalid_name "$token")"
             fi
         fi
     done
 
-    # 去重（POSIX 兼容，不依赖 bash 4 关联数组）
+    # deduplicate (POSIX-compatible, no bash 4 associative arrays needed)
     local unique_domains=()
     for d in "${SELECTED_DOMAINS[@]}"; do
         local found=0
@@ -184,80 +194,80 @@ step1_select_domains() {
     SELECTED_DOMAINS=("${unique_domains[@]}")
 
     if [ ${#SELECTED_DOMAINS[@]} -eq 0 ]; then
-        print_error "未选择任何域，请至少选择一个"
+        print_error "$(msg_init_no_domains_selected)"
         exit 1
     fi
 
     echo ""
-    print_ok "已选择 ${#SELECTED_DOMAINS[@]} 个域："
+    print_ok "$(msg_init_domains_selected "${#SELECTED_DOMAINS[@]}")"
     for d in "${SELECTED_DOMAINS[@]}"; do
         echo -e "    ${C_GREEN}·${C_RESET} $d"
     done
 }
 
 # ============================================================================
-# Step 2: 填写 output.md
+# Step 2: Fill in output.md
 # ============================================================================
 
 step2_create_output_md() {
-    print_step "2" "填写 output.md"
+    print_step "2" "$(msg_init_step_output)"
 
     # ---- stage section ----
     echo ""
     echo -e "  ${C_BOLD}── stage ──${C_RESET}"
-    print_info "当前项目所处的阶段和决策模式"
+    print_info "$(msg_init_stage_intro)"
     echo ""
 
-    prompt "phase（阶段名 + 起始时间，如 early-growth (2024-09+)）："
+    msg_init_phase_prompt
     read -r stage_phase
     [ -z "$stage_phase" ] && stage_phase="unnamed-phase ($(date +%Y-%m)+)"
 
     echo ""
-    echo -e "    ${C_DIM}示例：stability > speed > elegance${C_RESET}"
-    echo -e "    ${C_DIM}示例：speed > quality > cost${C_RESET}"
-    echo -e "    ${C_DIM}示例：correctness > performance > elegance${C_RESET}"
-    prompt "mode（优先级顺序，用 > 分隔）："
+    echo -e "    ${C_DIM}e.g. stability > speed > elegance${C_RESET}"
+    echo -e "    ${C_DIM}e.g. speed > quality > cost${C_RESET}"
+    echo -e "    ${C_DIM}e.g. correctness > performance > elegance${C_RESET}"
+    msg_init_mode_prompt
     read -r stage_mode
     [ -z "$stage_mode" ] && stage_mode="stability > speed > elegance"
 
     echo ""
-    prompt "team（团队规模和约束，如 2, no-ops）："
+    msg_init_team_prompt
     read -r stage_team
     [ -z "$stage_team" ] && stage_team=""
 
     echo ""
-    print_info "reject-if：拒绝条件（如 migration > 1 week）。直接回车可跳过"
-    prompt "reject-if："
+    print_info "$(msg_init_reject_if_intro)"
+    msg_init_reject_if_prompt
     read -r stage_reject_if
 
     # ---- no-go section ----
     echo ""
     echo -e "  ${C_BOLD}── no-go ──${C_RESET}"
-    print_info "列出 AI 绝对不能建议的技术方向（每条一行，直接回车结束）"
-    print_info "提示：这里可以暂时留空，遇到 AI 犯错时再补"
+    print_info "$(msg_init_nogo_intro)"
+    print_info "$(msg_init_nogo_hint)"
     echo ""
 
     local nogo_lines=()
     while true; do
-        prompt "禁区方向（回车结束）："
+        msg_init_nogo_prompt
         read -r nogo_item
         [ -z "$nogo_item" ] && break
         nogo_lines+=("$nogo_item")
     done
 
-    # ---- hooks section（自动生成）----
-    # 无需用户输入，基于 SELECTED_DOMAINS 自动生成
+    # ---- hooks section (auto-generated) ----
+    # no user input needed — generated from SELECTED_DOMAINS
 
     # ---- stack section ----
     echo ""
     echo -e "  ${C_BOLD}── stack ──${C_RESET}"
-    print_info "记录当前技术选型（key: value 格式，如 state: Zustand）"
-    print_info "直接回车结束"
+    print_info "$(msg_init_stack_intro)"
+    print_info "$(msg_init_stack_hint)"
     echo ""
 
     local stack_lines=()
     while true; do
-        prompt "技术栈条目（如 state: Zustand）："
+        msg_init_stack_prompt
         read -r stack_item
         [ -z "$stack_item" ] && break
         stack_lines+=("$stack_item")
@@ -266,20 +276,21 @@ step2_create_output_md() {
     # ---- debt section ----
     echo ""
     echo -e "  ${C_BOLD}── debt ──${C_RESET}"
-    print_info "记录已接受的技术债（格式：ID: accepted | revisit_when | constraint）"
-    print_info "示例：AUTH-COUPLING: accepted | fix when team>4 or MAU>100k | no refactor now"
-    print_info "提示：这里可以暂时留空，直接回车跳过"
+    print_info "$(msg_init_debt_intro)"
+    print_info "$(msg_init_debt_hint1)"
+    print_info "$(msg_init_debt_hint2)"
+    print_info "$(msg_init_debt_hint3)"
     echo ""
 
     local debt_lines=()
     while true; do
-        prompt "技术债条目（回车结束）："
+        msg_init_debt_prompt
         read -r debt_item
         [ -z "$debt_item" ] && break
         debt_lines+=("$debt_item")
     done
 
-    # ---- 生成 output.md ----
+    # ---- generate output.md ----
     mkdir -p .cairn
 
     {
@@ -309,7 +320,7 @@ step2_create_output_md() {
         for domain in "${SELECTED_DOMAINS[@]}"; do
             local kw
             kw=$(get_domain_keywords "$domain")
-            echo "- ${kw} → read domains/${domain}.md first"
+            echo "- ${kw} → domains/${domain}.md"
         done
         echo ""
         echo "## stack"
@@ -330,60 +341,47 @@ step2_create_output_md() {
     } > .cairn/output.md
 
     CREATED_FILES+=(".cairn/output.md")
-    print_ok "已生成 .cairn/output.md"
+    print_ok "$(msg_init_output_created)"
 }
 
 # ============================================================================
-# Step 3: 初始化 history/
+# Step 3: Initialize history/
 # ============================================================================
 
 step3_init_history() {
-    print_step "3" "初始化 history/"
+    print_step "3" "$(msg_init_step_history)"
 
     mkdir -p .cairn/history
 
-    cat > .cairn/history/_TEMPLATE.md << 'TEMPLATE_EOF'
-# History Entry Template
-# 复制此文件并按 YYYY-MM_<short-slug>.md 格式命名，然后填写以下字段。
-# 示例文件名：2024-03_state-mgmt-to-zustand.md
-
-type: <decision | rejection | transition | debt | experiment>
-domain: <domain key — must match one of the locked domains>
-decision_date: <YYYY-MM>
-recorded_date: <YYYY-MM>
-summary: <one sentence — what happened>
-rejected: <what alternatives were considered and not chosen — MOST CRITICAL FIELD>
-reason: <why this path was taken>
-revisit_when: <condition under which this decision should be reconsidered>
-TEMPLATE_EOF
+    tpl_history_template > .cairn/history/_TEMPLATE.md
 
     CREATED_FILES+=(".cairn/history/_TEMPLATE.md")
-    print_ok "已创建 .cairn/history/ 目录"
-    print_ok "已创建 .cairn/history/_TEMPLATE.md（7 字段模板）"
+    print_ok "$(msg_init_history_created_dir)"
+    print_ok "$(msg_init_history_created_tpl)"
 }
 
 # ============================================================================
-# Step 4: 初始化 domains/
+# Step 4: Initialize domains/
 # ============================================================================
 
 step4_init_domains() {
-    print_step "4" "初始化 domains/"
+    print_step "4" "$(msg_init_step_domains_dir)"
 
     mkdir -p .cairn/domains
-    CREATED_FILES+=(".cairn/domains/（空目录）")
+    CREATED_FILES+=("$(msg_init_domains_dir_note)")
 
-    print_ok "已创建 .cairn/domains/ 目录（暂不创建任何 domain 文件）"
-    print_info "domains/ 目前为空是完全正常的。"
-    print_info "正确的工作流程是：先积累 2-3 条 history/ 记录，"
-    print_info "然后请 AI 根据历史记录生成对应的 domain 文件。"
-    print_info "不要在历史记录存在之前手写 domain 文件。"
+    print_info "$(msg_init_domains_dir_hint1)"
+    print_info "$(msg_init_domains_dir_hint2)"
+    print_info "$(msg_init_domains_dir_hint3)"
+    print_info "$(msg_init_domains_dir_hint4)"
+    print_info "$(msg_init_domains_dir_hint5)"
 }
 
 # ============================================================================
-# Step 5: 安装 Skill 适配文件
+# Step 5: Install Skill adapter files
 # ============================================================================
 
-# ---- Skill 内容 heredoc ----
+# ---- Skill content heredocs ----
 
 SKILL_CLAUDE_CODE=$(cat << 'SKILL_EOF'
 Read `.cairn/output.md` at session start, then read domain files on planning tasks, and draft history entries when decisions are made.
@@ -406,7 +404,7 @@ Read `.cairn/output.md` before responding to any request. Use it to establish th
 
 When the user's request involves planning, technology selection, module architecture, or migration evaluation, check `output.md`'s `## hooks` section for matching keywords and read the corresponding `domains/*.md` file before responding.
 
-**Example:** if the user asks about API design and `output.md` has `api / endpoint → read domains/api-layer.md first`, read `.cairn/domains/api-layer.md` before answering.
+**Example:** if the user asks about API design and `output.md` has `api / endpoint → domains/api-layer.md`, read `.cairn/domains/api-layer.md` before answering.
 
 ---
 
@@ -460,7 +458,7 @@ Read `.cairn/output.md` before responding to any request. Use it to establish th
 
 When the user's request involves planning, technology selection, module architecture, or migration evaluation, check `output.md`'s `## hooks` section for matching keywords and read the corresponding `domains/*.md` file before responding.
 
-**Example:** if the user asks about API design and `output.md` has `api / endpoint → read domains/api-layer.md first`, read `.cairn/domains/api-layer.md` before answering.
+**Example:** if the user asks about API design and `output.md` has `api / endpoint → domains/api-layer.md`, read `.cairn/domains/api-layer.md` before answering.
 
 ---
 
@@ -524,7 +522,7 @@ After tasks, assess if a history entry is warranted (decision / rejection / tran
 SKILL_EOF
 )
 
-# AGENTS.md 内容（Codex CLI 和 OpenCode 共用，写入 AGENTS.md）
+# AGENTS.md content (shared by Codex CLI and OpenCode, written to AGENTS.md)
 SKILL_AGENTS=$(cat << 'SKILL_EOF'
 
 # Cairn — AI Path-Dependency Constraint System
@@ -559,7 +557,7 @@ After tasks, assess if a history entry is warranted (decision / rejection / tran
 SKILL_EOF
 )
 
-# GEMINI.md 内容（Gemini CLI 专用）
+# GEMINI.md content (Gemini CLI)
 SKILL_GEMINI=$(cat << 'SKILL_EOF'
 
 # Cairn — AI Path-Dependency Constraint System
@@ -594,32 +592,29 @@ After tasks, assess if a history entry is warranted (decision / rejection / tran
 SKILL_EOF
 )
 
-# 标记 AGENTS.md 是否已经写入（避免 Codex + OpenCode 同时选中时重复写入）
+# flag to track whether AGENTS.md has been written (avoid duplicate writes when both Codex and OpenCode are selected)
 AGENTS_MD_WRITTEN=0
 
 step5_install_skills() {
-    print_step "5" "安装 Skill 适配文件"
+    print_step "5" "$(msg_init_step_skills)"
 
     echo ""
-    echo -e "  请选择您使用的 AI 工具（多选，输入编号逗号分隔，如 ${C_CYAN}1,2${C_RESET}）："
+    echo -e "  $(msg_init_skills_intro)"
     echo ""
     echo -e "    ${C_DIM}1)${C_RESET} ${C_BOLD}Claude Code${C_RESET}     (.claude/skills/cairn/SKILL.md)"
     echo -e "    ${C_DIM}2)${C_RESET} ${C_BOLD}Cursor${C_RESET}          (.cursor/rules/cairn.mdc)"
-    echo -e "    ${C_DIM}3)${C_RESET} ${C_BOLD}Cline/Roo Code${C_RESET}  (.clinerules，追加)"
-    echo -e "    ${C_DIM}4)${C_RESET} ${C_BOLD}Windsurf${C_RESET}        (.windsurfrules，追加)"
-    echo -e "    ${C_DIM}5)${C_RESET} ${C_BOLD}GitHub Copilot${C_RESET}  (.github/copilot-instructions.md，追加)"
-    echo -e "    ${C_DIM}6)${C_RESET} ${C_BOLD}Codex CLI${C_RESET}       (AGENTS.md，追加)"
-    echo -e "    ${C_DIM}7)${C_RESET} ${C_BOLD}Gemini CLI${C_RESET}      (GEMINI.md，追加)"
-    echo -e "    ${C_DIM}8)${C_RESET} ${C_BOLD}OpenCode${C_RESET}        (AGENTS.md，追加，与 Codex 共用)"
+    echo -e "    ${C_DIM}3)${C_RESET} ${C_BOLD}Cline/Roo Code${C_RESET}  (.clinerules, append)"
+    echo -e "    ${C_DIM}4)${C_RESET} ${C_BOLD}Windsurf${C_RESET}        (.windsurfrules, append)"
+    echo -e "    ${C_DIM}5)${C_RESET} ${C_BOLD}GitHub Copilot${C_RESET}  (.github/copilot-instructions.md, append)"
+    echo -e "    ${C_DIM}6)${C_RESET} ${C_BOLD}Codex CLI${C_RESET}       (AGENTS.md, append)"
+    echo -e "    ${C_DIM}7)${C_RESET} ${C_BOLD}Gemini CLI${C_RESET}      (GEMINI.md, append)"
+    echo -e "    ${C_DIM}8)${C_RESET} ${C_BOLD}OpenCode${C_RESET}        (AGENTS.md, append, shared with Codex)"
     echo ""
-    print_info "直接回车跳过此步骤"
-    echo ""
-
-    prompt "选择工具："
+    msg_init_skills_skip
     read -r tool_input
 
     if [ -z "$tool_input" ]; then
-        print_info "已跳过 Skill 安装"
+        print_info "$(msg_init_skills_skipped)"
         return
     fi
 
@@ -637,7 +632,7 @@ step5_install_skills() {
                 mkdir -p "$target_dir"
                 echo "$SKILL_CLAUDE_CODE" > "$target_file"
                 CREATED_FILES+=("$target_file")
-                print_ok "已写入 ${target_file}"
+                print_ok "$(msg_init_written "$target_file")"
                 ;;
             2)
                 local target_dir=".cursor/rules"
@@ -645,27 +640,27 @@ step5_install_skills() {
                 mkdir -p "$target_dir"
                 echo "$SKILL_CURSOR" > "$target_file"
                 CREATED_FILES+=("$target_file")
-                print_ok "已写入 ${target_file}"
+                print_ok "$(msg_init_written "$target_file")"
                 ;;
             3)
                 local target_file=".clinerules"
                 echo "$SKILL_GENERIC" >> "$target_file"
-                CREATED_FILES+=("${target_file}（追加）")
-                print_ok "已追加到 ${target_file}"
+                CREATED_FILES+=("$target_file")
+                print_ok "$(msg_init_appended "$target_file")"
                 ;;
             4)
                 local target_file=".windsurfrules"
                 echo "$SKILL_GENERIC" >> "$target_file"
-                CREATED_FILES+=("${target_file}（追加）")
-                print_ok "已追加到 ${target_file}"
+                CREATED_FILES+=("$target_file")
+                print_ok "$(msg_init_appended "$target_file")"
                 ;;
             5)
                 local target_dir=".github"
                 local target_file="${target_dir}/copilot-instructions.md"
                 mkdir -p "$target_dir"
                 echo "$SKILL_GENERIC" >> "$target_file"
-                CREATED_FILES+=("${target_file}（追加）")
-                print_ok "已追加到 ${target_file}"
+                CREATED_FILES+=("$target_file")
+                print_ok "$(msg_init_appended "$target_file")"
                 ;;
             6)
                 # Codex CLI — AGENTS.md
@@ -673,98 +668,88 @@ step5_install_skills() {
                 if [ "$AGENTS_MD_WRITTEN" -eq 0 ]; then
                     echo "$SKILL_AGENTS" >> "$target_file"
                     AGENTS_MD_WRITTEN=1
-                    CREATED_FILES+=("${target_file}（追加）")
-                    print_ok "已追加到 ${target_file}"
+                    CREATED_FILES+=("$target_file")
+                    print_ok "$(msg_init_appended "$target_file")"
                 else
-                    print_info "AGENTS.md 已写入（Codex/OpenCode 共用），跳过重复写入"
+                    print_info "$(msg_init_agents_skipped)"
                 fi
                 ;;
             7)
                 # Gemini CLI — GEMINI.md
                 local target_file="GEMINI.md"
                 echo "$SKILL_GEMINI" >> "$target_file"
-                CREATED_FILES+=("${target_file}（追加）")
-                print_ok "已追加到 ${target_file}"
+                CREATED_FILES+=("$target_file")
+                print_ok "$(msg_init_appended "$target_file")"
                 ;;
             8)
-                # OpenCode — AGENTS.md（与 Codex 共用）
+                # OpenCode — AGENTS.md (shared with Codex)
                 local target_file="AGENTS.md"
                 if [ "$AGENTS_MD_WRITTEN" -eq 0 ]; then
                     echo "$SKILL_AGENTS" >> "$target_file"
                     AGENTS_MD_WRITTEN=1
-                    CREATED_FILES+=("${target_file}（追加）")
-                    print_ok "已追加到 ${target_file}"
+                    CREATED_FILES+=("$target_file")
+                    print_ok "$(msg_init_appended "$target_file")"
                 else
-                    print_info "AGENTS.md 已写入（Codex/OpenCode 共用），跳过重复写入"
+                    print_info "$(msg_init_agents_skipped)"
                 fi
                 ;;
             *)
-                print_warn "未知选项 $token，已忽略"
+                print_warn "$(msg_init_skills_unknown "$token")"
                 ;;
         esac
     done
 }
 
 # ============================================================================
-# 收尾：打印 Summary
+# Summary
 # ============================================================================
 
 print_summary() {
     echo ""
-    print_header "初始化完成"
+    print_header "$(msg_init_done_title)"
 
     echo ""
-    echo -e "  ${C_BOLD}已创建的文件：${C_RESET}"
+    echo -e "  ${C_BOLD}$(msg_init_done_created)${C_RESET}"
     for f in "${CREATED_FILES[@]}"; do
         echo -e "    ${C_GREEN}·${C_RESET} $f"
     done
 
     echo ""
-    echo -e "  ${C_BOLD}目录结构：${C_RESET}"
+    echo -e "  ${C_BOLD}$(msg_init_done_structure)${C_RESET}"
     echo -e "    ${C_DIM}.cairn/${C_RESET}"
-    echo -e "    ${C_DIM}├── output.md      ${C_RESET}Layer 1：全局约束，每次会话注入"
-    echo -e "    ${C_DIM}├── domains/       ${C_RESET}Layer 2：按域读取，积累历史后生成"
-    echo -e "    ${C_DIM}└── history/       ${C_RESET}Layer 3：原始决策事件，按需查询"
+    echo -e "$(msg_init_layer1_desc)"
+    echo -e "$(msg_init_layer2_desc)"
+    echo -e "$(msg_init_layer3_desc)"
 
     echo ""
-    echo -e "  ${C_BOLD}Next Steps：${C_RESET}"
+    echo -e "  ${C_BOLD}$(msg_init_next_steps)${C_RESET}"
     echo ""
-    echo -e "  ${C_CYAN}1.${C_RESET} 完善 ${C_BOLD}.cairn/output.md${C_RESET}："
-    echo -e "     · 在 ${C_BOLD}no-go${C_RESET} 中补充已知的技术禁区"
-    echo -e "     · 在 ${C_BOLD}stack${C_RESET} 中填写完整的技术栈信息"
-    echo ""
-    echo -e "  ${C_CYAN}2.${C_RESET} 开始记录决策历史："
-    echo -e "     · 复制 ${C_BOLD}.cairn/history/_TEMPLATE.md${C_RESET}"
-    echo -e "     · 按格式记录重要技术决策和实验结果"
-    echo -e "     · 文件命名格式：${C_BOLD}YYYY-MM_<short-slug>.md${C_RESET}"
-    echo ""
-    echo -e "  ${C_CYAN}3.${C_RESET} 积累 2-3 条历史记录后："
-    echo -e "     · 请 AI 根据历史生成 ${C_BOLD}.cairn/domains/<domain>.md${C_RESET} 文件"
-    echo -e "     · 不要在历史存在前手写 domain 文件"
-    echo ""
-    echo -e "  ${C_CYAN}4.${C_RESET} 格式规范参考：${C_BOLD}spec/FORMAT.md${C_RESET}"
+    echo -e "$(msg_init_next1)"
+    echo -e "$(msg_init_next2)"
+    echo -e "$(msg_init_next3)"
+    echo -e "$(msg_init_next4)"
     echo ""
 }
 
 # ============================================================================
-# 主流程
+# Main
 # ============================================================================
 
 main() {
-    print_header "Cairn — AI 路径依赖约束系统 初始化"
+    print_header "$(msg_init_title)"
     echo ""
-    echo -e "  ${C_DIM}本脚本将在当前目录创建 .cairn/ 三层结构。${C_RESET}"
-    echo -e "  ${C_DIM}当前目录：$(pwd)${C_RESET}"
+    echo -e "  ${C_DIM}$(msg_init_subtitle)${C_RESET}"
+    echo -e "  ${C_DIM}$(msg_init_current_dir "$(pwd)")${C_RESET}"
 
-    # 检查 .cairn/ 是否已存在
+    # check if .cairn/ already exists
     if [ -d ".cairn" ]; then
         echo ""
-        print_warn ".cairn/ 目录已存在。"
-        prompt "是否覆盖并重新初始化？（输入 yes 确认，其他任意键退出）："
+        print_warn "$(msg_init_exists_warning)"
+        msg_init_overwrite_prompt
         read -r confirm
         if [ "$confirm" != "yes" ]; then
             echo ""
-            print_info "已取消，未做任何修改。"
+            print_info "$(msg_init_cancelled)"
             exit 0
         fi
     fi

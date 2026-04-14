@@ -67,9 +67,9 @@ assert_contains "reject-if: field populated"    "$_FULL/.cairn/output.md" "^reje
 assert_contains "hooks header line present"     "$_FULL/.cairn/output.md" \
     "planning / designing / suggesting for:"
 assert_contains "hooks references api-layer"    "$_FULL/.cairn/output.md" \
-    "→ read domains/api-layer\.md first"
+    "→ domains/api-layer\.md"
 assert_contains "hooks references auth"         "$_FULL/.cairn/output.md" \
-    "→ read domains/auth\.md first"
+    "→ domains/auth\.md"
 assert_contains "no-go entry written"           "$_FULL/.cairn/output.md" "^- Redux"
 assert_contains "stack entry written"           "$_FULL/.cairn/output.md" "^state: Zustand"
 assert_contains "second stack entry written"    "$_FULL/.cairn/output.md" "^api: REST"
@@ -139,9 +139,9 @@ _VALID=$(
 
 start_suite "Domain Validation"
 assert_contains "valid standard domain (api-layer) included in hooks" \
-    "$_VALID/.cairn/output.md" "→ read domains/api-layer\.md first"
+    "$_VALID/.cairn/output.md" "→ domains/api-layer\.md"
 assert_contains "valid custom domain (custom-valid) included in hooks" \
-    "$_VALID/.cairn/output.md" "→ read domains/custom-valid\.md first"
+    "$_VALID/.cairn/output.md" "→ domains/custom-valid\.md"
 assert_not_contains "out-of-range number (99) not in hooks" \
     "$_VALID/.cairn/output.md" "domains/99"
 assert_not_contains "uppercase domain (BadName) rejected" \
@@ -160,9 +160,9 @@ _DEDUP=$(
 
 start_suite "Domain Deduplication"
 assert_count "api-layer hook entry appears exactly once" \
-    "$_DEDUP/.cairn/output.md" "→ read domains/api-layer\.md first" 1
+    "$_DEDUP/.cairn/output.md" "→ domains/api-layer\.md" 1
 assert_count "auth hook entry appears exactly once" \
-    "$_DEDUP/.cairn/output.md" "→ read domains/auth\.md first" 1
+    "$_DEDUP/.cairn/output.md" "→ domains/auth\.md" 1
 
 # =============================================================================
 # Scenario D — Overwrite protection: existing .cairn/, input "no" cancels

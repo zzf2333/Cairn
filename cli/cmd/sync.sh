@@ -54,81 +54,22 @@ $(cat "$hist_file")
     fi
 
     if [ "$entry_count" -eq 0 ]; then
-        echo -e "${C_YELLOW}warning:${C_RESET} no history entries found for domain '${domain}'" >&2
-        echo -e "  Record some decisions first with ${C_BOLD}cairn log${C_RESET}." >&2
+        echo -e "${C_YELLOW}warning:${C_RESET} $(msg_warn_no_history "$domain")" >&2
+        echo -e "  $(msg_warn_record_first)" >&2
         return 1
     fi
 
     local current_file_section
     if [ -f "$domain_file" ]; then
-        current_file_section="## Current domain file (.cairn/domains/${domain}.md)
+        current_file_section="$(tpl_sync_domain_exists_header "$domain")
 
 $(cat "$domain_file")"
     else
-        current_file_section="## Current domain file
-
-This domain file does not exist yet. Create it from scratch."
+        current_file_section="$(tpl_sync_domain_missing_section)"
     fi
 
     # ---- Output the prompt ----
-    cat <<PROMPT
-You are updating a Cairn domain file based on accumulated history entries.
-Cairn is an AI path-dependency constraint system. Domain files provide
-pre-compressed design context that is injected when the AI works on related tasks.
-
-${current_file_section}
-
-## History entries for domain: ${domain} (chronological)
-${history_entries}
-## Your task
-
-Generate an updated domain file for \`${domain}\` using EXACTLY this structure:
-
-\`\`\`markdown
----
-domain: ${domain}
-hooks: ["keyword1", "keyword2", "..."]
-updated: ${latest_date:-$(date +%Y-%m)}
-status: active
----
-
-# ${domain}
-
-## current design
-
-[1–3 sentences: current design state, primary choice in use, any unresolved boundary]
-
-## trajectory
-
-[Chronological. One line per event. Format: YYYY-MM <description> → <reason if changed>]
-
-## rejected paths
-
-- <option>: <rejection reason, one sentence>
-  Re-evaluate when: <condition for reconsideration>
-
-## known pitfalls
-
-- <name>: <trigger> / <why it happens> / <what NOT to do>
-
-## open questions
-
-- <unresolved design question>
-\`\`\`
-
-## Rules
-
-1. OVERWRITE the entire file — do not append to the existing content
-2. Keep the total file length within 200–400 tokens
-3. Every line MUST change AI behavior — if removing a line wouldn't change AI suggestions, delete it
-4. The \`rejected\` fields in history entries are the most critical content — include ALL rejected alternatives in "rejected paths"
-5. "known pitfalls" are operational traps, NOT accepted debts or direction exclusions
-6. Set \`updated:\` in frontmatter to the latest history entry's \`decision_date\`: ${latest_date:-$(date +%Y-%m)}
-7. Choose \`status: active\` if the domain is still evolving, \`status: stable\` if settled
-
-When done, save the output to: .cairn/domains/${domain}.md
-Then run: cairn status
-PROMPT
+    tpl_sync_prompt "$domain" "$current_file_section" "$history_entries" "${latest_date:-$(date +%Y-%m)}"
 }
 
 # -----------------------------------------------------------------------------
@@ -142,16 +83,16 @@ _sync_dry_run() {
     local domain_file="$domains_dir/${domain}.md"
 
     echo ""
-    echo -e "  ${C_BOLD}Dry run: cairn sync ${domain}${C_RESET}"
+    echo -e "  ${C_BOLD}$(msg_sync_dry_run_header "$domain")${C_RESET}"
     echo ""
 
     if [ -f "$domain_file" ]; then
         local domain_updated=""
         domain_updated="$(awk '/^---$/{count++; next} count==1{print}' "$domain_file" \
             | grep "^updated:" | head -1 | sed 's/^updated: //' | tr -d '[:space:]' || true)"
-        echo -e "  ${C_GREEN}Domain file:${C_RESET} exists (updated: ${domain_updated:-unknown})"
+        echo -e "  ${C_GREEN}$(msg_sync_domain_exists "${domain_updated:-unknown}")${C_RESET}"
     else
-        echo -e "  ${C_YELLOW}Domain file:${C_RESET} not yet created — prompt will instruct AI to create it"
+        echo -e "  ${C_YELLOW}$(msg_sync_domain_missing)${C_RESET}"
     fi
 
     local entry_count=0
@@ -172,15 +113,15 @@ _sync_dry_run() {
         done < <(find "$history_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | sort)
     fi
 
-    echo -e "  ${C_GREEN}History entries:${C_RESET} ${entry_count}"
+    echo -e "  ${C_GREEN}$(msg_sync_history_count "$entry_count")${C_RESET}"
     if [ -n "$entry_list" ]; then
         echo -e "${C_DIM}${entry_list}${C_RESET}"
     fi
 
     if [ "$entry_count" -eq 0 ]; then
-        echo -e "  ${C_YELLOW}Note:${C_RESET} no history entries found — nothing to sync"
+        echo -e "  ${C_YELLOW}$(msg_sync_no_history_note)${C_RESET}"
     else
-        echo -e "  ${C_DIM}Run ${C_BOLD}cairn sync ${domain}${C_DIM} to generate the full prompt.${C_RESET}"
+        echo -e "  ${C_DIM}$(msg_sync_run_full "$domain")${C_RESET}"
     fi
     echo ""
 }
@@ -256,14 +197,14 @@ cmd_sync() {
             --dry-run)  flag_dry_run=true; shift ;;
             --copy)     flag_copy=true;    shift ;;
             --*)
-                echo -e "${C_RED}error:${C_RESET} unknown flag '$1'" >&2
+                echo -e "${C_RED}error:${C_RESET} $(msg_err_unknown_flag "$1")" >&2
                 exit 1
                 ;;
             *)
                 if [ -z "$target_domain" ]; then
                     target_domain="$1"
                 else
-                    echo -e "${C_RED}error:${C_RESET} unexpected argument '$1'" >&2
+                    echo -e "${C_RED}error:${C_RESET} $(msg_err_unexpected_arg "$1")" >&2
                     exit 1
                 fi
                 shift
@@ -273,12 +214,12 @@ cmd_sync() {
 
     # ---- Validate arguments ----
     if [ -z "$target_domain" ] && [ "$flag_stale" = false ]; then
-        echo -e "${C_RED}error:${C_RESET} specify a domain name or use --stale" >&2
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_sync_specify)" >&2
         echo ""
         echo -e "  Usage:"
-        echo -e "    cairn sync <domain>     Generate prompt for a specific domain"
-        echo -e "    cairn sync --stale      Generate prompts for all stale domains"
-        echo -e "    cairn sync <domain> --dry-run   Show summary without generating prompt"
+        echo -e "$(msg_sync_usage_domain)"
+        echo -e "$(msg_sync_usage_stale)"
+        echo -e "$(msg_sync_usage_dry_run)"
         echo ""
         exit 1
     fi
@@ -289,8 +230,8 @@ cmd_sync() {
         target_domains="$(_sync_stale_domains "$output_md" "$domains_dir" "$history_dir")"
         if [ -z "$target_domains" ]; then
             echo ""
-            echo -e "  ${C_GREEN}✓${C_RESET} No stale domains found — all domain files are up to date."
-            echo -e "  ${C_DIM}Run ${C_BOLD}cairn status${C_DIM} to verify.${C_RESET}"
+            echo -e "  ${C_GREEN}✓${C_RESET} $(msg_sync_no_stale)"
+            echo -e "  ${C_DIM}$(msg_sync_verify)${C_RESET}"
             echo ""
             return 0
         fi
@@ -337,17 +278,17 @@ cmd_sync() {
             if command -v pbcopy >/dev/null 2>&1; then
                 echo "$prompt_output" | pbcopy
                 echo ""
-                echo -e "  ${C_GREEN}✓${C_RESET} Prompt copied to clipboard (pbcopy)"
-                echo -e "  ${C_DIM}Paste it into your AI tool to generate the updated domain file.${C_RESET}"
+                echo -e "  ${C_GREEN}✓${C_RESET} $(msg_sync_copied_pbcopy)"
+                echo -e "$(msg_sync_paste_hint)"
                 echo ""
             elif command -v xclip >/dev/null 2>&1; then
                 echo "$prompt_output" | xclip -selection clipboard
                 echo ""
-                echo -e "  ${C_GREEN}✓${C_RESET} Prompt copied to clipboard (xclip)"
-                echo -e "  ${C_DIM}Paste it into your AI tool to generate the updated domain file.${C_RESET}"
+                echo -e "  ${C_GREEN}✓${C_RESET} $(msg_sync_copied_xclip)"
+                echo -e "$(msg_sync_paste_hint)"
                 echo ""
             else
-                echo -e "${C_YELLOW}warning:${C_RESET} --copy requires pbcopy (macOS) or xclip (Linux)" >&2
+                echo -e "${C_YELLOW}warning:${C_RESET} $(msg_warn_copy_unavailable)" >&2
                 echo ""
                 echo "$prompt_output"
             fi

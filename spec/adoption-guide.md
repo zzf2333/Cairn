@@ -1,3 +1,5 @@
+[中文](adoption-guide.zh.md) | English
+
 # Cairn Adoption Guide
 
 This guide covers two phases of adopting Cairn:
