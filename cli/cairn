@@ -12,6 +12,7 @@
 #   sync      Generate an AI prompt to update a domain file from history
 #   doctor    Run health checks on the .cairn/ structure (rules-only, no LLM)
 #   stage     Manage staged history entries (review / accept / skip)
+#   analyze   Analyze git history and generate staged candidates
 #   version   Print version
 #   help      Print this help message
 #
@@ -21,7 +22,7 @@
 
 set -euo pipefail
 
-CAIRN_VERSION="0.0.4"
+CAIRN_VERSION="0.0.5"
 CAIRN_CLI_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # =============================================================================
@@ -242,6 +243,7 @@ show_help() {
     echo -e "  ${C_CYAN}sync${C_RESET}     $(msg_help_cmd_sync)"
     echo -e "  ${C_CYAN}doctor${C_RESET}   $(msg_help_cmd_doctor)"
     echo -e "  ${C_CYAN}stage${C_RESET}    $(msg_help_cmd_stage)"
+    echo -e "  ${C_CYAN}analyze${C_RESET}  $(msg_help_cmd_analyze)"
     echo -e "  ${C_CYAN}version${C_RESET}  $(msg_help_cmd_version)"
     echo -e "  ${C_CYAN}help${C_RESET}     $(msg_help_cmd_help)"
     echo ""
@@ -289,6 +291,10 @@ case "$CMD" in
     stage)
         source "$CAIRN_CLI_DIR/cmd/stage.sh"
         cmd_stage "$@"
+        ;;
+    analyze)
+        source "$CAIRN_CLI_DIR/cmd/analyze.sh"
+        cmd_analyze "$@"
         ;;
     version|--version|-v)
         echo "cairn $CAIRN_VERSION"

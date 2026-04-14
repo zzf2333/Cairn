@@ -119,6 +119,7 @@ msg_help_cmd_log()             { echo "记录一条历史条目"; }
 msg_help_cmd_sync()            { echo "生成 AI 提示词以根据历史更新域文件"; }
 msg_help_cmd_doctor()          { echo "对 .cairn/ 结构进行健康检查（纯规则，无需 LLM）"; }
 msg_help_cmd_stage()           { echo "管理暂存历史条目（审核 / 接受 / 跳过）"; }
+msg_help_cmd_analyze()         { echo "分析 git 历史，生成暂存候选条目"; }
 msg_help_cmd_version()         { echo "打印版本号"; }
 msg_help_cmd_help()            { echo "打印此帮助信息"; }
 msg_help_examples_label()      { echo "示例："; }
@@ -212,6 +213,13 @@ msg_init_current_dir()         { echo "当前目录：${1}"; }
 msg_init_exists_warning()      { echo ".cairn/ 目录已存在。"; }
 msg_init_overwrite_prompt()    { printf "是否覆盖并重新初始化？（输入 yes 确认，其他任意键退出）："; }
 msg_init_cancelled()           { echo "已取消，未做任何修改。"; }
+msg_init_step_analyze()        { echo "分析 git 历史（可选）"; }
+msg_init_analyze_detected()    { echo "检测到 git 仓库：${1} 个提交（首次提交 ${2}）"; }
+msg_init_analyze_offer()       { printf "  分析 git 历史以预填候选条目？[Y/n]："; }
+msg_init_analyze_running()     { echo "正在运行 git 分析..."; }
+msg_init_analyze_done()        { echo "分析完成 — 使用以下命令审核候选条目：cairn stage review"; }
+msg_init_analyze_skipped()     { echo "已跳过 git 分析。"; }
+msg_init_analyze_no_git()      { echo "未检测到 git 仓库 — 跳过自动分析。"; }
 msg_init_step_domains()        { echo "选择 Domain 列表"; }
 msg_init_domains_intro()       { echo "以下是 11 个标准域，请输入编号（逗号分隔，如 1,2,4,5,9）："; }
 msg_init_domains_custom()      { echo "也可直接输入自定义域名（kebab-case，空格或逗号分隔）："; }
@@ -326,3 +334,61 @@ reason: <why this path was taken>
 revisit_when: <condition under which this decision should be reconsidered>
 EOF
 }
+
+# ── analyze 命令 ──────────────────────────────────────────────────────────────
+msg_analyze_title()              { echo "Cairn Analyze — git 历史扫描"; }
+msg_analyze_no_git()             { echo "当前目录不是 git 仓库 — cairn analyze 需要 git 历史"; }
+msg_analyze_no_commits()         { echo "仓库中没有找到提交记录"; }
+msg_analyze_no_cairn_warning()   { echo "未找到 .cairn/ 目录 — 请先运行 cairn init 初始化 Cairn"; }
+msg_analyze_scanning()           { echo "正在扫描 git 历史..."; }
+msg_analyze_git_info()           { echo "git 仓库：${1} 个提交，首次提交于 ${2}"; }
+msg_analyze_dep_files_found()    { echo "找到依赖文件：${1}"; }
+msg_analyze_no_dep_files()       { echo "未找到受支持的依赖文件（package.json / go.mod / requirements.txt / pyproject.toml / Cargo.toml）"; }
+msg_analyze_phase_reverts()      { echo "revert 提交：找到 ${1} 个"; }
+msg_analyze_phase_dep()          { echo "依赖移除：找到 ${1} 个"; }
+msg_analyze_phase_keywords()     { echo "关键词匹配提交：找到 ${1} 个"; }
+msg_analyze_phase_todos()        { echo "含 TODO/FIXME 文件：找到 ${1} 个"; }
+msg_analyze_dry_run_banner()     { echo "[dry-run] 候选条目不写入 staged/"; }
+msg_analyze_candidate_written()  { echo "  ✓ ${1}  [${2}]"; }
+msg_analyze_summary_header()     { echo "已生成候选条目："; }
+msg_analyze_summary_high()       { echo "  ● 高置信度   : ${1}  （revert、确认依赖移除）"; }
+msg_analyze_summary_medium()     { echo "  ● 中置信度   : ${1}  （关键词匹配提交）"; }
+msg_analyze_summary_low()        { echo "  ● 低置信度   : ${1}  （TODO/FIXME 密度）"; }
+msg_analyze_summary_total()      { echo "  共 ${1} 条候选已写入 .cairn/staged/"; }
+msg_analyze_dry_run_total()      { echo "  共 ${1} 条候选（dry-run 模式，未写入文件）"; }
+msg_analyze_next_review()        { echo "下一步：运行 'cairn stage review' 审核并接受候选条目"; }
+msg_analyze_next_noop()          { echo "未生成候选条目 — git 历史中可能未检测到可记录的事件。"; }
+msg_analyze_stack_header()       { echo "检测到的技术栈（来自当前依赖文件）："; }
+msg_analyze_stack_entry()        { echo "  · ${1}"; }
+msg_analyze_stack_hint()         { echo "  → 将以上内容添加到 .cairn/output.md 的 stack 章节"; }
+msg_analyze_limit_applied()      { echo "  （已限制：显示前 ${1} 条候选 — 使用 --limit 调整）"; }
+msg_analyze_since_applied()      { echo "  （仅包含 ${1} 之后的提交）"; }
+msg_analyze_skip_no_git()        { echo "  （跳过 git 分析 — 当前目录不是 git 仓库）"; }
+msg_analyze_dep_removed()        { echo "移除了 ${1}（${2}）— ${3}"; }
+msg_analyze_revert_found()       { echo "revert：${1}（${2}）"; }
+msg_analyze_keyword_found()      { echo "关键词提交：${1}（${2}）"; }
+msg_analyze_todo_file()          { echo "TODO/FIXME 位于 ${1}（${2} 处）"; }
+msg_analyze_help()               { cat <<'HELP'
+用法：cairn analyze [选项]
+
+扫描 git 历史，生成暂存的历史条目候选，供用户审核。
+
+选项：
+  --dry-run          仅打印候选，不写入 staged/
+  --since YYYY-MM-DD 只包含此日期之后的提交
+  --limit N          候选最大数量（默认：30）
+  --only TYPE,...    只生成指定类型：revert,dep,keyword,todo
+
+候选置信度：
+  high（高）  — revert 提交和确认的依赖移除（有 diff 证据）
+  medium（中）— 关键词匹配的提交信息（migrate、replace、drop、refactor）
+  low（低）   — 源文件中的 TODO/FIXME 密度
+
+运行后：cairn stage review
+HELP
+}
+
+# stage 元数据展示（analyze 生成的条目）
+msg_stage_analyze_meta()        { echo "  [置信度：${1} | 来源：${2}]"; }
+msg_stage_low_confidence_warn() { echo "⚠  低置信度 — 请在接受前核实此候选条目"; }
+msg_stage_meta_stripped()       { true; }  # 接受时静默剥离 analyze 元注释

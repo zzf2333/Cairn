@@ -23,6 +23,36 @@ _stage_highlight_todo() {
 }
 
 # -----------------------------------------------------------------------------
+# Extract cairn-analyze meta-comment values from a staged file.
+# Sets _STAGE_META_CONFIDENCE and _STAGE_META_SOURCE.
+# -----------------------------------------------------------------------------
+_stage_extract_meta() {
+    local file="$1"
+    _STAGE_META_CONFIDENCE=""
+    _STAGE_META_SOURCE=""
+    _STAGE_META_IS_ANALYZE=false
+
+    if grep -q '^# cairn-analyze:' "$file" 2>/dev/null; then
+        _STAGE_META_IS_ANALYZE=true
+        _STAGE_META_CONFIDENCE="$(grep '^# confidence:' "$file" 2>/dev/null \
+            | head -1 | sed 's/^# confidence: *//')"
+        _STAGE_META_SOURCE="$(grep '^# source:' "$file" 2>/dev/null \
+            | head -1 | sed 's/^# source: *//')"
+    fi
+}
+
+# -----------------------------------------------------------------------------
+# Write a copy of the staged file with all cairn-analyze meta-comment lines
+# stripped (lines starting with "# cairn-analyze:", "# confidence:", "# source:").
+# Used when accepting an analyze-sourced entry into history/.
+# -----------------------------------------------------------------------------
+_stage_strip_meta() {
+    local src_file="$1"
+    local dst_file="$2"
+    grep -v '^# cairn-analyze:\|^# confidence:\|^# source:' "$src_file" > "$dst_file"
+}
+
+# -----------------------------------------------------------------------------
 # Review loop: process each staged entry interactively.
 # -----------------------------------------------------------------------------
 _stage_review() {
@@ -56,12 +86,29 @@ _stage_review() {
         local fname
         fname="$(basename "$staged_file")"
 
-        # Display entry
+        # Extract analyze metadata (sets _STAGE_META_* globals)
+        _stage_extract_meta "$staged_file"
+
+        # Display entry header
         echo ""
         echo -e "${C_BOLD}$(msg_stage_entry_header "$(( idx + 1 ))" "$total" "$fname")${C_RESET}"
+
+        # Show analyze confidence/source if present
+        if [ "$_STAGE_META_IS_ANALYZE" = "true" ]; then
+            local conf_color="$C_DIM"
+            case "$_STAGE_META_CONFIDENCE" in
+                high)   conf_color="$C_GREEN" ;;
+                medium) conf_color="$C_YELLOW" ;;
+                low)    conf_color="$C_DIM" ;;
+            esac
+            echo -e "${conf_color}$(msg_stage_analyze_meta \
+                "$_STAGE_META_CONFIDENCE" "$_STAGE_META_SOURCE")${C_RESET}"
+        fi
+
         echo ""
-        # Show file content with [TODO] highlighted
-        cat "$staged_file" | _stage_highlight_todo
+        # Show file content (skip meta-comment lines for display) with [TODO] highlighted
+        grep -v '^# cairn-analyze:\|^# confidence:\|^# source:' "$staged_file" \
+            | _stage_highlight_todo
         echo ""
 
         # Warn if [TODO] fields present
@@ -69,6 +116,12 @@ _stage_review() {
         if grep -qF '[TODO]' "$staged_file" 2>/dev/null; then
             has_todo=true
             echo -e "  ${C_YELLOW}$(msg_stage_has_todo)${C_RESET}"
+            echo ""
+        fi
+
+        # Warn if low confidence analyze entry
+        if [ "$_STAGE_META_IS_ANALYZE" = "true" ] && [ "$_STAGE_META_CONFIDENCE" = "low" ]; then
+            echo -e "  ${C_YELLOW}$(msg_stage_low_confidence_warn)${C_RESET}"
             echo ""
         fi
 
@@ -102,7 +155,14 @@ _stage_review() {
                 fi
 
                 mkdir -p "$history_dir"
-                mv "$staged_file" "$history_target"
+
+                # If this is an analyze-sourced entry, strip meta-comments before moving
+                if [ "$_STAGE_META_IS_ANALYZE" = "true" ]; then
+                    _stage_strip_meta "$staged_file" "$history_target"
+                    rm "$staged_file"
+                else
+                    mv "$staged_file" "$history_target"
+                fi
 
                 echo ""
                 echo -e "  ${C_GREEN}$(msg_stage_accepted "$fname")${C_RESET}"
@@ -111,7 +171,7 @@ _stage_review() {
                 local domain_val=""
                 domain_val="$(grep "^domain:" "$history_target" 2>/dev/null | head -1 \
                     | sed 's/^domain: //' | tr -d '[:space:]' || true)"
-                if [ -n "$domain_val" ]; then
+                if [ -n "$domain_val" ] && [ "$domain_val" != "[TODO]" ]; then
                     echo -e "  ${C_DIM}$(msg_stage_accepted_next "$domain_val")${C_RESET}"
                 fi
 

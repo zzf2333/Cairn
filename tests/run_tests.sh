@@ -46,5 +46,7 @@ source "$TESTS_DIR/test_cli_log_quick.sh"
 source "$TESTS_DIR/test_cli_doctor.sh"
 # shellcheck source=test_cli_stage.sh
 source "$TESTS_DIR/test_cli_stage.sh"
+# shellcheck source=test_cli_analyze.sh
+source "$TESTS_DIR/test_cli_analyze.sh"
 
 print_summary

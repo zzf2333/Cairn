@@ -120,6 +120,7 @@ msg_help_cmd_version()         { echo "Print version"; }
 msg_help_cmd_help()            { echo "Print this help message"; }
 msg_help_cmd_doctor()          { echo "Run health checks on the .cairn/ structure (rules-only, no LLM)"; }
 msg_help_cmd_stage()           { echo "Manage staged history entries (review / accept / skip)"; }
+msg_help_cmd_analyze()         { echo "Analyze git history to generate staged candidates"; }
 msg_help_examples_label()      { echo "Examples:"; }
 msg_help_spec_hint()           { echo "See spec/FORMAT.md for the full Cairn format specification."; }
 
@@ -211,6 +212,13 @@ msg_init_current_dir()         { echo "Current directory: ${1}"; }
 msg_init_exists_warning()      { echo ".cairn/ directory already exists."; }
 msg_init_overwrite_prompt()    { printf "Overwrite and re-initialize? (type yes to confirm, any other key exits): "; }
 msg_init_cancelled()           { echo "Cancelled — no changes made."; }
+msg_init_step_analyze()        { echo "Analyze git history (optional)"; }
+msg_init_analyze_detected()    { echo "Detected git repository: ${1} commits (first commit ${2})"; }
+msg_init_analyze_offer()       { printf "  Analyze git history to pre-fill candidates? [Y/n]: "; }
+msg_init_analyze_running()     { echo "Running git analysis..."; }
+msg_init_analyze_done()        { echo "Analysis complete — review candidates with: cairn stage review"; }
+msg_init_analyze_skipped()     { echo "Git analysis skipped."; }
+msg_init_analyze_no_git()      { echo "No git repository detected — skipping automatic analysis."; }
 msg_init_step_domains()        { echo "Select domain list"; }
 msg_init_domains_intro()       { echo "The following 11 standard domains are available. Enter numbers (comma-separated, e.g. 1,2,4,5,9):"; }
 msg_init_domains_custom()      { echo "Or enter custom domain names (kebab-case, space or comma separated):"; }
@@ -325,3 +333,61 @@ reason: <why this path was taken>
 revisit_when: <condition under which this decision should be reconsidered>
 EOF
 }
+
+# ── analyze command ───────────────────────────────────────────────────────────
+msg_analyze_title()              { echo "Cairn Analyze — git history scan"; }
+msg_analyze_no_git()             { echo "not a git repository — cairn analyze requires git history"; }
+msg_analyze_no_commits()         { echo "no commits found in repository"; }
+msg_analyze_no_cairn_warning()   { echo "no .cairn/ directory found — run cairn init first to set up Cairn"; }
+msg_analyze_scanning()           { echo "Scanning git history..."; }
+msg_analyze_git_info()           { echo "git repository: ${1} commits, first commit ${2}"; }
+msg_analyze_dep_files_found()    { echo "dependency files found: ${1}"; }
+msg_analyze_no_dep_files()       { echo "no supported dependency files found (package.json / go.mod / requirements.txt / pyproject.toml / Cargo.toml)"; }
+msg_analyze_phase_reverts()      { echo "reverts: ${1} found"; }
+msg_analyze_phase_dep()          { echo "dependency removals: ${1} found"; }
+msg_analyze_phase_keywords()     { echo "keyword-matched commits: ${1} found"; }
+msg_analyze_phase_todos()        { echo "TODO/FIXME files: ${1} found"; }
+msg_analyze_dry_run_banner()     { echo "[dry-run] candidates not written to staged/"; }
+msg_analyze_candidate_written()  { echo "  ✓ ${1}  [${2}]"; }
+msg_analyze_summary_header()     { echo "Generated candidates:"; }
+msg_analyze_summary_high()       { echo "  ● high confidence   : ${1}  (reverts, confirmed dep removals)"; }
+msg_analyze_summary_medium()     { echo "  ● medium confidence : ${1}  (keyword-matched commits)"; }
+msg_analyze_summary_low()        { echo "  ● low confidence    : ${1}  (TODO/FIXME density)"; }
+msg_analyze_summary_total()      { echo "  total: ${1} candidate(s) written to .cairn/staged/"; }
+msg_analyze_dry_run_total()      { echo "  total: ${1} candidate(s) would be written (dry-run, nothing saved)"; }
+msg_analyze_next_review()        { echo "Next: run 'cairn stage review' to review and accept candidates"; }
+msg_analyze_next_noop()          { echo "No candidates generated — git history may not contain detectable events."; }
+msg_analyze_stack_header()       { echo "Detected stack (from current dependency files):"; }
+msg_analyze_stack_entry()        { echo "  · ${1}"; }
+msg_analyze_stack_hint()         { echo "  → add these to the 'stack' section of .cairn/output.md"; }
+msg_analyze_limit_applied()      { echo "  (limit: showing top ${1} candidates — use --limit to adjust)"; }
+msg_analyze_since_applied()      { echo "  (filtering commits since ${1})"; }
+msg_analyze_skip_no_git()        { echo "  (skipping git analysis — not a git repository)"; }
+msg_analyze_dep_removed()        { echo "removed ${1} (${2}) — ${3}"; }
+msg_analyze_revert_found()       { echo "revert: ${1}  (${2})"; }
+msg_analyze_keyword_found()      { echo "keyword commit: ${1}  (${2})"; }
+msg_analyze_todo_file()          { echo "TODO/FIXME in ${1} (${2} occurrences)"; }
+msg_analyze_help()               { cat <<'HELP'
+Usage: cairn analyze [options]
+
+Scan git history and generate staged history entry candidates for review.
+
+Options:
+  --dry-run          Print candidates without writing to staged/
+  --since YYYY-MM-DD Only include commits after this date
+  --limit N          Maximum number of candidates to generate (default: 30)
+  --only TYPE,...    Only generate specific types: revert,dep,keyword,todo
+
+Candidate confidence levels:
+  high   — reverts and confirmed dependency removals (diff evidence)
+  medium — keyword-matched commit messages (migrate, replace, drop, refactor)
+  low    — TODO/FIXME density in source files
+
+After running: cairn stage review
+HELP
+}
+
+# stage metadata display (for analyze-sourced entries)
+msg_stage_analyze_meta()        { echo "  [confidence: ${1} | source: ${2}]"; }
+msg_stage_low_confidence_warn() { echo "⚠  low confidence — please verify this candidate before accepting"; }
+msg_stage_meta_stripped()       { true; }  # silent strip of analyze meta on accept

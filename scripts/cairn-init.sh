@@ -701,6 +701,59 @@ step5_install_skills() {
 }
 
 # ============================================================================
+# Step 0: Offer git analysis (optional, runs after .cairn/ is created)
+# ============================================================================
+
+# Stored preference from the pre-init prompt
+_INIT_RUN_ANALYZE=false
+
+step0_offer_git_analysis() {
+    print_step "0" "$(msg_init_step_analyze)"
+    echo ""
+
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        print_info "$(msg_init_analyze_no_git)"
+        return 0
+    fi
+
+    local commit_count first_date
+    commit_count="$(git rev-list --count HEAD 2>/dev/null || echo "0")"
+    first_date="$(git log --format='%ai' --reverse 2>/dev/null | head -1 | cut -c1-7)"
+
+    if [ "$commit_count" -eq 0 ]; then
+        print_info "$(msg_init_analyze_no_git)"
+        return 0
+    fi
+
+    print_info "$(msg_init_analyze_detected "$commit_count" "${first_date:-unknown}")"
+    echo ""
+    msg_init_analyze_offer
+    local ans
+    read -r ans
+    case "${ans:-Y}" in
+        [Nn]*) print_info "$(msg_init_analyze_skipped)" ;;
+        *)     _INIT_RUN_ANALYZE=true ;;
+    esac
+}
+
+# Called after .cairn/ directories are created (step3+).
+step0_run_analysis_if_requested() {
+    [ "$_INIT_RUN_ANALYZE" != "true" ] && return 0
+
+    echo ""
+    print_info "$(msg_init_analyze_running)"
+
+    local cairn_bin="$_INIT_SCRIPT_DIR/../cli/cairn"
+    if [ -f "$cairn_bin" ]; then
+        # Run analyze with stdout visible to user; ignore exit code (non-fatal)
+        bash "$cairn_bin" analyze 2>&1 || true
+    fi
+
+    echo ""
+    print_ok "$(msg_init_analyze_done)"
+}
+
+# ============================================================================
 # Summary
 # ============================================================================
 
@@ -728,6 +781,9 @@ print_summary() {
     echo -e "$(msg_init_next2)"
     echo -e "$(msg_init_next3)"
     echo -e "$(msg_init_next4)"
+    if [ "$_INIT_RUN_ANALYZE" = "true" ]; then
+        echo -e "  5. Run 'cairn stage review' to review the git-analysis candidates"
+    fi
     echo ""
 }
 
@@ -754,10 +810,12 @@ main() {
         fi
     fi
 
+    step0_offer_git_analysis
     step1_select_domains
     step2_create_output_md
     step3_init_history
     step4_init_domains
+    step0_run_analysis_if_requested
     step5_install_skills
     print_summary
 }

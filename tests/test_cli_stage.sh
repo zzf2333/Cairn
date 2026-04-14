@@ -225,3 +225,125 @@ mkdir -p "$_stage_unk_dir/.cairn"
 _stage_unk_exit=0
 (cd "$_stage_unk_dir" && bash "$_CAIRN_BIN" stage purge 2>/dev/null) || _stage_unk_exit=$?
 assert_exit_code "cairn stage purge exits non-zero" 1 "$_stage_unk_exit"
+
+# =============================================================================
+# Analyze metadata: confidence/source shown, stripped on accept
+# =============================================================================
+
+start_suite "cairn stage review — Analyze Meta: Low Confidence Shows Warning"
+
+_meta_dir="$_CAIRN_TMPDIR/stage_meta_$$"
+mkdir -p "$_meta_dir/.cairn/history" "$_meta_dir/.cairn/staged" "$_meta_dir/.cairn/domains"
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo "mode: stability > speed"
+    echo ""; echo "## no-go"; echo ""; echo "## hooks"; echo ""; echo "## stack"; echo ""; echo "## debt"; echo ""
+} > "$_meta_dir/.cairn/output.md"
+
+# Write a synthetic analyze-sourced staged file with low confidence
+cat > "$_meta_dir/.cairn/staged/2024-05_analyze-debt-legacy.md" << 'STAGED'
+# cairn-analyze: v0.0.5
+# confidence: low
+# source: TODO/FIXME in src/legacy/auth.js (12 occurrences)
+type: debt
+domain: [TODO]
+decision_date: [TODO]
+recorded_date: 2024-05
+summary: [TODO — technical debt in src/legacy/auth.js]
+rejected: [TODO — clean implementation]
+reason: [TODO]
+revisit_when: [TODO]
+STAGED
+
+# Skip the entry (press 's' then 'q'), check it stays in staged/
+(cd "$_meta_dir" && printf "s\nq\n" \
+    | bash "$_CAIRN_BIN" stage review 2>/dev/null) || true
+
+assert_file_exists "low-confidence staged file stays after skip" \
+    "$_meta_dir/.cairn/staged/2024-05_analyze-debt-legacy.md"
+
+# =============================================================================
+# Analyze metadata: accept strips meta-comments from history file
+# =============================================================================
+
+start_suite "cairn stage review — Analyze Meta: Accept Strips Meta-Comments"
+
+_strip_meta_dir="$_CAIRN_TMPDIR/stage_strip_meta_$$"
+mkdir -p "$_strip_meta_dir/.cairn/history" "$_strip_meta_dir/.cairn/staged" "$_strip_meta_dir/.cairn/domains"
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo "mode: stability > speed"
+    echo ""; echo "## no-go"; echo ""; echo "## hooks"; echo ""; echo "## stack"; echo ""; echo "## debt"; echo ""
+} > "$_strip_meta_dir/.cairn/output.md"
+
+# Write a synthetic analyze-sourced staged file with high confidence (no [TODO])
+cat > "$_strip_meta_dir/.cairn/staged/2024-03_analyze-revert-graphql.md" << 'STAGED'
+# cairn-analyze: v0.0.5
+# confidence: high
+# source: commit abc1234 — 2024-03 — Revert "switch to GraphQL"
+type: experiment
+domain: api-layer
+decision_date: 2024-03
+recorded_date: 2024-05
+summary: Reverted GraphQL integration — evaluated but rolled back
+rejected: GraphQL (reverted in commit abc1234)
+reason: Integration complexity exceeded expected threshold
+revisit_when: When team has dedicated GraphQL expertise
+STAGED
+
+# Accept the entry (press 'a')
+(cd "$_strip_meta_dir" && printf "a\n" \
+    | bash "$_CAIRN_BIN" stage review 2>/dev/null) || true
+
+_history_file="$_strip_meta_dir/.cairn/history/2024-03_analyze-revert-graphql.md"
+assert_file_exists "meta-stripped: history file created" "$_history_file"
+assert_file_not_exists "meta-stripped: staged file removed" \
+    "$_strip_meta_dir/.cairn/staged/2024-03_analyze-revert-graphql.md"
+
+if [ -f "$_history_file" ]; then
+    assert_not_contains "meta-stripped: no cairn-analyze line" \
+        "$_history_file" '^# cairn-analyze:'
+    assert_not_contains "meta-stripped: no confidence line" \
+        "$_history_file" '^# confidence:'
+    assert_not_contains "meta-stripped: no source line" \
+        "$_history_file" '^# source:'
+    assert_contains "meta-stripped: type field preserved" \
+        "$_history_file" '^type: experiment$'
+    assert_contains "meta-stripped: domain field preserved" \
+        "$_history_file" '^domain: api-layer$'
+    assert_contains "meta-stripped: reason field preserved" \
+        "$_history_file" '^reason: Integration complexity'
+fi
+
+# =============================================================================
+# Analyze metadata: non-analyze staged file still works normally
+# =============================================================================
+
+start_suite "cairn stage review — Non-Analyze Entry Accepted Normally (No Meta Strip)"
+
+_normal_dir="$_CAIRN_TMPDIR/stage_normal_meta_$$"
+mkdir -p "$_normal_dir/.cairn/history" "$_normal_dir/.cairn/staged" "$_normal_dir/.cairn/domains"
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo "mode: stability > speed"
+    echo ""; echo "## no-go"; echo ""; echo "## hooks"; echo ""; echo "## stack"; echo ""; echo "## debt"; echo ""
+} > "$_normal_dir/.cairn/output.md"
+
+# Regular staged file without analyze meta-comments
+cat > "$_normal_dir/.cairn/staged/2024-06_plain-entry.md" << 'STAGED'
+type: rejection
+domain: auth
+decision_date: 2024-06
+recorded_date: 2024-06
+summary: Rejected Okta for SSO due to cost
+rejected: Okta SSO
+reason: License cost exceeds budget for current team size
+revisit_when: Team > 20 engineers
+STAGED
+
+(cd "$_normal_dir" && printf "a\n" \
+    | bash "$_CAIRN_BIN" stage review 2>/dev/null) || true
+
+_plain_history="$_normal_dir/.cairn/history/2024-06_plain-entry.md"
+assert_file_exists "normal entry: history file created" "$_plain_history"
+if [ -f "$_plain_history" ]; then
+    assert_contains "normal entry: type field intact" "$_plain_history" '^type: rejection$'
+    assert_contains "normal entry: reason field intact" "$_plain_history" '^reason: License cost'
+fi
