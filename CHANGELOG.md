@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2026-04-14
+
+### Added
+
+- `cairn analyze` — new command that scans git history and generates staged history entry candidates with confidence levels; three detection strategies: revert commits (high), dependency removals via diff evidence (high), keyword-matched commits (`migrate|replace|drop|refactor`, medium), and TODO/FIXME density (low); supports `--dry-run`, `--since YYYY-MM-DD`, `--limit N`, `--only TYPE,...` flags; zero hard dependencies (jq optional, grep/sed fallback)
+- Candidate file meta-comment format — staged files from `cairn analyze` carry `# cairn-analyze: v0.0.5`, `# confidence: high|medium|low`, and `# source:` headers; stripped automatically on accept by `cairn stage review`
+- `cairn init` step 0 — detects `.git/` presence and offers to run `cairn analyze` before domain selection; analysis runs after domains are initialized; summary hints user to run `cairn stage review`
+- `cairn stage review` analyze-awareness — displays `[confidence: high | source: ...]` banner for analyze candidates; warns on low-confidence entries; strips meta-comments on accept instead of plain `mv`
+- Dependency ecosystem support in `cairn analyze` — parses `package.json`, `go.mod`, `requirements.txt`, `pyproject.toml`, and `Cargo.toml` to detect removed packages via git diff history
+- i18n: ~50 new `msg_analyze_*` and `msg_stage_analyze_*` functions in both `cli/lang/en.sh` and `cli/lang/zh.sh`
+- New test file `tests/test_cli_analyze.sh` — 12 test suites covering: no-git/no-cairn error paths, dry-run, revert detection, dep removal, go.mod parsing, keyword commits, --limit, --only, meta-comment stripping via stage review, --help, unknown flag
+
+### Changed
+
+- `cli/cairn`: version bumped to `0.0.5`; `analyze)` dispatch case added; `show_help` updated
+- `cli/cmd/stage.sh`: added `_stage_extract_meta` and `_stage_strip_meta` helpers; `_stage_review` updated to display and strip analyze meta-comments
+- `mcp/package.json` and `mcp/src/server.ts`: version bumped to `0.0.5`
+- `tests/test_cli_stage.sh`: 3 new suites for analyze meta-comment display and stripping
+- `tests/test_cli_dispatch.sh`: updated to verify `analyze` appears in help output
+- `tests/run_tests.sh`: sources `test_cli_analyze.sh`
+
+### Fixed
+
+- SIGPIPE on Linux CI: replaced `head -1` with `git log --max-count=1` in `_analyze_git_first_date`, and replaced remaining `head -N` truncations with `awk 'NR<=N'` to prevent upstream pipe writers from receiving SIGPIPE under `set -o pipefail`
+
 ## [0.0.4] - 2026-04-14
 
 ### Added
