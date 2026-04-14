@@ -236,7 +236,7 @@ _analyze_detect_todos() {
         | sort \
         | uniq -c \
         | sort -rn \
-        | head -"$limit" \
+        | awk -v lim="$limit" 'NR<=lim' \
         | awk '{print $2"|"$1}'
     return 0
 }
@@ -268,7 +268,7 @@ _analyze_detect_current_stack() {
             Cargo.toml)       parser="_analyze_parse_cargo_toml" ;;
         esac
 
-        "$parser" "$dep_file" 2>/dev/null | head -"$MAX_PER_FILE" \
+        "$parser" "$dep_file" 2>/dev/null | awk -v n="$MAX_PER_FILE" 'NR<=n' \
             | while IFS= read -r pkg; do
                 [ -n "$pkg" ] && printf '%s: %s\n' "$eco" "$pkg"
             done
@@ -282,7 +282,7 @@ _analyze_git_commit_count() {
 
 _analyze_git_first_date() {
     # Returns YYYY-MM of first commit
-    git log --format='%ai' --reverse 2>/dev/null | head -1 | cut -c1-7
+    git log --format='%ai' --reverse --max-count=1 2>/dev/null | cut -c1-7
 }
 
 # ── Write a candidate file with analyze meta-comments ────────────────────────
@@ -529,7 +529,7 @@ _analyze_print_summary() {
     if [ -n "$stack_lines" ]; then
         echo ""
         echo -e "  ${C_BOLD}$(msg_analyze_stack_header)${C_RESET}"
-        echo "$stack_lines" | head -20 | while IFS= read -r line; do
+        echo "$stack_lines" | awk 'NR<=20' | while IFS= read -r line; do
             [ -n "$line" ] && echo -e "  $(msg_analyze_stack_entry "$line")"
         done
         echo -e "  ${C_DIM}$(msg_analyze_stack_hint)${C_RESET}"
