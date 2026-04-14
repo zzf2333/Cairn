@@ -4,8 +4,11 @@
 # Two modes:
 #   Interactive: guided prompts for all 8 fields
 #   Flag mode:   cairn log --type TYPE --domain DOMAIN --summary TEXT [...]
+#   Quick mode:  cairn log --quick  (4 fields → staged/, [TODO] placeholders)
 #
-# Produces a bare key-value file at .cairn/history/YYYY-MM_<slug>.md
+# Produces a bare key-value file at:
+#   .cairn/history/YYYY-MM_<slug>.md  (normal mode)
+#   .cairn/staged/YYYY-MM_<slug>.md   (--quick mode)
 # matching the format defined in spec/FORMAT.md.
 #
 # Compatible with bash 3.2+ (macOS system bash).
@@ -45,6 +48,213 @@ _log_read_multiline() {
 }
 
 # -----------------------------------------------------------------------------
+# Write history entry fields to a file.
+# Arguments:
+#   $1 = output file path
+#   $2 = type
+#   $3 = domain
+#   $4 = decision_date
+#   $5 = recorded_date (current month)
+#   $6 = summary
+#   $7 = rejected
+#   $8 = reason
+#   $9 = revisit_when
+# -----------------------------------------------------------------------------
+_log_write_entry() {
+    local output_file="$1"
+    local entry_type="$2"
+    local entry_domain="$3"
+    local entry_date="$4"
+    local current_month="$5"
+    local entry_summary="$6"
+    local entry_rejected="$7"
+    local entry_reason="$8"
+    local entry_revisit="$9"
+
+    mkdir -p "$(dirname "$output_file")"
+
+    {
+        echo "type: ${entry_type}"
+        echo "domain: ${entry_domain}"
+        echo "decision_date: ${entry_date}"
+        echo "recorded_date: ${current_month}"
+        echo "summary: ${entry_summary}"
+        # Multi-line values: first line is inline, continuation lines get 2-space indent
+        local first_line rest
+        first_line="$(echo "$entry_rejected" | head -1)"
+        rest="$(echo "$entry_rejected" | tail -n +2)"
+        printf "rejected: %s\n" "$first_line"
+        if [ -n "$rest" ]; then
+            while IFS= read -r rline; do
+                printf "  %s\n" "$rline"
+            done <<< "$rest"
+        fi
+
+        first_line="$(echo "$entry_reason" | head -1)"
+        rest="$(echo "$entry_reason" | tail -n +2)"
+        printf "reason: %s\n" "$first_line"
+        if [ -n "$rest" ]; then
+            while IFS= read -r rline; do
+                printf "  %s\n" "$rline"
+            done <<< "$rest"
+        fi
+
+        if [ -n "$entry_revisit" ]; then
+            echo "revisit_when: ${entry_revisit}"
+        else
+            echo "revisit_when: "
+        fi
+    } > "$output_file"
+}
+
+# -----------------------------------------------------------------------------
+# Quick mode: collect 4 fields, write to staged/ with [TODO] placeholders.
+# -----------------------------------------------------------------------------
+_log_quick() {
+    local cairn_dir="$1"
+    local locked_domains="$2"
+    local current_month="$3"
+
+    echo ""
+    echo -e "  ${C_BOLD}$(msg_log_quick_header)${C_RESET}"
+    echo ""
+
+    # type
+    local entry_type=""
+    echo -e "  ${C_BOLD}$(msg_log_type_header)${C_RESET}"
+    echo ""
+    echo -e "    ${C_DIM}1)${C_RESET} $(msg_log_type_decision)"
+    echo -e "    ${C_DIM}2)${C_RESET} $(msg_log_type_rejection)"
+    echo -e "    ${C_DIM}3)${C_RESET} $(msg_log_type_transition)"
+    echo -e "    ${C_DIM}4)${C_RESET} $(msg_log_type_debt)"
+    echo -e "    ${C_DIM}5)${C_RESET} $(msg_log_type_experiment)"
+    echo ""
+    msg_log_type_prompt
+    read -r type_input
+    case "$type_input" in
+        1|decision)   entry_type="decision" ;;
+        2|rejection)  entry_type="rejection" ;;
+        3|transition) entry_type="transition" ;;
+        4|debt)       entry_type="debt" ;;
+        5|experiment) entry_type="experiment" ;;
+        *) entry_type="$type_input" ;;
+    esac
+
+    case "$entry_type" in
+        decision|rejection|transition|debt|experiment) ;;
+        *)
+            echo -e "${C_RED}error:${C_RESET} $(msg_err_invalid_type "$entry_type")" >&2
+            echo -e "$(msg_err_valid_types)" >&2
+            exit 1
+            ;;
+    esac
+
+    # domain
+    local entry_domain=""
+    echo ""
+    echo -e "  ${C_BOLD}$(msg_log_domain_header)${C_RESET}"
+    if [ -n "$locked_domains" ]; then
+        echo ""
+        local idx=1
+        while IFS= read -r d; do
+            [ -z "$d" ] && continue
+            echo -e "    ${C_DIM}${idx})${C_RESET} $d"
+            idx=$(( idx + 1 ))
+        done <<< "$locked_domains"
+        echo ""
+    fi
+    msg_log_domain_prompt
+    read -r domain_input
+    if echo "$domain_input" | grep -qE '^[0-9]+$'; then
+        local didx=1
+        while IFS= read -r d; do
+            [ -z "$d" ] && continue
+            if [ "$didx" -eq "$domain_input" ]; then
+                entry_domain="$d"
+                break
+            fi
+            didx=$(( didx + 1 ))
+        done <<< "$locked_domains"
+        if [ -z "$entry_domain" ]; then
+            echo -e "${C_RED}error:${C_RESET} $(msg_err_no_domain_idx "$domain_input")" >&2
+            exit 1
+        fi
+    else
+        entry_domain="$domain_input"
+    fi
+
+    if [ -n "$locked_domains" ] && ! echo "$locked_domains" | grep -qx "$entry_domain"; then
+        echo -e "${C_YELLOW}warning:${C_RESET} $(msg_warn_domain_not_locked "$entry_domain")" >&2
+        echo -e "$(msg_warn_locked_domains "$(echo "$locked_domains" | tr '\n' ' ')")" >&2
+        echo -ne "${C_BOLD}$(msg_warn_continue_prompt)${C_RESET}"
+        read -r confirm
+        [ "$confirm" != "yes" ] && exit 0
+    fi
+
+    if [ -z "$entry_domain" ]; then
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_domain_required)" >&2
+        exit 1
+    fi
+
+    # summary
+    echo ""
+    msg_log_summary_prompt
+    read -r entry_summary
+    if [ -z "$entry_summary" ]; then
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_summary_required)" >&2
+        exit 1
+    fi
+
+    # rejected (single line in quick mode)
+    echo ""
+    msg_log_quick_rejected_prompt
+    read -r entry_rejected
+    if [ -z "$entry_rejected" ]; then
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_rejected_required)" >&2
+        exit 1
+    fi
+
+    # Generate filename (uses current month as decision_date default)
+    local slug
+    slug="$(_log_slugify "$entry_summary")"
+    local filename="${current_month}_${slug}.md"
+    local staged_dir="$cairn_dir/staged"
+    local staged_file="$staged_dir/$filename"
+    local history_file="$cairn_dir/history/$filename"
+
+    # Conflict checks (both staged/ and history/)
+    if [ -f "$history_file" ]; then
+        echo -e "${C_YELLOW}warning:${C_RESET} $(msg_err_file_exists_history "$history_file")" >&2
+        exit 1
+    fi
+    if [ -f "$staged_file" ]; then
+        echo -e "${C_YELLOW}warning:${C_RESET} $(msg_err_file_exists_staged "$staged_file")" >&2
+        exit 1
+    fi
+
+    # Write staged entry with [TODO] placeholders for reason and revisit_when
+    _log_write_entry \
+        "$staged_file" \
+        "$entry_type" \
+        "$entry_domain" \
+        "$current_month" \
+        "$current_month" \
+        "$entry_summary" \
+        "$entry_rejected" \
+        "[TODO]" \
+        "[TODO]"
+
+    # Success message
+    echo ""
+    echo -e "  ${C_GREEN}✓${C_RESET} $(msg_log_quick_saved "$staged_file")"
+    echo -e "  $(msg_log_quick_todo_list "reason, revisit_when")"
+    echo ""
+    echo -e "  ${C_DIM}$(msg_log_next_steps_header)${C_RESET}"
+    echo -e "$(msg_log_quick_next_step)"
+    echo ""
+}
+
+# -----------------------------------------------------------------------------
 # Main command
 # -----------------------------------------------------------------------------
 cmd_log() {
@@ -58,9 +268,19 @@ cmd_log() {
     # ---- Parse locked domain list ----
     local locked_domains=""
     if [ -f "$output_md" ]; then
-        locked_domains="$(grep -oE '→ read domains/[a-z][a-z0-9-]+\.md first' "$output_md" \
-            | sed 's/→ read domains\///;s/\.md first//' || true)"
+        locked_domains="$(parse_domain_list < "$output_md" || true)"
     fi
+
+    local current_month
+    current_month="$(date +%Y-%m)"
+
+    # ---- Check for --quick flag first ----
+    for arg in "$@"; do
+        if [ "$arg" = "--quick" ]; then
+            _log_quick "$cairn_dir" "$locked_domains" "$current_month"
+            return 0
+        fi
+    done
 
     # ---- Parse flags ----
     local flag_type="" flag_domain="" flag_date="" flag_summary=""
@@ -89,9 +309,6 @@ cmd_log() {
         || [ -n "$flag_rejected" ] || [ -n "$flag_reason" ]; then
         flag_mode=true
     fi
-
-    local current_month
-    current_month="$(date +%Y-%m)"
 
     # ---- Collect fields ----
 
@@ -277,40 +494,16 @@ cmd_log() {
     fi
 
     # ---- Write history entry ----
-    mkdir -p "$history_dir"
-
-    {
-        echo "type: ${entry_type}"
-        echo "domain: ${entry_domain}"
-        echo "decision_date: ${entry_date}"
-        echo "recorded_date: ${current_month}"
-        echo "summary: ${entry_summary}"
-        # Multi-line values: first line is inline, continuation lines get 2-space indent
-        local first_line rest
-        first_line="$(echo "$entry_rejected" | head -1)"
-        rest="$(echo "$entry_rejected" | tail -n +2)"
-        printf "rejected: %s\n" "$first_line"
-        if [ -n "$rest" ]; then
-            while IFS= read -r rline; do
-                printf "  %s\n" "$rline"
-            done <<< "$rest"
-        fi
-
-        first_line="$(echo "$entry_reason" | head -1)"
-        rest="$(echo "$entry_reason" | tail -n +2)"
-        printf "reason: %s\n" "$first_line"
-        if [ -n "$rest" ]; then
-            while IFS= read -r rline; do
-                printf "  %s\n" "$rline"
-            done <<< "$rest"
-        fi
-
-        if [ -n "$entry_revisit" ]; then
-            echo "revisit_when: ${entry_revisit}"
-        else
-            echo "revisit_when: "
-        fi
-    } > "$output_file"
+    _log_write_entry \
+        "$output_file" \
+        "$entry_type" \
+        "$entry_domain" \
+        "$entry_date" \
+        "$current_month" \
+        "$entry_summary" \
+        "$entry_rejected" \
+        "$entry_reason" \
+        "$entry_revisit"
 
     # ---- Success message ----
     echo ""

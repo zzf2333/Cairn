@@ -40,5 +40,11 @@ source "$TESTS_DIR/test_cli_status.sh"
 source "$TESTS_DIR/test_cli_log.sh"
 # shellcheck source=test_cli_sync.sh
 source "$TESTS_DIR/test_cli_sync.sh"
+# shellcheck source=test_cli_log_quick.sh
+source "$TESTS_DIR/test_cli_log_quick.sh"
+# shellcheck source=test_cli_doctor.sh
+source "$TESTS_DIR/test_cli_doctor.sh"
+# shellcheck source=test_cli_stage.sh
+source "$TESTS_DIR/test_cli_stage.sh"
 
 print_summary

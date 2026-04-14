@@ -10,6 +10,8 @@
 #   status    Show three-layer summary and stale domain warnings
 #   log       Record a history entry (interactive or flag mode)
 #   sync      Generate an AI prompt to update a domain file from history
+#   doctor    Run health checks on the .cairn/ structure (rules-only, no LLM)
+#   stage     Manage staged history entries (review / accept / skip)
 #   version   Print version
 #   help      Print this help message
 #
@@ -19,7 +21,7 @@
 
 set -euo pipefail
 
-CAIRN_VERSION="0.0.2"
+CAIRN_VERSION="0.0.3"
 CAIRN_CLI_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # =============================================================================
@@ -95,12 +97,15 @@ parse_stage_field() {
 
 # Extract locked domain names from output.md's ## hooks section.
 # One domain name per line (e.g., "api-layer", "auth").
-# Matches both formats (language-agnostic):
+# Requires an arrow (→) before domains/ to avoid matching incidental
+# references elsewhere in the file (e.g., no-go entries).
+# Matches both formats:
 #   New: → domains/<name>.md
 #   Old: → read domains/<name>.md first  (backward-compatible)
 # Usage: parse_domain_list < output.md
 parse_domain_list() {
-    grep -oE 'domains/[a-z][a-z0-9-]+\.md' | \
+    grep -oE '→[[:space:]]+(read[[:space:]]+)?domains/[a-z][a-z0-9-]+\.md' | \
+        grep -oE 'domains/[a-z][a-z0-9-]+\.md' | \
         sed 's|domains/||;s|\.md||'
 }
 
@@ -121,6 +126,88 @@ parse_history_field() {
     grep "^${field}:" | head -1 | sed "s/^${field}: //"
 }
 
+# Check if a domain is stale relative to its history entries.
+# Outputs: "stale|LATEST_HIST|DOMAIN_UPDATED|NEW_ENTRIES"
+#          "fresh|LATEST_HIST|DOMAIN_UPDATED|0"
+#          "no-history||DOMAIN_UPDATED|0"
+#          "no-domain|||0"
+# Usage: compute_domain_stale <cairn_dir> <domain_name>
+compute_domain_stale() {
+    local cairn_dir="$1"
+    local domain="$2"
+    local domain_file="$cairn_dir/domains/${domain}.md"
+    local history_dir="$cairn_dir/history"
+
+    if [ ! -f "$domain_file" ]; then
+        echo "no-domain|||0"
+        return 0
+    fi
+
+    local domain_updated=""
+    domain_updated="$(awk '/^---$/{count++; next} count==1{print}' "$domain_file" \
+        | grep "^updated:" | head -1 | sed 's/^updated: //' | tr -d '[:space:]' || true)"
+
+    if [ -z "$domain_updated" ]; then
+        echo "no-domain|||0"
+        return 0
+    fi
+
+    local latest_hist=""
+    local new_entries=0
+
+    if [ -d "$history_dir" ]; then
+        while IFS= read -r hist_file; do
+            local hbase
+            hbase="$(basename "$hist_file")"
+            [ "$hbase" = "_TEMPLATE.md" ] && continue
+
+            local hdomain hrdate
+            hdomain="$(grep "^domain:" "$hist_file" 2>/dev/null | head -1 \
+                | sed 's/^domain: //' | tr -d '[:space:]' || true)"
+            hrdate="$(grep "^recorded_date:" "$hist_file" 2>/dev/null | head -1 \
+                | sed 's/^recorded_date: //' | tr -d '[:space:]' || true)"
+
+            [ "$hdomain" = "$domain" ] || continue
+            [ -n "$hrdate" ] || continue
+
+            if [ -z "$latest_hist" ] || [[ "$hrdate" > "$latest_hist" ]]; then
+                latest_hist="$hrdate"
+            fi
+            [[ "$hrdate" > "$domain_updated" ]] && new_entries=$(( new_entries + 1 ))
+        done < <(find "$history_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | sort)
+    fi
+
+    if [ -z "$latest_hist" ]; then
+        echo "no-history||${domain_updated}|0"
+    elif [[ "$latest_hist" > "$domain_updated" ]]; then
+        echo "stale|${latest_hist}|${domain_updated}|${new_entries}"
+    else
+        echo "fresh|${latest_hist}|${domain_updated}|0"
+    fi
+}
+
+# Approximate token count for a file (chars / 4 heuristic, GPT-style).
+# Outputs an integer. Caller should display with a ≈ prefix.
+# Usage: count_tokens_approx <file>
+count_tokens_approx() {
+    local file="$1"
+    local chars
+    chars="$(wc -c < "$file" | tr -d '[:space:]')"
+    echo $(( chars / 4 ))
+}
+
+# List staged entry files in a .cairn/ directory, one per line (sorted).
+# Silently outputs nothing if staged/ does not exist or has no .md files.
+# Usage: find_staged_files <cairn_dir>
+find_staged_files() {
+    local cairn_dir="$1"
+    local staged_dir="$cairn_dir/staged"
+    if [ ! -d "$staged_dir" ]; then
+        return 0
+    fi
+    find "$staged_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | sort
+}
+
 # =============================================================================
 # Help text
 # =============================================================================
@@ -137,6 +224,8 @@ show_help() {
     echo -e "  ${C_CYAN}status${C_RESET}   $(msg_help_cmd_status)"
     echo -e "  ${C_CYAN}log${C_RESET}      $(msg_help_cmd_log)"
     echo -e "  ${C_CYAN}sync${C_RESET}     $(msg_help_cmd_sync)"
+    echo -e "  ${C_CYAN}doctor${C_RESET}   $(msg_help_cmd_doctor)"
+    echo -e "  ${C_CYAN}stage${C_RESET}    $(msg_help_cmd_stage)"
     echo -e "  ${C_CYAN}version${C_RESET}  $(msg_help_cmd_version)"
     echo -e "  ${C_CYAN}help${C_RESET}     $(msg_help_cmd_help)"
     echo ""
@@ -144,7 +233,10 @@ show_help() {
     echo -e "  cairn init"
     echo -e "  cairn status"
     echo -e "  cairn log --type rejection --domain api-layer --summary \"Rejected GraphQL\""
+    echo -e "  cairn log --quick"
     echo -e "  cairn sync api-layer"
+    echo -e "  cairn doctor"
+    echo -e "  cairn stage review"
     echo ""
     echo -e "${C_DIM}$(msg_help_spec_hint)${C_RESET}"
     echo ""
@@ -173,6 +265,14 @@ case "$CMD" in
     sync)
         source "$CAIRN_CLI_DIR/cmd/sync.sh"
         cmd_sync "$@"
+        ;;
+    doctor)
+        source "$CAIRN_CLI_DIR/cmd/doctor.sh"
+        cmd_doctor "$@"
+        ;;
+    stage)
+        source "$CAIRN_CLI_DIR/cmd/stage.sh"
+        cmd_stage "$@"
         ;;
     version|--version|-v)
         echo "cairn $CAIRN_VERSION"

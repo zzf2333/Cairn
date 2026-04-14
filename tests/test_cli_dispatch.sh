@@ -102,3 +102,36 @@ _init_err_tmp="$_CAIRN_TMPDIR/init_err.txt"
 echo "$_init_err_output" > "$_init_err_tmp"
 assert_not_contains "cairn init does not complain about missing .cairn/" \
     "$_init_err_tmp" "no .cairn/ directory found"
+
+# cairn doctor outside a Cairn project exits non-zero
+_doctor_exit=0
+(cd "$_no_cairn_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null) || _doctor_exit=$?
+assert_exit_code "cairn doctor without .cairn/ exits non-zero" 1 "$_doctor_exit"
+
+# cairn stage review outside a Cairn project exits non-zero
+_stage_exit=0
+(cd "$_no_cairn_dir" && bash "$_CAIRN_BIN" stage review 2>/dev/null) || _stage_exit=$?
+assert_exit_code "cairn stage review without .cairn/ exits non-zero" 1 "$_stage_exit"
+
+# =============================================================================
+# Help output — new v0.0.3 commands appear
+# =============================================================================
+
+start_suite "CLI Dispatch — Help Mentions v0.0.3 Commands"
+
+# Re-use the help output captured above
+assert_contains "help mentions doctor command" "$_help_tmp" "doctor"
+assert_contains "help mentions stage command"  "$_help_tmp" "stage"
+
+# =============================================================================
+# Stage subcommand — help/no-args exits 0
+# =============================================================================
+
+start_suite "CLI Dispatch — cairn stage (no args) Exits 0"
+
+_stage_help_dir="$_CAIRN_TMPDIR/stage_help_dir_$$"
+mkdir -p "$_stage_help_dir/.cairn"
+
+_stage_noarg_exit=0
+(cd "$_stage_help_dir" && bash "$_CAIRN_BIN" stage 2>/dev/null) || _stage_noarg_exit=$?
+assert_exit_code "cairn stage (no args) exits 0" 0 "$_stage_noarg_exit"

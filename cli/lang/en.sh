@@ -77,6 +77,15 @@ msg_log_next_steps_header()    { echo "  Next steps:"; }
 msg_log_next_status()          { echo "  · Run cairn status to check for stale domain files"; }
 msg_log_next_sync()            { echo "  · Run cairn sync ${1} to generate an updated domain file"; }
 
+# ── log --quick mode ──────────────────────────────────────────────────────────
+msg_log_quick_header()         { echo "── quick capture (4 fields → staged/) ──"; }
+msg_log_quick_rejected_prompt(){ printf "  Rejected alternative (one line): "; }
+msg_log_quick_saved()          { echo "Saved to ${1}"; }
+msg_log_quick_todo_list()      { echo "  Fields marked [TODO]: ${1}"; }
+msg_log_quick_next_step()      { echo "  · Run cairn stage review to complete and promote to history/"; }
+msg_err_file_exists_staged()   { echo "staged entry already exists: ${1}"; }
+msg_err_file_exists_history()  { echo "history entry with this filename already exists: ${1}"; }
+
 # ── sync UI messages ──────────────────────────────────────────────────────────
 msg_sync_dry_run_header()      { echo "Dry run: cairn sync ${1}"; }
 msg_sync_domain_exists()       { echo "Domain file: exists (updated: ${1})"; }
@@ -105,6 +114,8 @@ msg_help_cmd_log()             { echo "Record a history entry"; }
 msg_help_cmd_sync()            { echo "Generate an AI prompt to update a domain file from history"; }
 msg_help_cmd_version()         { echo "Print version"; }
 msg_help_cmd_help()            { echo "Print this help message"; }
+msg_help_cmd_doctor()          { echo "Run health checks on the .cairn/ structure (rules-only, no LLM)"; }
+msg_help_cmd_stage()           { echo "Manage staged history entries (review / accept / skip)"; }
 msg_help_examples_label()      { echo "Examples:"; }
 msg_help_spec_hint()           { echo "See spec/FORMAT.md for the full Cairn format specification."; }
 
@@ -250,6 +261,45 @@ msg_init_next1()               { echo "  1. Install the Skill adapter in your AI
 msg_init_next2()               { echo "  2. At the start of each AI session, the Skill auto-reads .cairn/output.md"; }
 msg_init_next3()               { echo "  3. Use 'cairn log' to record architectural decisions as they happen"; }
 msg_init_next4()               { echo "  4. When enough decisions accumulate, run 'cairn sync <domain>' to update domain files"; }
+
+# ── doctor health checks ──────────────────────────────────────────────────────
+msg_doctor_section_output()    { echo "output.md"; }
+msg_doctor_section_domains()   { echo "domains"; }
+msg_doctor_section_hooks()     { echo "hooks"; }
+msg_doctor_section_staged()    { echo "staged"; }
+msg_doctor_tokens_ok()         { echo "tokens: ≈${1} (target 500 / hard limit 800)"; }
+msg_doctor_tokens_warn()       { echo "tokens: ≈${1} — approaching hard limit (target 500 / hard 800)"; }
+msg_doctor_tokens_err()        { echo "tokens: ≈${1} — over hard limit 800, compress output.md"; }
+msg_doctor_nogo_unsupported()  { echo "no-go \"${1}\" has no supporting history entry"; }
+msg_doctor_domain_ok()         { echo "${1}  ${2}, updated ${3}"; }
+msg_doctor_domain_stale()      { echo "${1}  stale: ${2} new $(msg_plural_history_entry "${2}") since ${3} — run: cairn sync ${1}"; }
+msg_doctor_domain_no_updated() { echo "${1}  no updated date in frontmatter"; }
+msg_doctor_domain_not_created(){ echo "${1}  not yet created"; }
+msg_doctor_hooks_output_only() { echo "\"${1}\" appears in output.md hooks but not in any domain's hooks[]"; }
+msg_doctor_hooks_domain_only() { echo "\"${1}\" appears in domain ${2} hooks[] but not in output.md hooks section"; }
+msg_doctor_staged_empty()      { echo "no entries pending review"; }
+msg_doctor_staged_todo()       { echo "${1} staged $(msg_plural_entry "${1}") with [TODO] fields — run: cairn stage review"; }
+msg_doctor_staged_stale()      { echo "${1} staged $(msg_plural_entry "${1}") older than 14 days — consider review or discard"; }
+msg_doctor_summary_ok()        { echo "no issues found"; }
+msg_doctor_summary_issues()    { echo "${1} $(msg_plural_warn_error "${1}")"; }
+msg_plural_warn_error()        { [ "${1}" -eq 1 ] && echo "warning/error" || echo "warnings/errors"; }
+msg_doctor_output_missing()    { echo "output.md not found — run cairn init"; }
+
+# ── stage review ──────────────────────────────────────────────────────────────
+msg_stage_no_entries()         { echo "no staged entries found in .cairn/staged/"; }
+msg_stage_no_entries_hint()    { echo "  Use 'cairn log --quick' or the cairn_propose MCP tool to create staged entries."; }
+msg_stage_entry_header()       { echo "[${1}/${2}] ${3}"; }
+msg_stage_has_todo()           { echo "⚠  this entry has [TODO] fields — complete them before accepting"; }
+msg_stage_prompt()             { printf "  (a)ccept  (e)dit  (s)kip  (q)uit: "; }
+msg_stage_accept_confirm()     { printf "  accept with [TODO] fields anyway? [y/N]: "; }
+msg_stage_accepted()           { echo "✓  accepted → history/${1}"; }
+msg_stage_accepted_next()      { echo "  · Run cairn sync ${1} to update the domain file"; }
+msg_stage_conflict()           { echo "conflict: history/${1} already exists — rename the staged file manually"; }
+msg_stage_skipped()            { echo "·  skipped"; }
+msg_stage_edit_hint()          { echo "  (re-showing entry after edit)"; }
+msg_stage_summary()            { echo "${1} accepted / ${2} skipped / ${3} edited"; }
+msg_stage_help()               { echo "Usage: cairn stage review"; }
+msg_stage_unknown_sub()        { echo "unknown subcommand '${1}' — try: cairn stage review"; }
 
 # ── history template ──────────────────────────────────────────────────────────
 tpl_history_template() {
