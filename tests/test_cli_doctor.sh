@@ -318,3 +318,49 @@ else
     _pass "api-service-2yr doctor stale check — skipped"
     _pass "api-service-2yr stale ⚠ symbol — skipped"
 fi
+
+# =============================================================================
+# cairn doctor — Hooks Drift Shows Run Sync Hint
+# =============================================================================
+
+start_suite "cairn doctor — Hooks Drift Shows Sync Hint"
+
+_doctor_hooks_dir="$_CAIRN_TMPDIR/doctor_hooks_$$"
+mkdir -p "$_doctor_hooks_dir"
+_create_doctor_clean_fixture "$_doctor_hooks_dir"
+
+# Introduce drift: add a keyword to domain hooks[] that's not in output.md
+# The clean fixture has: output.md hooks "api/rest/endpoint" and domain hooks ["api","rest","endpoint"]
+# We add "graphql" to the domain frontmatter but NOT to output.md
+_doctor_hooks_domain="$_doctor_hooks_dir/.cairn/domains/api-layer.md"
+# Replace hooks line in domain file to add an extra keyword
+sed -i.bak 's/hooks: \["api", "rest", "endpoint"\]/hooks: ["api", "rest", "endpoint", "graphql"]/' "$_doctor_hooks_domain" 2>/dev/null \
+    || sed -i 's/hooks: \["api", "rest", "endpoint"\]/hooks: ["api", "rest", "endpoint", "graphql"]/' "$_doctor_hooks_domain"
+
+_drift_output="$_CAIRN_TMPDIR/doctor_hooks_out_$$.txt"
+_drift_exit=0
+(cd "$_doctor_hooks_dir" && bash "$_CAIRN_BIN" doctor 2>&1) > "$_drift_output" || _drift_exit=$?
+assert_exit_code "hooks drift exits 1" 1 "$_drift_exit"
+assert_contains "drift warning shown" "$_drift_output" "graphql"
+assert_contains "sync hint shown" "$_drift_output" "cairn sync --hooks"
+
+# =============================================================================
+# cairn doctor — Bidirectional Hooks Drift
+# =============================================================================
+
+start_suite "cairn doctor — Bidirectional Hooks Drift Detection"
+
+_doctor_bidir_dir="$_CAIRN_TMPDIR/doctor_bidir_$$"
+mkdir -p "$_doctor_bidir_dir"
+_create_doctor_clean_fixture "$_doctor_bidir_dir"
+
+# output.md has extra keyword "extra-in-output" not in domain hooks[]
+_bidir_output_md="$_doctor_bidir_dir/.cairn/output.md"
+sed -i.bak 's|- api / rest / endpoint → read domains/api-layer.md first|- api / rest / endpoint / extra-in-output → read domains/api-layer.md first|' "$_bidir_output_md" 2>/dev/null \
+    || sed -i 's|- api / rest / endpoint → read domains/api-layer.md first|- api / rest / endpoint / extra-in-output → read domains/api-layer.md first|' "$_bidir_output_md"
+
+_bidir_output="$_CAIRN_TMPDIR/doctor_bidir_out_$$.txt"
+_bidir_exit=0
+(cd "$_doctor_bidir_dir" && bash "$_CAIRN_BIN" doctor 2>&1) > "$_bidir_output" || _bidir_exit=$?
+assert_exit_code "bidirectional drift exits 1" 1 "$_bidir_exit"
+assert_contains "output-only drift warning" "$_bidir_output" "extra-in-output"

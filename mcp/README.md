@@ -17,7 +17,7 @@ The MCP server upgrades the precision of Cairn's domain injection from the behav
 | `cairn_query` | Search `.cairn/history/` — Layer 3 raw decision events, with domain/type filters |
 | `cairn_propose` | Draft a history entry to `.cairn/staged/` for human review |
 | `cairn_sync_domain` | Generate context to regenerate a domain file from its history entries |
-| `cairn_match` | Match keywords against domain `hooks` for precise intent detection |
+| `cairn_match` | Match keywords (and optional `files` paths) against domain `hooks` — returns confidence levels (`high`/`medium`/`low`) and related domain advisory |
 
 ## Resources
 

@@ -296,3 +296,81 @@ assert_contains "example sync includes history content" \
     "$_ex_sync_tmp" "tRPC"
 assert_contains "example sync includes task instructions" \
     "$_ex_sync_tmp" "## Your task"
+
+# =============================================================================
+# cairn sync --hooks — Regenerate hooks section from domain frontmatter
+# =============================================================================
+
+start_suite "cairn sync --hooks — Basic Output"
+
+_sync_hooks_dir="$_CAIRN_TMPDIR/sync_hooks_$$"
+mkdir -p "$_sync_hooks_dir"
+_create_sync_fixture "$_sync_hooks_dir" "api-layer" "2024-03"
+
+_hooks_output_file="$_CAIRN_TMPDIR/sync_hooks_output_$$.txt"
+(cd "$_sync_hooks_dir" && bash "$_CAIRN_BIN" sync --hooks 2>/dev/null) > "$_hooks_output_file"
+
+assert_contains "hooks section header present" "$_hooks_output_file" "^## hooks"
+assert_contains "planning line present" "$_hooks_output_file" "planning / designing / suggesting for:"
+assert_contains "domain bullet present" "$_hooks_output_file" "→ read domains/"
+assert_contains "keywords from frontmatter" "$_hooks_output_file" "api"
+assert_contains "paste hint shown" "$_hooks_output_file" "output.md"
+
+# =============================================================================
+# cairn sync --hooks — Exit code 0
+# =============================================================================
+
+start_suite "cairn sync --hooks — Exit Code 0"
+
+_hooks_exit=0
+(cd "$_sync_hooks_dir" && bash "$_CAIRN_BIN" sync --hooks 2>/dev/null) || _hooks_exit=$?
+assert_exit_code "--hooks exits 0" 0 "$_hooks_exit"
+
+# =============================================================================
+# cairn sync --hooks — Mutual exclusion with --stale
+# =============================================================================
+
+start_suite "cairn sync --hooks — Mutual Exclusion With --stale"
+
+_hooks_stale_exit=0
+(cd "$_sync_hooks_dir" && bash "$_CAIRN_BIN" sync --hooks --stale 2>/dev/null) || _hooks_stale_exit=$?
+assert_exit_code "--hooks --stale exits 1" 1 "$_hooks_stale_exit"
+
+# =============================================================================
+# cairn sync --hooks — Mutual exclusion with domain argument
+# =============================================================================
+
+start_suite "cairn sync --hooks — Mutual Exclusion With Domain Argument"
+
+_hooks_domain_exit=0
+(cd "$_sync_hooks_dir" && bash "$_CAIRN_BIN" sync --hooks api-layer 2>/dev/null) || _hooks_domain_exit=$?
+assert_exit_code "--hooks with domain exits 1" 1 "$_hooks_domain_exit"
+
+# =============================================================================
+# cairn sync --hooks — Empty domains directory
+# =============================================================================
+
+start_suite "cairn sync --hooks — Empty Domains Directory"
+
+_sync_empty_hooks_dir="$_CAIRN_TMPDIR/sync_hooks_empty_$$"
+mkdir -p "$_sync_empty_hooks_dir/.cairn/domains" "$_sync_empty_hooks_dir/.cairn/history" "$_sync_empty_hooks_dir/.cairn/staged"
+{
+    echo "## stage"
+    echo ""
+    echo "phase: test"
+    echo ""
+    echo "## no-go"
+    echo ""
+    echo "## hooks"
+    echo ""
+    echo "## stack"
+    echo ""
+    echo "## debt"
+    echo ""
+} > "$_sync_empty_hooks_dir/.cairn/output.md"
+
+_hooks_empty_file="$_CAIRN_TMPDIR/sync_hooks_empty_out_$$.txt"
+_hooks_empty_exit=0
+(cd "$_sync_empty_hooks_dir" && bash "$_CAIRN_BIN" sync --hooks 2>&1) > "$_hooks_empty_file" || _hooks_empty_exit=$?
+assert_exit_code "empty domains exits 0" 0 "$_hooks_empty_exit"
+assert_contains "empty domains hint shown" "$_hooks_empty_file" "nothing to generate|No domain files"

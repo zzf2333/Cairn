@@ -217,6 +217,7 @@ domain: <domain-key>
 hooks: ["keyword1", "keyword2", "..."]
 updated: <YYYY-MM>
 status: <active | stable>
+related: ["domain-name"]   # 可选
 ---
 ```
 
@@ -226,6 +227,7 @@ status: <active | stable>
 | `hooks` | 必须 | 字符串 JSON 数组 | 触发注入的关键词。被 `output.md` hooks 章节引用。Phase 3 MCP Server 使用此字段进行精确匹配而无需 AI 推断。 |
 | `updated` | 必须 | `YYYY-MM` | 最后实质性更新日期。被 `cairn status` 用于过期检测。 |
 | `status` | 建议 | `active` 或 `stable` | `active`——设计仍在演进；`stable`——设计已稳定。过期状态始终根据 `updated` 与历史日期计算，绝不手动声明。 |
+| `related` | 可选 | YAML flow-style 字符串数组 | 声明与该 domain 相关的其他 domain 名称。MCP `cairn_match` 使用该字段为匹配的主 domain 推荐加载相关 domain 的 `## trajectory` 章节。展开规则：BFS 仅展开 1 跳（不做传递展开）；最多展开 2 个；按作者声明顺序取前 2；引用不存在的 domain 时静默丢弃并返回 warning；禁止循环引用（主 domain 自身不展开）。 |
 
 ### 必需章节
 
@@ -312,6 +314,7 @@ domain: api-layer
 hooks: ["api", "endpoint", "tRPC", "GraphQL", "REST", "OpenAPI"]
 updated: 2024-03
 status: stable
+related: ["auth"]
 ---
 
 # api-layer

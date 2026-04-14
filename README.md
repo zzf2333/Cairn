@@ -145,8 +145,8 @@ content language.
 Every tool, script, and example must conform to it. When in doubt, the spec wins.
 
 **Test coverage:**
-- Shell test suite: **577 assertions** across 7 test files (CLI, init script, format validation)
-- MCP Server test suite: **100+ assertions** across 12 Vitest test files (parsers, all 6 tools)
+- Shell test suite: **902 assertions** across 10 test files (CLI, init script, format validation)
+- MCP Server test suite: **125 assertions** across 15 Vitest test files (parsers, all 6 tools)
 
 **Human-in-the-loop principle:** The MCP `cairn_propose` tool writes to `.cairn/staged/` —
 never directly to `history/`. AI proposes; humans approve by moving the file.
@@ -217,6 +217,7 @@ cairn log --type rejection --domain api-layer \
 cairn sync api-layer
 cairn sync --stale          # all stale domains at once
 cairn sync api-layer --copy # copy prompt to clipboard
+cairn sync --hooks          # regenerate output.md ## hooks from domain frontmatter
 ```
 
 **Stale detection:** `cairn status` compares each domain file's `updated:` frontmatter
@@ -305,7 +306,7 @@ tools that match AI intent against domain frontmatter `hooks` fields.
 | `cairn_output` | Read `.cairn/output.md` — Layer 1 global constraints |
 | `cairn_domain` | Read `.cairn/domains/<name>.md` — Layer 2 domain context |
 | `cairn_query` | Search `.cairn/history/` — Layer 3 events, with domain/type filters |
-| `cairn_match` | Match keywords against domain `hooks` — precise intent detection |
+| `cairn_match` | Match keywords (and optional `files` paths) against domain `hooks` — returns confidence levels (`high`/`medium`/`low`) and related domain advisory |
 | `cairn_propose` | Draft a history entry to `.cairn/staged/` for human review |
 | `cairn_sync_domain` | Generate context to regenerate a stale domain file |
 

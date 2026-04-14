@@ -9,6 +9,7 @@
 #   cairn sync --stale           Generate prompts for all stale domains
 #   cairn sync <domain> --dry-run  Show what would be included, not the full prompt
 #   cairn sync <domain> --copy   Copy prompt to clipboard (pbcopy/xclip)
+#   cairn sync --hooks      Regenerate the ## hooks section from all domain frontmatter
 #
 # Compatible with bash 3.2+ (macOS system bash).
 
@@ -190,12 +191,14 @@ cmd_sync() {
     local flag_stale=false
     local flag_dry_run=false
     local flag_copy=false
+    local flag_hooks=false
 
     while [ $# -gt 0 ]; do
         case "$1" in
             --stale)    flag_stale=true;   shift ;;
             --dry-run)  flag_dry_run=true; shift ;;
             --copy)     flag_copy=true;    shift ;;
+            --hooks)    flag_hooks=true;   shift ;;
             --*)
                 echo -e "${C_RED}error:${C_RESET} $(msg_err_unknown_flag "$1")" >&2
                 exit 1
@@ -213,15 +216,82 @@ cmd_sync() {
     done
 
     # ---- Validate arguments ----
-    if [ -z "$target_domain" ] && [ "$flag_stale" = false ]; then
+    # --hooks cannot be combined with domain or --stale
+    if [ "$flag_hooks" = true ] && { [ -n "$target_domain" ] || [ "$flag_stale" = true ]; }; then
+        echo -e "${C_RED}error:${C_RESET} $(msg_err_flag_conflict "--hooks" "--stale or domain argument")" >&2
+        exit 1
+    fi
+
+    if [ -z "$target_domain" ] && [ "$flag_stale" = false ] && [ "$flag_hooks" = false ]; then
         echo -e "${C_RED}error:${C_RESET} $(msg_err_sync_specify)" >&2
         echo ""
         echo -e "  Usage:"
         echo -e "$(msg_sync_usage_domain)"
         echo -e "$(msg_sync_usage_stale)"
         echo -e "$(msg_sync_usage_dry_run)"
+        echo -e "$(msg_sync_usage_hooks)"
         echo ""
         exit 1
+    fi
+
+    # ---- Handle --hooks (regenerate hooks section from domain frontmatter) ----
+    if [ "$flag_hooks" = true ]; then
+        local hooks_output=""
+        local found_any=false
+
+        if [ -d "$domains_dir" ]; then
+            while IFS= read -r domain_file; do
+                [ -f "$domain_file" ] || continue
+                local dbase
+                dbase="$(basename "$domain_file" .md)"
+                [ "$dbase" = "_TEMPLATE" ] && continue
+
+                local kws=""
+                kws="$(extract_domain_hooks "$domain_file" | tr '\n' '/' | sed 's|/$||')"
+                [ -z "$kws" ] && continue
+
+                found_any=true
+                hooks_output="${hooks_output}- ${kws} → read domains/${dbase}.md first
+"
+            done < <(find "$domains_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | sort)
+        fi
+
+        if [ "$found_any" = false ]; then
+            echo ""
+            echo -e "  ${C_YELLOW}$(msg_sync_hooks_empty)${C_RESET}"
+            echo ""
+            return 0
+        fi
+
+        local section=""
+        section="## hooks
+
+planning / designing / suggesting for:
+
+${hooks_output}"
+
+        if [ "$flag_copy" = true ]; then
+            if command -v pbcopy >/dev/null 2>&1; then
+                echo "$section" | pbcopy
+                echo ""
+                echo -e "  ${C_GREEN}✓${C_RESET} $(msg_sync_copied_pbcopy)"
+                echo -e "$(msg_sync_paste_hint)"
+            elif command -v xclip >/dev/null 2>&1; then
+                echo "$section" | xclip -selection clipboard
+                echo ""
+                echo -e "  ${C_GREEN}✓${C_RESET} $(msg_sync_copied_xclip)"
+                echo -e "$(msg_sync_paste_hint)"
+            else
+                echo -e "${C_YELLOW}warning:${C_RESET} $(msg_warn_copy_unavailable)" >&2
+                echo ""
+                echo "$section"
+            fi
+        else
+            echo "$section"
+            echo -e "  ${C_DIM}$(msg_sync_hooks_paste_hint)${C_RESET}"
+        fi
+        echo ""
+        return 0
     fi
 
     # ---- Collect target domains ----

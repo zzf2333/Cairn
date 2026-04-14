@@ -224,6 +224,7 @@ domain: <domain-key>
 hooks: ["keyword1", "keyword2", "..."]
 updated: <YYYY-MM>
 status: <active | stable>
+related: ["domain-name"]   # optional
 ---
 ```
 
@@ -233,6 +234,7 @@ status: <active | stable>
 | `hooks` | MUST | JSON array of strings | Keywords that trigger injection. Referenced by `output.md` hooks section. Used by Phase 3 MCP Server for precise matching without AI inference. |
 | `updated` | MUST | `YYYY-MM` | Date of last substantive update. Used by `cairn status` for stale detection. |
 | `status` | SHOULD | `active` or `stable` | `active` — design is evolving; `stable` — design is settled. Staleness is always computed from `updated` vs. history dates; it is never declared manually. |
+| `related` | OPTIONAL | YAML flow-style string array | Declares other domain names related to this domain. MCP `cairn_match` uses this field to recommend loading the `## trajectory` section of related domains alongside the primary match. Expansion rules: BFS 1-hop only (no transitive expansion); max 2 domains expanded; author-declared order (first 2 taken); references to non-existent domains are silently dropped with a warning returned; circular references are forbidden (the primary domain itself is never expanded). |
 
 ### Required Sections
 
@@ -322,6 +324,7 @@ domain: api-layer
 hooks: ["api", "endpoint", "tRPC", "GraphQL", "REST", "OpenAPI"]
 updated: 2024-03
 status: stable
+related: ["auth"]
 ---
 
 # api-layer

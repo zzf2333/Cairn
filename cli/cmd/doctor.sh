@@ -51,17 +51,11 @@ _doctor_output_domain_hooks() {
 # -----------------------------------------------------------------------------
 # Parse hooks[] from a single domain frontmatter (YAML flow-style array).
 # Outputs one keyword per line (original case).
+# Delegates to shared extract_domain_hooks() defined in cli/cairn.
 # -----------------------------------------------------------------------------
 _doctor_domain_hooks() {
     local domain_file="$1"
-    # Extract hooks: ["kw1", "kw2"] line from frontmatter
-    awk '/^---$/{count++; next} count==1{print} count==2{exit}' "$domain_file" \
-        | grep '^hooks:' \
-        | sed 's/hooks: //; s/\[//; s/\]//; s/"//g; s/,/ /g' \
-        | tr ' ' '\n' \
-        | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
-        | grep -E '^[^ ]' \
-        | sort -u
+    extract_domain_hooks "$domain_file"
 }
 
 # -----------------------------------------------------------------------------
@@ -249,6 +243,10 @@ _doctor_check_hooks() {
 
         rm -f "$out_kw_file" "$dm_kw_file"
     done <<< "$locked_domains"
+
+    if [ "$found_issue" = true ]; then
+        echo -e "  ${C_DIM}  → $(msg_doctor_hooks_run_sync)${C_RESET}"
+    fi
 
     if [ "$found_issue" = false ]; then
         echo -e "  ${C_GREEN}✓${C_RESET}  $(msg_status_up_to_date)"

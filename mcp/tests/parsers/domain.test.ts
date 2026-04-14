@@ -108,3 +108,23 @@ describe("parseDomainFile", () => {
         expect(result.frontmatter.hooks).toContain("Redux");
     });
 });
+
+describe("parseDomainFile — related field", () => {
+    it("defaults to empty array when related field is absent", () => {
+        const content = `---\ndomain: test\nhooks: ["api"]\nupdated: 2024-01\nstatus: active\n---\n\n# test\n`;
+        const result = parseDomainFile(content);
+        expect(result.frontmatter.related).toEqual([]);
+    });
+
+    it("parses related as string array", () => {
+        const content = `---\ndomain: api-layer\nhooks: ["api"]\nupdated: 2024-03\nstatus: stable\nrelated: ["auth"]\n---\n\n# api-layer\n`;
+        const result = parseDomainFile(content);
+        expect(result.frontmatter.related).toEqual(["auth"]);
+    });
+
+    it("handles empty related array", () => {
+        const content = `---\ndomain: test\nhooks: []\nupdated: 2024-01\nstatus: active\nrelated: []\n---\n\n# test\n`;
+        const result = parseDomainFile(content);
+        expect(result.frontmatter.related).toEqual([]);
+    });
+});

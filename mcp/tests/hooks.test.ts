@@ -1,11 +1,14 @@
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { buildHooksIndex, matchKeywords } from "../src/hooks.js";
+import { resolvePaths } from "../src/paths.js";
 
 const FIXTURES_DOMAINS_DIR = join(
     import.meta.dirname,
     "fixtures/.cairn/domains",
 );
+
+const FIXTURES_DIR = join(import.meta.dirname, "fixtures");
 
 describe("buildHooksIndex", () => {
     it("builds an index from the fixture domain files", () => {
@@ -93,5 +96,26 @@ describe("matchKeywords", () => {
         const apiLayerMatches = matches.get("api-layer") ?? [];
         const apiCount = apiLayerMatches.filter((k) => k === "api").length;
         expect(apiCount).toBe(1);
+    });
+});
+
+describe("buildHooksIndex — domainRelated", () => {
+    afterEach(() => {
+        delete process.env["CAIRN_ROOT"];
+    });
+
+    it("populates domainRelated from api-layer fixture", () => {
+        process.env["CAIRN_ROOT"] = FIXTURES_DIR;
+        const paths = resolvePaths();
+        const index = buildHooksIndex(paths.domainsDir);
+        expect(index.domainRelated.get("api-layer")).toEqual(["auth"]);
+    });
+
+    it("returns empty array for domain without related field", () => {
+        process.env["CAIRN_ROOT"] = FIXTURES_DIR;
+        const paths = resolvePaths();
+        const index = buildHooksIndex(paths.domainsDir);
+        // auth.md in fixtures has no related field
+        expect(index.domainRelated.get("auth")).toEqual([]);
     });
 });

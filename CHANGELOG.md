@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.4] - 2026-04-14
+
+### Added
+
+- `cairn sync --hooks` — regenerate the `## hooks` section of `output.md` by scanning all domain frontmatter `hooks[]` arrays; prints to stdout (never auto-writes `output.md`); supports `--copy` flag; mutually exclusive with domain argument and `--stale`
+- `related: [domain-name]` field in domain Frontmatter — declares related domains for combined injection advisory; MCP `cairn_match` uses this to surface relevant context; BFS 1-hop, max 2, author-declared order
+- `cairn_match` `files` parameter (optional) — accepts currently-edited file paths for path-based confidence scoring alongside keyword matching; backward compatible (omitting `files` preserves v0.0.3 behavior)
+- `cairn_match` confidence levels — `high` (keyword + file-path hit), `medium` (keyword only, or file-path only), `low` (keyword matched but file paths look unrelated → downgraded to optional injection)
+- `cairn_match` related domain advisory — output includes "Optionally load only the `## trajectory` section" hint with remaining token budget estimate (≤ 1200 token cap: output + primary domain + 2 related trajectories)
+- `mcp/src/related.ts` — `resolveRelated()` utility with cycle defense, missing-domain warnings, and configurable max
+- `mcp/src/tokens.ts` — `approxTokens()` (chars/4 heuristic, consistent with CLI) and `extractSection()` (H2 markdown section extractor)
+- `extractTrajectory()` in `parsers/domain.ts` — extract `## trajectory` section from domain body for related-domain advisory
+- `msg_doctor_hooks_run_sync` hint — `cairn doctor` now appends "run: cairn sync --hooks" when hooks drift is detected
+- Rules 9 & 10 in `cairn sync` prompt — require traceability to history entries; prohibit invented conclusions in `rejected paths`
+- 4 new Bash test suites (15 assertions): `cairn sync --hooks` basic output, exit codes, mutual-exclusion errors, empty domains; `cairn doctor` hooks drift sync hint, bidirectional drift detection
+- 4 new TS test files (25 assertions): `related.test.ts`, `tokens.test.ts`; extended `domain.test.ts`, `hooks.test.ts`, `cairn-match.test.ts`
+
+### Changed
+
+- `cli/cairn`: version bumped to `0.0.4`; `extract_domain_hooks` promoted to shared function (used by both `sync --hooks` and `doctor`)
+- `cli/cmd/doctor.sh`: `_doctor_domain_hooks` refactored to call shared `extract_domain_hooks`; drift section appends fix hint
+- `cli/cmd/sync.sh`: `--hooks` flag added; arg parser now rejects incompatible flag combinations
+- `cli/lang/en.sh` and `cli/lang/zh.sh`: +5 functions each (`msg_sync_usage_hooks`, `msg_sync_hooks_paste_hint`, `msg_sync_hooks_empty`, `msg_doctor_hooks_run_sync`, `msg_err_flag_conflict`)
+- `mcp/src/parsers/domain.ts`: `DomainFrontmatter` extended with `related: string[]`; `parseDomainFile` extracts and returns the field (defaults to `[]`)
+- `mcp/src/hooks.ts`: `HooksIndex` extended with `domainRelated: Map<string, string[]>`; populated by `buildHooksIndex`
+- `mcp/src/tools/cairn-match.ts`: fully rewritten to support `files`, confidence scoring, related advisory, and token budget estimation
+- `mcp/src/server.ts`: version bumped to `0.0.4`; `cairn_match` inputSchema extended with optional `files` parameter
+- `mcp/tests/fixtures/.cairn/domains/api-layer.md`: `related: ["auth"]` added to frontmatter
+
 ## [0.0.3] - 2026-04-14
 
 ### Added

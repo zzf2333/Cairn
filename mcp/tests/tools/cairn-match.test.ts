@@ -66,3 +66,57 @@ describe("handleCairnMatch", () => {
         expect(result.content[0]!.text).toContain("At least one keyword");
     });
 });
+
+describe("handleCairnMatch — v0.0.4 features", () => {
+    afterEach(() => {
+        delete process.env["CAIRN_ROOT"];
+    });
+
+    it("includes related domains in output when domain has related field", () => {
+        process.env["CAIRN_ROOT"] = FIXTURES_DIR;
+        const result = handleCairnMatch({ keywords: ["api"] });
+        expect(result.isError).toBeUndefined();
+        // api-layer has related: ["auth"] in updated fixture
+        expect(result.content[0]!.text).toContain("Related:");
+    });
+
+    it("includes confidence level in output", () => {
+        process.env["CAIRN_ROOT"] = FIXTURES_DIR;
+        const result = handleCairnMatch({ keywords: ["api"] });
+        expect(result.content[0]!.text).toMatch(/confidence: (high|medium|low)/);
+    });
+
+    it("high confidence when both keyword and file match", () => {
+        process.env["CAIRN_ROOT"] = FIXTURES_DIR;
+        const result = handleCairnMatch({
+            keywords: ["api"],
+            files: ["src/api/routes.ts"],
+        });
+        expect(result.isError).toBeUndefined();
+        expect(result.content[0]!.text).toContain("confidence: high");
+    });
+
+    it("low confidence when keyword matches but file is unrelated", () => {
+        process.env["CAIRN_ROOT"] = FIXTURES_DIR;
+        const result = handleCairnMatch({
+            keywords: ["api"],
+            files: ["src/components/Button.tsx"],
+        });
+        expect(result.isError).toBeUndefined();
+        expect(result.content[0]!.text).toContain("confidence: low");
+    });
+
+    it("includes warning for orphan-ref missing related domain", () => {
+        process.env["CAIRN_ROOT"] = FIXTURES_DIR;
+        const result = handleCairnMatch({ keywords: ["orphan"] });
+        expect(result.isError).toBeUndefined();
+        expect(result.content[0]!.text).toContain("does-not-exist");
+    });
+
+    it("backward compat: keywords-only call still works without files", () => {
+        process.env["CAIRN_ROOT"] = FIXTURES_DIR;
+        const result = handleCairnMatch({ keywords: ["JWT"] });
+        expect(result.isError).toBeUndefined();
+        expect(result.content[0]!.text).toContain("auth");
+    });
+});

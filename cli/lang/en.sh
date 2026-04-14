@@ -21,6 +21,7 @@ msg_err_init_not_found()  { echo "cairn-init.sh not found at: ${1}"; }
 msg_err_ensure_repo()     { echo "  Ensure the full Cairn repository is available."; }
 msg_err_sync_specify()    { echo "specify a domain name or use --stale"; }
 msg_err_unexpected_arg()  { echo "unexpected argument '${1}'"; }
+msg_err_flag_conflict()   { echo "flag ${1} cannot be combined with ${2}"; }
 
 # ── warnings ──────────────────────────────────────────────────────────────────
 msg_warn_domain_not_locked()   { echo "'${1}' is not in the locked domain list."; }
@@ -102,6 +103,9 @@ msg_sync_usage_domain()        { echo "    cairn sync <domain>     Generate prom
 msg_sync_usage_stale()         { echo "    cairn sync --stale      Generate prompts for all stale domains"; }
 msg_sync_usage_dry_run()       { echo "    cairn sync <domain> --dry-run   Show summary without generating prompt"; }
 msg_sync_no_history_domain()   { echo "no history entries found for domain '${1}'"; }
+msg_sync_usage_hooks()         { echo "    cairn sync --hooks      Regenerate the ## hooks section from all domain frontmatter"; }
+msg_sync_hooks_paste_hint()    { echo "Paste this under '## hooks' in .cairn/output.md, then run: cairn doctor"; }
+msg_sync_hooks_empty()         { echo "No domain files found in .cairn/domains/ — nothing to generate"; }
 
 # ── help text ─────────────────────────────────────────────────────────────────
 msg_help_tagline()             { echo "cairn — AI path-dependency constraint system"; }
@@ -182,6 +186,8 @@ status: active
 6. Set \`updated:\` in frontmatter to the latest history entry's \`decision_date\`: ${latest_date}
 7. Choose \`status: active\` if the domain is still evolving, \`status: stable\` if settled
 8. Write all content in the same language as the existing history entries for this domain. Keep section headers and frontmatter field names in English regardless.
+9. Every statement in \`current design\`, \`rejected paths\`, and \`known pitfalls\` MUST trace back to a specific history entry. You MAY prefix lines with the source filename (e.g. \`[2024-03_state-mgmt.md]\`). Do NOT invent conclusions absent from the provided history.
+10. If history contains no event matching a \`rejected paths\` bullet, delete the bullet. Rejected paths compress history — they do not speculate.
 
 When done, save the output to: .cairn/domains/${domain}.md
 Then run: cairn status
@@ -277,6 +283,7 @@ msg_doctor_domain_no_updated() { echo "${1}  no updated date in frontmatter"; }
 msg_doctor_domain_not_created(){ echo "${1}  not yet created"; }
 msg_doctor_hooks_output_only() { echo "\"${1}\" appears in output.md hooks but not in any domain's hooks[]"; }
 msg_doctor_hooks_domain_only() { echo "\"${1}\" appears in domain ${2} hooks[] but not in output.md hooks section"; }
+msg_doctor_hooks_run_sync()    { echo "run: cairn sync --hooks to regenerate the hooks section"; }
 msg_doctor_staged_empty()      { echo "no entries pending review"; }
 msg_doctor_staged_todo()       { echo "${1} staged $(msg_plural_entry "${1}") with [TODO] fields — run: cairn stage review"; }
 msg_doctor_staged_stale()      { echo "${1} staged $(msg_plural_entry "${1}") older than 14 days — consider review or discard"; }

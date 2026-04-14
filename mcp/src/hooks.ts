@@ -7,6 +7,8 @@ export interface HooksIndex {
     keywordToDomains: Map<string, string[]>;
     /** Map from domain name → its hooks array */
     domainHooks: Map<string, string[]>;
+    /** Map from domain name → its related domains array */
+    domainRelated: Map<string, string[]>;
 }
 
 /**
@@ -19,13 +21,14 @@ export interface HooksIndex {
 export function buildHooksIndex(domainsDir: string): HooksIndex {
     const keywordToDomains = new Map<string, string[]>();
     const domainHooks = new Map<string, string[]>();
+    const domainRelated = new Map<string, string[]>();
 
     let entries: string[];
     try {
         entries = readdirSync(domainsDir).filter((f) => f.endsWith(".md"));
     } catch {
         // domains/ directory doesn't exist or can't be read
-        return { keywordToDomains, domainHooks };
+        return { keywordToDomains, domainHooks, domainRelated };
     }
 
     for (const filename of entries) {
@@ -37,6 +40,7 @@ export function buildHooksIndex(domainsDir: string): HooksIndex {
             const hooks = domainFile.frontmatter.hooks;
 
             domainHooks.set(domainName, hooks);
+            domainRelated.set(domainName, domainFile.frontmatter.related);
 
             for (const hook of hooks) {
                 const key = hook.toLowerCase();
@@ -51,7 +55,7 @@ export function buildHooksIndex(domainsDir: string): HooksIndex {
         }
     }
 
-    return { keywordToDomains, domainHooks };
+    return { keywordToDomains, domainHooks, domainRelated };
 }
 
 /**

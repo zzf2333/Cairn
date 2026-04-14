@@ -38,7 +38,7 @@ const VALID_ENTRY_TYPES = [
 export function createCairnServer(): McpServer {
     const server = new McpServer({
         name: "cairn",
-        version: "0.0.3",
+        version: "0.0.4",
     });
 
     // =========================================================================
@@ -170,6 +170,13 @@ export function createCairnServer(): McpServer {
                     .array(z.string())
                     .describe(
                         "Keywords from the user's request (e.g., ['api', 'endpoint', 'design'])",
+                    ),
+                files: z
+                    .array(z.string())
+                    .optional()
+                    .describe(
+                        "File paths currently being edited (repo-relative preferred; absolute paths accepted). " +
+                        "Used for file-path-based confidence scoring alongside keyword matching.",
                     ),
             },
         },
