@@ -17,13 +17,23 @@
 #   help      Print this help message
 #
 # Installation:
-#   Add the cli/ directory to your PATH, or symlink cli/cairn to /usr/local/bin/cairn
+#   Add the cli/ directory to your PATH (recommended), or symlink this script
+#   to a directory on your PATH. Symlinks are supported via readlink resolution.
 # =============================================================================
 
 set -euo pipefail
 
-CAIRN_VERSION="0.0.6"
-CAIRN_CLI_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Resolve this script's real directory, following symlinks (BSD/GNU portable)
+_cairn_src="${BASH_SOURCE[0]}"
+while [ -L "$_cairn_src" ]; do
+    _cairn_dir="$(cd -P "$(dirname "$_cairn_src")" && pwd)"
+    _cairn_src="$(readlink "$_cairn_src")"
+    [[ "$_cairn_src" != /* ]] && _cairn_src="$_cairn_dir/$_cairn_src"
+done
+CAIRN_CLI_DIR="$(cd -P "$(dirname "$_cairn_src")" && pwd)"
+unset _cairn_src _cairn_dir
+
+CAIRN_VERSION="0.0.7"
 
 # =============================================================================
 # Color support
@@ -50,11 +60,10 @@ else
 fi
 
 # ── language loader ──────────────────────────────────────────────────────────
-_CAIRN_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _CAIRN_LANG_RAW="${CAIRN_LANG:-${LANG%%_*}}"
 case "$_CAIRN_LANG_RAW" in
-    zh*) source "$_CAIRN_SCRIPT_DIR/lang/zh.sh" ;;
-    *)   source "$_CAIRN_SCRIPT_DIR/lang/en.sh" ;;
+    zh*) source "$CAIRN_CLI_DIR/lang/zh.sh" ;;
+    *)   source "$CAIRN_CLI_DIR/lang/en.sh" ;;
 esac
 
 # =============================================================================

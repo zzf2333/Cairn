@@ -35,7 +35,14 @@ else
 fi
 
 # ── language loader ────────────────────────────────────────────────────────────
-_INIT_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_init_src="${BASH_SOURCE[0]}"
+while [ -L "$_init_src" ]; do
+    _init_dir="$(cd -P "$(dirname "$_init_src")" && pwd)"
+    _init_src="$(readlink "$_init_src")"
+    [[ "$_init_src" != /* ]] && _init_src="$_init_dir/$_init_src"
+done
+_INIT_SCRIPT_DIR="$(cd -P "$(dirname "$_init_src")" && pwd)"
+unset _init_src _init_dir
 _CAIRN_LANG_DIR="$_INIT_SCRIPT_DIR/../cli/lang"
 _CAIRN_LANG_RAW="${CAIRN_LANG:-${LANG%%_*}}"
 case "$_CAIRN_LANG_RAW" in

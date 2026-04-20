@@ -28,6 +28,12 @@ The MCP server upgrades the precision of Cairn's domain injection from the behav
 
 ## Installation
 
+### From npm (recommended)
+
+```bash
+npm install -g cairn-mcp-server
+```
+
 ### From source
 
 ```bash
@@ -40,8 +46,19 @@ npm run build
 
 #### Claude Code
 
-Add to `~/.claude/settings.json` (global) or `.claude/settings.json` (project):
+Add to `~/.claude/mcp.json` (global) or `.claude/mcp.json` (project):
 
+```json
+{
+    "mcpServers": {
+        "cairn": {
+            "command": "cairn-mcp-server"
+        }
+    }
+}
+```
+
+From source:
 ```json
 {
     "mcpServers": {
@@ -61,8 +78,7 @@ Add to `.cursor/mcp.json` in your project:
 {
     "mcpServers": {
         "cairn": {
-            "command": "node",
-            "args": ["/path/to/cairn/mcp/dist/index.js"]
+            "command": "cairn-mcp-server"
         }
     }
 }
@@ -76,8 +92,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 {
     "mcpServers": {
         "cairn": {
-            "command": "node",
-            "args": ["/path/to/cairn/mcp/dist/index.js"]
+            "command": "cairn-mcp-server"
         }
     }
 }
@@ -98,8 +113,7 @@ To pin the server to a specific project:
 {
     "mcpServers": {
         "cairn": {
-            "command": "node",
-            "args": ["/path/to/cairn/mcp/dist/index.js"],
+            "command": "cairn-mcp-server",
             "env": {
                 "CAIRN_ROOT": "/path/to/your/project"
             }

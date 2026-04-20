@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.7] - 2026-04-20
+
+### Fixed
+
+- CLI symlink invocation: `cli/cairn` now follows symlinks when resolving `lang/*.sh` and `cmd/*.sh`; uses a portable `readlink` loop (BSD + GNU compatible) replacing the broken `dirname "${BASH_SOURCE[0]}"` pattern that pointed at the symlink's directory instead of the real script location
+- Same fix applied to `scripts/cairn-init.sh` for consistency
+
+### Changed
+
+- README Option B: installation now uses `git clone ~/.cairn` + `PATH` append instead of `ln -s /usr/local/bin/cairn` (avoids macOS SIP permission failure for non-root users)
+- README Update/Uninstall sections: updated to match PATH-based install
+- MCP Server config examples in `README.md`, `README.zh.md`, and `mcp/README.md`: changed from `node /path/to/dist/index.js` to `cairn-mcp-server` to match npm install; `mcp/README.md` adds "From npm" as recommended install section; Claude Code config path corrected to `mcp.json` (not `settings.json`)
+
+### Added
+
+- `tests/test_cli_symlink.sh`: regression test suite for symlink invocation — single-level symlink, nested (double) symlink, and subcommand dispatch via symlink; guards against future regressions of the path-resolution fix
+
 ## [0.0.6] - 2026-04-20
 
 ### Added

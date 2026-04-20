@@ -175,12 +175,13 @@ The script guides you through 5 steps (~30 minutes):
 **Option B: CLI**
 
 ```bash
-git clone https://github.com/zzf2333/Cairn
-ln -s "$(pwd)/Cairn/cli/cairn" /usr/local/bin/cairn
+git clone https://github.com/zzf2333/Cairn ~/.cairn
+echo 'export PATH="$HOME/.cairn/cli:$PATH"' >> ~/.zshrc   # or ~/.bashrc
+source ~/.zshrc
 cairn init    # interactive, delegates to cairn-init.sh
 ```
 
-Requires Bash 3.2+ (macOS system bash is sufficient).
+Requires Bash 3.2+ (macOS system bash is sufficient). Symlinks are also supported — the script resolves its real path via `readlink`.
 
 **Option C: MCP Server only**
 
@@ -246,8 +247,8 @@ history: 4 entries total
 
 **Init script / CLI:**
 ```bash
-cd /path/to/Cairn && git pull
-# Symlink stays valid — no re-install needed
+cd ~/.cairn && git pull
+# PATH stays valid — no re-install needed
 ```
 
 **MCP Server (npm):**
@@ -271,8 +272,8 @@ or manually copy the updated file from `skills/` to your AI tool's location.
 
 **CLI:**
 ```bash
-rm /usr/local/bin/cairn   # remove symlink
-# Optionally: rm -rf /path/to/Cairn
+# Remove the PATH export line from ~/.zshrc (or ~/.bashrc), then:
+rm -rf ~/.cairn
 ```
 
 **MCP Server:**
@@ -312,13 +313,12 @@ tools that match AI intent against domain frontmatter `hooks` fields.
 
 ### Configuration
 
-**Claude Code** — add to `~/.claude/settings.json`:
+**Claude Code** — add to `~/.claude/mcp.json` (global) or `.claude/mcp.json` (project):
 ```json
 {
     "mcpServers": {
         "cairn": {
-            "command": "node",
-            "args": ["/path/to/Cairn/mcp/dist/index.js"]
+            "command": "cairn-mcp-server"
         }
     }
 }
@@ -329,8 +329,7 @@ tools that match AI intent against domain frontmatter `hooks` fields.
 {
     "mcpServers": {
         "cairn": {
-            "command": "node",
-            "args": ["/path/to/Cairn/mcp/dist/index.js"]
+            "command": "cairn-mcp-server"
         }
     }
 }
