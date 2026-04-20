@@ -336,7 +336,7 @@ EOF
 }
 
 # ── analyze 命令 ──────────────────────────────────────────────────────────────
-msg_analyze_title()              { echo "Cairn Analyze — git 历史扫描"; }
+msg_analyze_title()              { echo "Cairn Analyze — 三层冷启动"; }
 msg_analyze_no_git()             { echo "当前目录不是 git 仓库 — cairn analyze 需要 git 历史"; }
 msg_analyze_no_commits()         { echo "仓库中没有找到提交记录"; }
 msg_analyze_no_cairn_warning()   { echo "未找到 .cairn/ 目录 — 请先运行 cairn init 初始化 Cairn"; }
@@ -360,7 +360,7 @@ msg_analyze_next_review()        { echo "下一步：运行 'cairn stage review'
 msg_analyze_next_noop()          { echo "未生成候选条目 — git 历史中可能未检测到可记录的事件。"; }
 msg_analyze_stack_header()       { echo "检测到的技术栈（来自当前依赖文件）："; }
 msg_analyze_stack_entry()        { echo "  · ${1}"; }
-msg_analyze_stack_hint()         { echo "  → 将以上内容添加到 .cairn/output.md 的 stack 章节"; }
+msg_analyze_stack_hint()         { echo "  → 完整 stack 章节见 .cairn/output.md.draft"; }
 msg_analyze_limit_applied()      { echo "  （已限制：显示前 ${1} 条候选 — 使用 --limit 调整）"; }
 msg_analyze_since_applied()      { echo "  （仅包含 ${1} 之后的提交）"; }
 msg_analyze_skip_no_git()        { echo "  （跳过 git 分析 — 当前目录不是 git 仓库）"; }
@@ -368,21 +368,49 @@ msg_analyze_dep_removed()        { echo "移除了 ${1}（${2}）— ${3}"; }
 msg_analyze_revert_found()       { echo "revert：${1}（${2}）"; }
 msg_analyze_keyword_found()      { echo "关键词提交：${1}（${2}）"; }
 msg_analyze_todo_file()          { echo "TODO/FIXME 位于 ${1}（${2} 处）"; }
+
+# ── analyze 三层 ───────────────────────────────────────────────────────────────
+msg_analyze_layer1_header()           { echo "Layer 1 — 当前现实层"; }
+msg_analyze_layer1_scanning()         { echo "正在扫描项目结构、技术栈和基础设施..."; }
+msg_analyze_layer1_dir_structure()    { echo "  目录结构     : ${1}"; }
+msg_analyze_layer1_infra()            { echo "  基础设施     : ${1}"; }
+msg_analyze_layer1_inferred_domains() { echo "  推断的域     : ${1}"; }
+msg_analyze_layer1_no_stack()         { echo "  （未发现依赖文件 — draft 的 stack 章节将为空）"; }
+msg_analyze_layer1_draft_written()    { echo "  ✓ .cairn/output.md.draft 已写入 — 请与 output.md 对比后手动合并"; }
+msg_analyze_layer1_draft_hint()       { echo "    diff .cairn/output.md .cairn/output.md.draft"; }
+
+msg_analyze_layer2_header()           { echo "Layer 2 — 显式意图层"; }
+msg_analyze_layer2_scanning()         { echo "正在扫描意图文档（README、架构文档、ADR）..."; }
+msg_analyze_layer2_docs_found()       { echo "  找到意图文档：${1} 个"; }
+msg_analyze_layer2_no_docs()          { echo "  未找到意图文档（README.md / ARCHITECTURE.md / ADR 文件）"; }
+msg_analyze_layer2_signals_found()    { echo "  提取到 no-go 信号：${1} 条"; }
+msg_analyze_layer2_candidate_written(){ echo "  ✓ ${1}  [意图 / 低置信度]"; }
+
+msg_analyze_layer3_header()           { echo "Layer 3 — 历史事件层"; }
+
 msg_analyze_help()               { cat <<'HELP'
 用法：cairn analyze [选项]
 
-扫描 git 历史，生成暂存的历史条目候选，供用户审核。
+扫描项目结构、意图文档和 git 历史，生成
+.cairn/output.md.draft（Layer 1）和暂存历史候选（Layer 2–3）。
+
+层级：
+  1 — 当前现实层：技术栈、目录结构、基础设施 → .cairn/output.md.draft
+  2 — 显式意图层：README、架构文档、ADR      → 暂存候选（低置信度）
+  3 — 历史事件层：git revert、依赖移除       → 暂存候选（高/中/低置信度）
 
 选项：
-  --dry-run          仅打印候选，不写入 staged/
-  --since YYYY-MM-DD 只包含此日期之后的提交
+  --dry-run          跳过写入 staged/ 候选（draft 总是写入）
+  --since YYYY-MM-DD 只包含此日期之后的提交（仅 Layer 3）
   --limit N          候选最大数量（默认：30）
-  --only TYPE,...    只生成指定类型：revert,dep,keyword,todo
+  --only TYPE,...    指定要运行的层级或子类型：
+                       layer1, layer2, layer3
+                       revert, dep, keyword, todo  （Layer 3 子类型）
 
 候选置信度：
   high（高）  — revert 提交和确认的依赖移除（有 diff 证据）
   medium（中）— 关键词匹配的提交信息（migrate、replace、drop、refactor）
-  low（低）   — 源文件中的 TODO/FIXME 密度
+  low（低）   — TODO/FIXME 密度或意图文档抽取
 
 运行后：cairn stage review
 HELP

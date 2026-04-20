@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.6] - 2026-04-20
+
+### Added
+
+- `cairn analyze` three-layer cold-start architecture — Layer 1 (Current Reality): scans tech stack, directory structure, and infra → writes `.cairn/output.md.draft`; Layer 2 (Explicit Intent): reads README, architecture docs, and ADR files, extracts conservative no-go signals → staged candidates; Layer 3 (Historical Events): existing git history scan (reverts, dep removals, keywords, TODO density)
+- Layer 1 new detectors: `_analyze_detect_dir_structure` (monorepo/frontend+backend/microservices detection), `_analyze_detect_infra` (Docker/CI/K8s/Terraform detection), `_analyze_infer_domains` (dir + dep signal inference), `_analyze_write_output_draft` (writes `.cairn/output.md.draft`)
+- Layer 2 new functions: `_analyze_find_intent_docs` (finds README/ARCHITECTURE/ADR files), `_analyze_extract_intent_signals` (conservative grep: "decided against / avoid / we don't / never use / no-go", max 5 per file), `_analyze_emit_intent_candidates` (staged candidates with `# layer: 2`)
+- `# layer: N` meta field — all analyze candidates now carry `# layer: 3` (git history) or `# layer: 2` (intent docs); `cairn stage review` strips it on accept
+- `--only layer1|layer2|layer3` — new aggregated values for `--only` flag; `layer3` is backward-compatible alias for all Layer 3 sub-types (`revert,dep,keyword,todo`)
+- i18n: ~30 new `msg_analyze_layer*` functions in both `cli/lang/en.sh` and `cli/lang/zh.sh`; updated `msg_analyze_help` to document three-layer architecture
+
+### Changed
+
+- `cairn analyze` title updated to "three-layer cold start"; help text documents layers and new `--only` values
+- `cli/cmd/analyze.sh`: `_analyze_write_candidate` bumped to `v0.0.6`, added 12th `layer` parameter (defaults to `3`); `_analyze_print_summary` simplified (removed stack_lines param, added Layer 1/2 counts); `cmd_analyze` restructured into three layer sections
+- `cli/cmd/stage.sh`: `_stage_strip_meta` extended to also strip `# layer:` meta lines
+- `cli/cairn`, `mcp/package.json`, `mcp/src/server.ts`: version bumped to `0.0.6`
+- `tests/test_cli_analyze.sh`: version assertions updated to `v0.0.6`; 10 new test suites for Layer 1/2/--only flags; Layer 1 tests cover draft generation, stack fill, domain inference, infra detection, output.md safety; Layer 2 tests cover signal extraction, conservative matching, stage accept
+- `tests/test_cli_stage.sh`: fixture `# layer: 3` line added; meta-strip test asserts `# layer:` removal; version strings updated
+
 ## [0.0.5] - 2026-04-14
 
 ### Added

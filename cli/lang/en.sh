@@ -335,7 +335,7 @@ EOF
 }
 
 # ── analyze command ───────────────────────────────────────────────────────────
-msg_analyze_title()              { echo "Cairn Analyze — git history scan"; }
+msg_analyze_title()              { echo "Cairn Analyze — three-layer cold start"; }
 msg_analyze_no_git()             { echo "not a git repository — cairn analyze requires git history"; }
 msg_analyze_no_commits()         { echo "no commits found in repository"; }
 msg_analyze_no_cairn_warning()   { echo "no .cairn/ directory found — run cairn init first to set up Cairn"; }
@@ -359,7 +359,7 @@ msg_analyze_next_review()        { echo "Next: run 'cairn stage review' to revie
 msg_analyze_next_noop()          { echo "No candidates generated — git history may not contain detectable events."; }
 msg_analyze_stack_header()       { echo "Detected stack (from current dependency files):"; }
 msg_analyze_stack_entry()        { echo "  · ${1}"; }
-msg_analyze_stack_hint()         { echo "  → add these to the 'stack' section of .cairn/output.md"; }
+msg_analyze_stack_hint()         { echo "  → see .cairn/output.md.draft for full stack section"; }
 msg_analyze_limit_applied()      { echo "  (limit: showing top ${1} candidates — use --limit to adjust)"; }
 msg_analyze_since_applied()      { echo "  (filtering commits since ${1})"; }
 msg_analyze_skip_no_git()        { echo "  (skipping git analysis — not a git repository)"; }
@@ -367,21 +367,49 @@ msg_analyze_dep_removed()        { echo "removed ${1} (${2}) — ${3}"; }
 msg_analyze_revert_found()       { echo "revert: ${1}  (${2})"; }
 msg_analyze_keyword_found()      { echo "keyword commit: ${1}  (${2})"; }
 msg_analyze_todo_file()          { echo "TODO/FIXME in ${1} (${2} occurrences)"; }
+
+# ── analyze layers ─────────────────────────────────────────────────────────────
+msg_analyze_layer1_header()           { echo "Layer 1 — Current Reality"; }
+msg_analyze_layer1_scanning()         { echo "Scanning project structure, stack, and infra..."; }
+msg_analyze_layer1_dir_structure()    { echo "  dir structure   : ${1}"; }
+msg_analyze_layer1_infra()            { echo "  infra           : ${1}"; }
+msg_analyze_layer1_inferred_domains() { echo "  inferred domains: ${1}"; }
+msg_analyze_layer1_no_stack()         { echo "  (no dependency files — stack section will be empty in draft)"; }
+msg_analyze_layer1_draft_written()    { echo "  ✓ .cairn/output.md.draft written — review and merge into output.md"; }
+msg_analyze_layer1_draft_hint()       { echo "    diff .cairn/output.md .cairn/output.md.draft"; }
+
+msg_analyze_layer2_header()           { echo "Layer 2 — Explicit Intent"; }
+msg_analyze_layer2_scanning()         { echo "Scanning intent documents (README, architecture docs, ADRs)..."; }
+msg_analyze_layer2_docs_found()       { echo "  intent docs found: ${1}"; }
+msg_analyze_layer2_no_docs()          { echo "  no intent documents found (README.md / ARCHITECTURE.md / ADR files)"; }
+msg_analyze_layer2_signals_found()    { echo "  no-go signals extracted: ${1}"; }
+msg_analyze_layer2_candidate_written(){ echo "  ✓ ${1}  [intent / low]"; }
+
+msg_analyze_layer3_header()           { echo "Layer 3 — Historical Events"; }
+
 msg_analyze_help()               { cat <<'HELP'
 Usage: cairn analyze [options]
 
-Scan git history and generate staged history entry candidates for review.
+Scan project structure, intent documents, and git history to generate
+.cairn/output.md.draft (Layer 1) and staged history entry candidates (Layers 2–3).
+
+Layers:
+  1 — Current Reality  : stack, dir structure, infra  → .cairn/output.md.draft
+  2 — Explicit Intent  : README, architecture, ADRs   → staged candidates (low confidence)
+  3 — Historical Events: git reverts, dep removals    → staged candidates (high/medium/low)
 
 Options:
-  --dry-run          Print candidates without writing to staged/
-  --since YYYY-MM-DD Only include commits after this date
+  --dry-run          Skip writing staged/ candidates (draft is always written)
+  --since YYYY-MM-DD Only include commits after this date (Layer 3 only)
   --limit N          Maximum number of candidates to generate (default: 30)
-  --only TYPE,...    Only generate specific types: revert,dep,keyword,todo
+  --only TYPE,...    Run specific layers or sub-types:
+                       layer1, layer2, layer3
+                       revert, dep, keyword, todo  (Layer 3 sub-types)
 
 Candidate confidence levels:
   high   — reverts and confirmed dependency removals (diff evidence)
   medium — keyword-matched commit messages (migrate, replace, drop, refactor)
-  low    — TODO/FIXME density in source files
+  low    — TODO/FIXME density or intent document extraction
 
 After running: cairn stage review
 HELP

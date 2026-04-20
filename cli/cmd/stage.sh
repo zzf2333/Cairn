@@ -49,7 +49,7 @@ _stage_extract_meta() {
 _stage_strip_meta() {
     local src_file="$1"
     local dst_file="$2"
-    grep -v '^# cairn-analyze:\|^# confidence:\|^# source:' "$src_file" > "$dst_file"
+    grep -v '^# cairn-analyze:\|^# confidence:\|^# source:\|^# layer:' "$src_file" > "$dst_file"
 }
 
 # -----------------------------------------------------------------------------

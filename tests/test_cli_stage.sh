@@ -241,7 +241,7 @@ mkdir -p "$_meta_dir/.cairn/history" "$_meta_dir/.cairn/staged" "$_meta_dir/.cai
 
 # Write a synthetic analyze-sourced staged file with low confidence
 cat > "$_meta_dir/.cairn/staged/2024-05_analyze-debt-legacy.md" << 'STAGED'
-# cairn-analyze: v0.0.5
+# cairn-analyze: v0.0.6
 # confidence: low
 # source: TODO/FIXME in src/legacy/auth.js (12 occurrences)
 type: debt
@@ -276,9 +276,10 @@ mkdir -p "$_strip_meta_dir/.cairn/history" "$_strip_meta_dir/.cairn/staged" "$_s
 
 # Write a synthetic analyze-sourced staged file with high confidence (no [TODO])
 cat > "$_strip_meta_dir/.cairn/staged/2024-03_analyze-revert-graphql.md" << 'STAGED'
-# cairn-analyze: v0.0.5
+# cairn-analyze: v0.0.6
 # confidence: high
 # source: commit abc1234 — 2024-03 — Revert "switch to GraphQL"
+# layer: 3
 type: experiment
 domain: api-layer
 decision_date: 2024-03
@@ -305,6 +306,8 @@ if [ -f "$_history_file" ]; then
         "$_history_file" '^# confidence:'
     assert_not_contains "meta-stripped: no source line" \
         "$_history_file" '^# source:'
+    assert_not_contains "meta-stripped: no layer line" \
+        "$_history_file" '^# layer:'
     assert_contains "meta-stripped: type field preserved" \
         "$_history_file" '^type: experiment$'
     assert_contains "meta-stripped: domain field preserved" \

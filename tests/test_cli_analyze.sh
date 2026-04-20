@@ -134,7 +134,7 @@ if [ -n "$_revert_candidate" ]; then
     assert_contains "revert candidate: type=experiment" \
         "$_revert_candidate" '^type: experiment$'
     assert_contains "revert candidate: has cairn-analyze header" \
-        "$_revert_candidate" '^# cairn-analyze: v0\.0\.5$'
+        "$_revert_candidate" '^# cairn-analyze: v0\.0\.6$'
     assert_contains "revert candidate: source has commit sha" \
         "$_revert_candidate" '^# source: commit [0-9a-f]'
 else
@@ -142,7 +142,7 @@ else
     _any_staged=$(find "$_revert_dir/.cairn/staged" -maxdepth 1 -name "*.md" -type f 2>/dev/null | head -1)
     if [ -n "$_any_staged" ]; then
         assert_contains "revert: any candidate has analyze header" \
-            "$_any_staged" '^# cairn-analyze: v0\.0\.5$'
+            "$_any_staged" '^# cairn-analyze: v0\.0\.6$'
     else
         _fail "revert: no staged candidate found" ""
     fi
@@ -345,6 +345,8 @@ if [ -n "$_strip_staged" ]; then
             "$_strip_history" '^# confidence:'
         assert_not_contains "accepted: no source line in history" \
             "$_strip_history" '^# source:'
+        assert_not_contains "accepted: no layer line in history" \
+            "$_strip_history" '^# layer:'
         assert_contains "accepted: type field preserved" \
             "$_strip_history" '^type: experiment$'
     else
@@ -371,6 +373,8 @@ echo "$_help_output" > "$_help_tmp"
 assert_contains "analyze help mentions --dry-run" "$_help_tmp" "dry-run"
 assert_contains "analyze help mentions --limit"   "$_help_tmp" "limit"
 assert_contains "analyze help mentions confidence" "$_help_tmp" "confidence"
+assert_contains "analyze help mentions Layer 1"   "$_help_tmp" "Layer 1"
+assert_contains "analyze help mentions layer2"    "$_help_tmp" "layer2"
 
 # =============================================================================
 # cairn analyze --invalid-flag exits non-zero
@@ -385,3 +389,323 @@ _setup_analyze_fixture "$_flag_dir"
 _flag_exit=0
 (cd "$_flag_dir" && bash "$_CAIRN_BIN" analyze --not-a-real-flag 2>/dev/null) || _flag_exit=$?
 assert_exit_code "analyze --invalid-flag exits non-zero" 1 "$_flag_exit"
+
+# =============================================================================
+# Layer 3 candidate has v0.0.6 header and # layer: 3
+# =============================================================================
+
+start_suite "cairn analyze — Layer 3 Candidate Has v0.0.6 and layer:3 Header"
+
+_l3hdr_dir="$_CAIRN_TMPDIR/analyze_l3hdr_$$"
+_setup_analyze_fixture "$_l3hdr_dir"
+(cd "$_l3hdr_dir" \
+    && git commit -q --allow-empty -m "feat: add apollo" \
+    && git commit -q --allow-empty -m "Revert \"add apollo\"")
+
+(cd "$_l3hdr_dir" && bash "$_CAIRN_BIN" analyze --only layer3 2>/dev/null) || true
+
+_l3hdr_candidate=$(find "$_l3hdr_dir/.cairn/staged" -maxdepth 1 -name "*.md" -type f 2>/dev/null | head -1)
+if [ -n "$_l3hdr_candidate" ]; then
+    assert_contains "layer3 candidate: v0.0.6 header" \
+        "$_l3hdr_candidate" '^# cairn-analyze: v0\.0\.6$'
+    assert_contains "layer3 candidate: layer:3 header" \
+        "$_l3hdr_candidate" '^# layer: 3$'
+else
+    _fail "layer3 header: no candidate written" ""
+fi
+
+# =============================================================================
+# Layer 1: output.md.draft is generated
+# =============================================================================
+
+start_suite "cairn analyze — Layer 1 Generates output.md.draft"
+
+_l1_dir="$_CAIRN_TMPDIR/analyze_l1_$$"
+_setup_analyze_fixture "$_l1_dir"
+
+# Add a package.json so stack detection has content
+cat > "$_l1_dir/package.json" << 'PKGJSON'
+{"dependencies": {"express": "^4.17.1", "react": "^18.0.0"}}
+PKGJSON
+(cd "$_l1_dir" && git add package.json && git commit -q -m "feat: add deps")
+
+_l1_exit=0
+(cd "$_l1_dir" && bash "$_CAIRN_BIN" analyze --only layer1 2>/dev/null) || _l1_exit=$?
+assert_exit_code "layer1 analyze exits 0" 0 "$_l1_exit"
+
+assert_file_exists "layer1: output.md.draft written" \
+    "$_l1_dir/.cairn/output.md.draft"
+assert_contains "layer1 draft: has ## stage section" \
+    "$_l1_dir/.cairn/output.md.draft" '^## stage$'
+assert_contains "layer1 draft: has ## stack section" \
+    "$_l1_dir/.cairn/output.md.draft" '^## stack$'
+assert_contains "layer1 draft: has ## hooks section" \
+    "$_l1_dir/.cairn/output.md.draft" '^## hooks$'
+assert_contains "layer1 draft: has ## no-go section" \
+    "$_l1_dir/.cairn/output.md.draft" '^## no-go$'
+assert_contains "layer1 draft: has ## debt section" \
+    "$_l1_dir/.cairn/output.md.draft" '^## debt$'
+
+# =============================================================================
+# Layer 1: stack auto-filled in draft
+# =============================================================================
+
+start_suite "cairn analyze — Layer 1 Stack Auto-Filled in Draft"
+
+_l1stk_dir="$_CAIRN_TMPDIR/analyze_l1stk_$$"
+_setup_analyze_fixture "$_l1stk_dir"
+
+cat > "$_l1stk_dir/package.json" << 'PKGJSON'
+{"dependencies": {"express": "^4.17.1", "react": "^18.0.0"}}
+PKGJSON
+(cd "$_l1stk_dir" && git add package.json && git commit -q -m "feat: add deps")
+
+(cd "$_l1stk_dir" && bash "$_CAIRN_BIN" analyze --only layer1 2>/dev/null) || true
+
+assert_contains "layer1 stack: express in draft" \
+    "$_l1stk_dir/.cairn/output.md.draft" "express"
+assert_contains "layer1 stack: react in draft" \
+    "$_l1stk_dir/.cairn/output.md.draft" "react"
+
+# =============================================================================
+# Layer 1: domain inference from src/ subdirectories
+# =============================================================================
+
+start_suite "cairn analyze — Layer 1 Infers Domains from src/ Dirs"
+
+_l1dom_dir="$_CAIRN_TMPDIR/analyze_l1dom_$$"
+_setup_analyze_fixture "$_l1dom_dir"
+
+# Create src/auth/ and src/api/ directories
+mkdir -p "$_l1dom_dir/src/auth" "$_l1dom_dir/src/api"
+echo "// auth module" > "$_l1dom_dir/src/auth/index.js"
+echo "// api module"  > "$_l1dom_dir/src/api/index.js"
+(cd "$_l1dom_dir" && git add src/ && git commit -q -m "feat: add auth and api modules")
+
+(cd "$_l1dom_dir" && bash "$_CAIRN_BIN" analyze --only layer1 2>/dev/null) || true
+
+assert_contains "layer1 domains: auth in hooks" \
+    "$_l1dom_dir/.cairn/output.md.draft" "auth"
+assert_contains "layer1 domains: api in hooks" \
+    "$_l1dom_dir/.cairn/output.md.draft" "api"
+
+# =============================================================================
+# Layer 1: infra detection (Dockerfile, github-actions)
+# =============================================================================
+
+start_suite "cairn analyze — Layer 1 Detects Infra"
+
+_l1inf_dir="$_CAIRN_TMPDIR/analyze_l1inf_$$"
+_setup_analyze_fixture "$_l1inf_dir"
+
+# Add Dockerfile and GitHub Actions
+echo "FROM node:18" > "$_l1inf_dir/Dockerfile"
+mkdir -p "$_l1inf_dir/.github/workflows"
+echo "on: push" > "$_l1inf_dir/.github/workflows/ci.yml"
+(cd "$_l1inf_dir" && git add Dockerfile .github/ && git commit -q -m "chore: add infra")
+
+(cd "$_l1inf_dir" && bash "$_CAIRN_BIN" analyze --only layer1 2>/dev/null) || true
+
+assert_contains "layer1 infra: docker in detection notes" \
+    "$_l1inf_dir/.cairn/output.md.draft" "docker"
+assert_contains "layer1 infra: github-actions in detection notes" \
+    "$_l1inf_dir/.cairn/output.md.draft" "github-actions"
+
+# =============================================================================
+# Layer 1: output.md is never modified
+# =============================================================================
+
+start_suite "cairn analyze — Layer 1 Does Not Modify output.md"
+
+_l1safe_dir="$_CAIRN_TMPDIR/analyze_l1safe_$$"
+_setup_analyze_fixture "$_l1safe_dir"
+(cd "$_l1safe_dir" && git commit -q --allow-empty -m "chore: setup")
+
+# Record original output.md content
+_orig_output="$(cat "$_l1safe_dir/.cairn/output.md")"
+
+(cd "$_l1safe_dir" && bash "$_CAIRN_BIN" analyze --only layer1 2>/dev/null) || true
+
+_after_output="$(cat "$_l1safe_dir/.cairn/output.md")"
+assert_exit_code "layer1: output.md unchanged" \
+    1 "$([ "$_orig_output" = "$_after_output" ] && echo 1 || echo 0)"
+
+# =============================================================================
+# Layer 2: README with no-go signal → intent candidate generated
+# =============================================================================
+
+start_suite "cairn analyze — Layer 2 Extracts No-Go Signal from README"
+
+_l2_dir="$_CAIRN_TMPDIR/analyze_l2_$$"
+_setup_analyze_fixture "$_l2_dir"
+
+# Add README with a clear no-go signal
+cat > "$_l2_dir/README.md" << 'README'
+# My Project
+
+This project is a web API built with Express.
+
+## Design Decisions
+
+We decided against using Redux for state management because it adds unnecessary complexity.
+
+The team prefers a simpler approach.
+README
+(cd "$_l2_dir" && git add README.md && git commit -q -m "docs: add README")
+
+_l2_exit=0
+(cd "$_l2_dir" && bash "$_CAIRN_BIN" analyze --only layer2 2>/dev/null) || _l2_exit=$?
+assert_exit_code "layer2 analyze exits 0" 0 "$_l2_exit"
+
+_l2_intent_count=$(find "$_l2_dir/.cairn/staged" -maxdepth 1 \
+    -name "*intent*" -o -name "*analyze-intent*" 2>/dev/null \
+    | grep "\.md$" | wc -l | tr -d '[:space:]')
+assert_exit_code "layer2: intent candidate generated for no-go signal" \
+    1 "$([ "$_l2_intent_count" -ge 1 ] && echo 1 || echo 0)"
+
+# Check the intent candidate has correct format
+_l2_cand=$(find "$_l2_dir/.cairn/staged" -maxdepth 1 -name "*.md" -type f 2>/dev/null | head -1)
+if [ -n "$_l2_cand" ]; then
+    assert_contains "layer2 candidate: v0.0.6 header" \
+        "$_l2_cand" '^# cairn-analyze: v0\.0\.6$'
+    assert_contains "layer2 candidate: layer:2 header" \
+        "$_l2_cand" '^# layer: 2$'
+    assert_contains "layer2 candidate: confidence=low" \
+        "$_l2_cand" '^# confidence: low$'
+    assert_contains "layer2 candidate: type=rejection" \
+        "$_l2_cand" '^type: rejection$'
+fi
+
+# =============================================================================
+# Layer 2: conservative matching — plain bullets NOT captured
+# =============================================================================
+
+start_suite "cairn analyze — Layer 2 Conservative: Plain Bullets Not Captured"
+
+_l2cons_dir="$_CAIRN_TMPDIR/analyze_l2cons_$$"
+_setup_analyze_fixture "$_l2cons_dir"
+
+cat > "$_l2cons_dir/README.md" << 'README'
+# Project
+
+- Uses TypeScript for type safety
+- Built with React and Express
+- Deployed on AWS
+README
+(cd "$_l2cons_dir" && git add README.md && git commit -q -m "docs: add README")
+
+(cd "$_l2cons_dir" && bash "$_CAIRN_BIN" analyze --only layer2 2>/dev/null) || true
+
+_l2cons_count=$(find "$_l2cons_dir/.cairn/staged" -maxdepth 1 -name "*.md" -type f 2>/dev/null | wc -l | tr -d '[:space:]')
+assert_exit_code "layer2 conservative: no candidates for plain bullets" \
+    0 "$_l2cons_count"
+
+# =============================================================================
+# --only layer1: only draft written, no staged candidates
+# =============================================================================
+
+start_suite "cairn analyze — --only layer1 Writes Draft Only"
+
+_ol1_dir="$_CAIRN_TMPDIR/analyze_ol1_$$"
+_setup_analyze_fixture "$_ol1_dir"
+(cd "$_ol1_dir" \
+    && git commit -q --allow-empty -m "feat: add feature" \
+    && git commit -q --allow-empty -m "Revert \"add feature\"")
+
+# Also add README with signal to ensure Layer 2 is truly skipped
+echo "We decided against microservices." > "$_ol1_dir/README.md"
+(cd "$_ol1_dir" && git add README.md && git commit -q -m "docs: readme")
+
+(cd "$_ol1_dir" && bash "$_CAIRN_BIN" analyze --only layer1 2>/dev/null) || true
+
+assert_file_exists "--only layer1: draft written" "$_ol1_dir/.cairn/output.md.draft"
+
+_ol1_staged=$(find "$_ol1_dir/.cairn/staged" -maxdepth 1 -name "*.md" -type f 2>/dev/null | wc -l | tr -d '[:space:]')
+assert_exit_code "--only layer1: no staged candidates" 0 "$_ol1_staged"
+
+# =============================================================================
+# --only layer2: only intent candidates, no draft, no Layer 3
+# =============================================================================
+
+start_suite "cairn analyze — --only layer2 Writes Intent Candidates Only"
+
+_ol2_dir="$_CAIRN_TMPDIR/analyze_ol2_$$"
+_setup_analyze_fixture "$_ol2_dir"
+
+echo "We decided against using Kubernetes for this project." > "$_ol2_dir/README.md"
+(cd "$_ol2_dir" \
+    && git add README.md \
+    && git commit -q -m "docs: readme" \
+    && git commit -q --allow-empty -m "Revert \"add feature\"")
+
+(cd "$_ol2_dir" && bash "$_CAIRN_BIN" analyze --only layer2 2>/dev/null) || true
+
+assert_file_not_exists "--only layer2: no draft written" \
+    "$_ol2_dir/.cairn/output.md.draft"
+
+_ol2_revert=$(find "$_ol2_dir/.cairn/staged" -maxdepth 1 -name "*revert*" -type f 2>/dev/null | wc -l | tr -d '[:space:]')
+assert_exit_code "--only layer2: no Layer 3 revert candidates" 0 "$_ol2_revert"
+
+# =============================================================================
+# --only layer3: backward compatible with v0.0.5 behavior
+# =============================================================================
+
+start_suite "cairn analyze — --only layer3 Is Backward Compatible"
+
+_ol3_dir="$_CAIRN_TMPDIR/analyze_ol3_$$"
+_setup_analyze_fixture "$_ol3_dir"
+(cd "$_ol3_dir" \
+    && git commit -q --allow-empty -m "feat: add graphql" \
+    && git commit -q --allow-empty -m "Revert \"add graphql\"")
+
+(cd "$_ol3_dir" && bash "$_CAIRN_BIN" analyze --only layer3 2>/dev/null) || true
+
+assert_file_not_exists "--only layer3: no draft written" \
+    "$_ol3_dir/.cairn/output.md.draft"
+
+_ol3_staged=$(find "$_ol3_dir/.cairn/staged" -maxdepth 1 -name "*.md" -type f 2>/dev/null | wc -l | tr -d '[:space:]')
+assert_exit_code "--only layer3: revert candidate written" \
+    1 "$([ "$_ol3_staged" -ge 1 ] && echo 1 || echo 0)"
+
+# =============================================================================
+# Layer 2 candidate: stage review strips # layer: line on accept
+# =============================================================================
+
+start_suite "cairn analyze — Layer 2 Candidate Accepted by Stage Review"
+
+_l2acc_dir="$_CAIRN_TMPDIR/analyze_l2acc_$$"
+mkdir -p "$_l2acc_dir/.cairn/history" "$_l2acc_dir/.cairn/staged" "$_l2acc_dir/.cairn/domains"
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo "mode: stability > speed"
+    echo ""; echo "## no-go"; echo ""; echo "## hooks"; echo ""; echo "## stack"; echo ""; echo "## debt"; echo ""
+} > "$_l2acc_dir/.cairn/output.md"
+
+# Synthetic Layer 2 intent candidate
+cat > "$_l2acc_dir/.cairn/staged/2026-04_analyze-intent-decided-against-redux.md" << 'STAGED'
+# cairn-analyze: v0.0.6
+# confidence: low
+# source: README.md:5 — "We decided against Redux"
+# layer: 2
+type: rejection
+domain: [TODO]
+decision_date: [TODO]
+recorded_date: 2026-04
+summary: [TODO — from README.md: "We decided against Redux"]
+rejected: [TODO — clarify what this rejects]
+reason: [TODO]
+revisit_when: [TODO]
+STAGED
+
+(cd "$_l2acc_dir" && printf "a\ny\n" \
+    | bash "$_CAIRN_BIN" stage review 2>/dev/null) || true
+
+_l2acc_history="$_l2acc_dir/.cairn/history/2026-04_analyze-intent-decided-against-redux.md"
+assert_file_exists "layer2 accept: history file created" "$_l2acc_history"
+if [ -f "$_l2acc_history" ]; then
+    assert_not_contains "layer2 accept: no cairn-analyze line" \
+        "$_l2acc_history" '^# cairn-analyze:'
+    assert_not_contains "layer2 accept: no layer line" \
+        "$_l2acc_history" '^# layer:'
+    assert_contains "layer2 accept: type preserved" \
+        "$_l2acc_history" '^type: rejection$'
+fi

@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
-# cairn analyze — Analyze git history and generate staged candidates
+# cairn analyze — Three-layer cold-start analysis and candidate generation
 #
 # Usage:
 #   cairn analyze [--dry-run] [--since YYYY-MM-DD] [--limit N] [--only TYPE,...]
 #
-# Phases:
-#   Phase 1: git data collection (reverts, dep changes, keyword commits, TODOs)
-#   Phase 2: write candidates to .cairn/staged/ with confidence metadata
-#   Phase 3: print summary and stack suggestions
+# Layers:
+#   Layer 1 (Current Reality):  scan stack/dirs/infra  → .cairn/output.md.draft
+#   Layer 2 (Explicit Intent):  read README/arch/ADR   → staged candidates
+#   Layer 3 (Historical Events):git reverts/dep-removals/keywords → staged candidates
 #
 # Candidate files contain meta-comment headers stripped by `cairn stage review`
 # on accept. Format:
-#   # cairn-analyze: v0.0.5
+#   # cairn-analyze: v0.0.6
 #   # confidence: high|medium|low
 #   # source: <human-readable description>
+#   # layer: 1|2|3
 #
 # Compatible with bash 3.2+ (macOS system bash).
 
@@ -285,8 +286,298 @@ _analyze_git_first_date() {
     git log --format='%ai' --reverse --max-count=1 2>/dev/null | cut -c1-7
 }
 
+# ── Layer 1: directory structure detection ────────────────────────────────────
+_analyze_detect_dir_structure() {
+    local git_root="$1"
+    local parts=""
+
+    if [ -d "$git_root/packages" ] || [ -d "$git_root/apps" ]; then
+        parts="monorepo"
+    fi
+
+    local fb=""
+    if [ -d "$git_root/frontend" ] || [ -d "$git_root/web" ] || [ -d "$git_root/client" ]; then
+        fb="frontend"
+    fi
+    if [ -d "$git_root/backend" ] || [ -d "$git_root/server" ] || [ -d "$git_root/api" ]; then
+        fb="${fb:+${fb}+}backend"
+    fi
+    if [ -n "$fb" ]; then
+        parts="${parts:+${parts}, }${fb}"
+    fi
+
+    if [ -d "$git_root/services" ]; then
+        parts="${parts:+${parts}, }microservices (services/)"
+    fi
+
+    if [ -d "$git_root/src" ] && [ -z "$parts" ]; then
+        parts="src/"
+    fi
+
+    [ -z "$parts" ] && parts="standard"
+    echo "$parts"
+}
+
+# ── Layer 1: infrastructure detection ────────────────────────────────────────
+_analyze_detect_infra() {
+    local git_root="$1"
+    local parts=""
+
+    if [ -f "$git_root/Dockerfile" ]; then
+        parts="docker"
+    fi
+    if [ -f "$git_root/docker-compose.yml" ] || [ -f "$git_root/docker-compose.yaml" ]; then
+        parts="${parts:+${parts}, }docker-compose"
+    fi
+    if [ -d "$git_root/.github/workflows" ]; then
+        parts="${parts:+${parts}, }github-actions"
+    fi
+    if [ -f "$git_root/.gitlab-ci.yml" ]; then
+        parts="${parts:+${parts}, }gitlab-ci"
+    fi
+    if [ -f "$git_root/Jenkinsfile" ]; then
+        parts="${parts:+${parts}, }jenkins"
+    fi
+    if [ -d "$git_root/.circleci" ]; then
+        parts="${parts:+${parts}, }circleci"
+    fi
+    if [ -d "$git_root/k8s" ] || [ -d "$git_root/kubernetes" ] || [ -d "$git_root/helm" ]; then
+        parts="${parts:+${parts}, }kubernetes"
+    fi
+    if [ -d "$git_root/terraform" ] || [ -d "$git_root/infrastructure" ]; then
+        parts="${parts:+${parts}, }terraform"
+    fi
+    if [ -d "$git_root/pulumi" ]; then
+        parts="${parts:+${parts}, }pulumi"
+    fi
+
+    [ -z "$parts" ] && parts="none detected"
+    echo "$parts"
+}
+
+# ── Layer 1: domain inference from dirs + deps ────────────────────────────────
+# Outputs domain names, one per line, deduplicated.
+_analyze_infer_domains() {
+    local git_root="$1"
+    local stack_lines="$2"
+
+    {
+        # Directory-based signals
+        if [ -d "$git_root/src/auth" ] || [ -d "$git_root/src/authentication" ]; then
+            echo "auth"
+        fi
+        if [ -d "$git_root/src/api" ] || [ -d "$git_root/api" ]; then
+            echo "api"
+        fi
+        if [ -d "$git_root/src/db" ] || [ -d "$git_root/src/database" ]; then
+            echo "database"
+        fi
+        if [ -d "$git_root/src/ui" ] || [ -d "$git_root/src/components" ] \
+                || [ -d "$git_root/frontend" ] || [ -d "$git_root/web" ] \
+                || [ -d "$git_root/client" ]; then
+            echo "frontend"
+        fi
+        if [ -d "$git_root/src/worker" ] || [ -d "$git_root/src/workers" ] \
+                || [ -d "$git_root/src/jobs" ] || [ -d "$git_root/src/queue" ]; then
+            echo "jobs"
+        fi
+        if [ -d "$git_root/src/admin" ]; then
+            echo "admin"
+        fi
+
+        # Dependency-based signals
+        if [ -n "$stack_lines" ]; then
+            echo "$stack_lines" | awk -F': ' '{print $2}' | while IFS= read -r pkg; do
+                case "$pkg" in
+                    express|fastify|koa|hapi|gin|echo|flask|django|rails|fiber|chi)
+                        echo "api" ;;
+                    passport|jsonwebtoken|jwt|bcrypt|argon2|auth0)
+                        echo "auth" ;;
+                    react|vue|angular|svelte|next|nuxt|remix|gatsby)
+                        echo "frontend" ;;
+                    mongoose|prisma|sequelize|typeorm|sqlalchemy|gorm)
+                        echo "database" ;;
+                    bull|celery|sidekiq|temporal|inngest|pg-boss)
+                        echo "jobs" ;;
+                    stripe|braintree|paypal)
+                        echo "payments" ;;
+                esac
+            done
+        fi
+    } | sort -u | (grep -v '^$' || true)
+}
+
+# ── Layer 1: write .cairn/output.md.draft ────────────────────────────────────
+_analyze_write_output_draft() {
+    local cairn_dir="$1"
+    local stack_lines="$2"
+    local domains_list="$3"
+    local dir_summary="$4"
+    local infra_list="$5"
+    local first_yymm="$6"
+    local draft_file="${cairn_dir}/output.md.draft"
+    local gen_date
+    gen_date="$(date +%Y-%m-%d)"
+
+    mkdir -p "$cairn_dir"
+
+    {
+        echo "# Cairn Layer 1 draft — generated ${gen_date}"
+        echo "# Review and merge relevant sections into .cairn/output.md, then delete this file."
+        echo ""
+        echo "## stage"
+        echo ""
+        if [ -n "$first_yymm" ]; then
+            echo "phase: [TODO] (${first_yymm}+)"
+        else
+            echo "phase: [TODO]"
+        fi
+        echo "mode: [TODO — e.g., stability > speed > elegance]"
+        echo ""
+        echo "## no-go"
+        echo ""
+        echo "[TODO — run \`cairn stage review\` for Layer 2 candidates]"
+        echo ""
+        echo "## hooks"
+        echo ""
+
+        if [ -n "$domains_list" ]; then
+            while IFS= read -r domain; do
+                [ -z "$domain" ] && continue
+                local kw
+                case "$domain" in
+                    auth|authentication)  kw="auth/login/session" ;;
+                    api)                  kw="api/endpoint/route" ;;
+                    database|db)          kw="database/db/query" ;;
+                    frontend|ui)          kw="frontend/ui/component" ;;
+                    jobs|worker|queue)    kw="job/worker/queue/task" ;;
+                    admin)                kw="admin/dashboard" ;;
+                    payments)             kw="payment/billing/stripe" ;;
+                    services)             kw="service" ;;
+                    *)                    kw="$domain" ;;
+                esac
+                echo "${kw} → domains/${domain}.md"
+            done <<< "$domains_list"
+        else
+            echo "[TODO — add: keyword → domains/domain.md]"
+        fi
+
+        echo ""
+        echo "## stack"
+        echo ""
+        if [ -n "$stack_lines" ]; then
+            echo "$stack_lines" | awk 'NR<=20'
+        else
+            echo "[TODO — no dependency files found]"
+        fi
+
+        echo ""
+        echo "## debt"
+        echo ""
+        echo "[TODO — run \`cairn stage review\` for Layer 3 candidates]"
+        echo ""
+        echo "# ── detection notes ──────────────────────────────────────────────────────────"
+        echo "# dir structure : ${dir_summary}"
+        echo "# infra         : ${infra_list}"
+    } > "$draft_file"
+}
+
+# ── Layer 2: find intent documents ───────────────────────────────────────────
+# Outputs absolute paths, one per line.
+_analyze_find_intent_docs() {
+    local git_root="$1"
+
+    {
+        # Root-level docs — use canonical casing; find resolves case-insensitively where needed
+        for _f in README.md README.rst ARCHITECTURE.md DESIGN.md CONTRIBUTING.md; do
+            [ -f "$git_root/$_f" ] && echo "$git_root/$_f"
+        done
+        # docs/ subdirectory
+        for _f in README.md ARCHITECTURE.md DESIGN.md architecture.md design.md; do
+            [ -f "$git_root/docs/$_f" ] && echo "$git_root/docs/$_f"
+        done
+        # ADR directories
+        for _adr_dir in "$git_root/docs/adr" "$git_root/decisions" "$git_root/.decisions" "$git_root/adr"; do
+            if [ -d "$_adr_dir" ]; then
+                find "$_adr_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | sort
+            fi
+        done
+    } | awk '!seen[$0]++' 2>/dev/null
+}
+
+# ── Layer 2: extract conservative no-go signals from docs ────────────────────
+# Outputs: FILE|LINENUM|TYPE|TEXT, up to 5 signals per file.
+_analyze_extract_intent_signals() {
+    local docs_list="$1"
+    local MAX_PER_FILE=5
+    # Conservative: only strong rejection/avoidance phrases
+    local pattern="(we don.t |we do not |don.t use |avoid |avoid using |never use |decided against|we rejected|not going to |we use .* instead|no.go|not supported|we.ll not |we won.t )"
+
+    while IFS= read -r doc_file; do
+        [ -z "$doc_file" ] && continue
+        [ -f "$doc_file" ] || continue
+
+        local rel_file="${doc_file#${PWD}/}"
+
+        grep -inE "$pattern" "$doc_file" 2>/dev/null \
+            | awk -v rel="$rel_file" -v max="$MAX_PER_FILE" '{
+                if (NR > max) exit
+                colon = index($0, ":")
+                linenum = substr($0, 1, colon - 1)
+                text = substr($0, colon + 1)
+                gsub(/^[[:space:]]+/, "", text)
+                if (length(text) > 100) text = substr(text, 1, 100) "..."
+                print rel "|" linenum "|rejection|" text
+            }' || true
+    done <<< "$docs_list"
+}
+
+# ── Layer 2: emit intent candidates ──────────────────────────────────────────
+_analyze_emit_intent_candidates() {
+    local cairn_dir="$1"
+    local dry_run="$2"
+    local limit="$3"
+    local recorded_date="$4"
+    local signals_data="$5"
+
+    while IFS='|' read -r src_file lineno sig_type sig_text; do
+        [ -z "$src_file" ] && continue
+        [ "$_ANALYZE_TOTAL" -ge "$limit" ] && break
+
+        local slug
+        slug="analyze-intent-$(_analyze_slugify "${sig_text}")"
+        _analyze_slug_seen "$slug" && continue
+        _analyze_mark_slug "$slug"
+
+        local fname="${recorded_date}_${slug}.md"
+        local source_desc="${src_file}:${lineno} — \"${sig_text}\""
+        local summary="[TODO — from ${src_file}: \"${sig_text}\"]"
+
+        if [ "$dry_run" = "false" ]; then
+            _analyze_write_candidate \
+                "${cairn_dir}/staged/${fname}" \
+                "low" \
+                "$source_desc" \
+                "rejection" \
+                "[TODO]" \
+                "[TODO]" \
+                "$recorded_date" \
+                "$summary" \
+                "[TODO — clarify what this rejects]" \
+                "[TODO]" \
+                "[TODO]" \
+                "2"
+            echo -e "  $(msg_analyze_layer2_candidate_written "$fname")"
+        fi
+
+        _ANALYZE_COUNT_LAYER2=$(( _ANALYZE_COUNT_LAYER2 + 1 ))
+        _ANALYZE_TOTAL=$(( _ANALYZE_TOTAL + 1 ))
+        _ANALYZE_CANDIDATE_LINES="${_ANALYZE_CANDIDATE_LINES}${fname}|low"$'\n'
+    done <<< "$signals_data"
+}
+
 # ── Write a candidate file with analyze meta-comments ────────────────────────
-# Args: FILE CONFIDENCE SOURCE TYPE DOMAIN DATE RECORDED_DATE SUMMARY REJECTED REASON REVISIT
+# Args: FILE CONFIDENCE SOURCE TYPE DOMAIN DATE RECORDED_DATE SUMMARY REJECTED REASON REVISIT [LAYER]
 _analyze_write_candidate() {
     local out_file="$1"
     local confidence="$2"
@@ -299,13 +590,15 @@ _analyze_write_candidate() {
     local entry_rejected="$9"
     local entry_reason="${10}"
     local entry_revisit="${11}"
+    local entry_layer="${12:-3}"
 
     mkdir -p "$(dirname "$out_file")"
 
     {
-        echo "# cairn-analyze: v0.0.5"
+        echo "# cairn-analyze: v0.0.6"
         echo "# confidence: ${confidence}"
         echo "# source: ${source_desc}"
+        echo "# layer: ${entry_layer}"
         echo "type: ${entry_type}"
         echo "domain: ${entry_domain}"
         echo "decision_date: ${entry_date}"
@@ -336,7 +629,9 @@ _analyze_mark_slug() {
 _ANALYZE_COUNT_HIGH=0
 _ANALYZE_COUNT_MEDIUM=0
 _ANALYZE_COUNT_LOW=0
+_ANALYZE_COUNT_LAYER2=0
 _ANALYZE_TOTAL=0
+_ANALYZE_LAYER1_DONE=false
 _ANALYZE_CANDIDATE_LINES=""  # accumulates "FILE|CONFIDENCE" for dry-run summary
 
 _analyze_emit_revert_candidates() {
@@ -504,18 +799,25 @@ _analyze_emit_todo_candidates() {
     done <<< "$todo_data"
 }
 
-# ── Phase 3: print summary ────────────────────────────────────────────────────
+# ── Summary ───────────────────────────────────────────────────────────────────
 _analyze_print_summary() {
     local dry_run="$1"
-    local stack_lines="$2"
-    local total_limit="$3"
+    local total_limit="$2"
 
     echo ""
     echo -e "  ${C_BOLD}$(msg_analyze_summary_header)${C_RESET}"
+
+    if [ "$_ANALYZE_LAYER1_DONE" = "true" ]; then
+        echo -e "  ${C_CYAN}  Layer 1:${C_RESET} output.md.draft written"
+    fi
+    if [ "$_ANALYZE_COUNT_LAYER2" -gt 0 ]; then
+        echo -e "  ${C_DIM}  Layer 2: ${_ANALYZE_COUNT_LAYER2} intent candidate(s) (low confidence)${C_RESET}"
+    fi
     echo -e "  ${C_GREEN}$(msg_analyze_summary_high   "$_ANALYZE_COUNT_HIGH")${C_RESET}"
     echo -e "  ${C_YELLOW}$(msg_analyze_summary_medium "$_ANALYZE_COUNT_MEDIUM")${C_RESET}"
     echo -e "  ${C_DIM}$(msg_analyze_summary_low    "$_ANALYZE_COUNT_LOW")${C_RESET}"
     echo ""
+
     if [ "$dry_run" = "false" ]; then
         echo -e "  $(msg_analyze_summary_total "$_ANALYZE_TOTAL")"
     else
@@ -526,19 +828,10 @@ _analyze_print_summary() {
         echo -e "  ${C_DIM}$(msg_analyze_limit_applied "$total_limit")${C_RESET}"
     fi
 
-    if [ -n "$stack_lines" ]; then
-        echo ""
-        echo -e "  ${C_BOLD}$(msg_analyze_stack_header)${C_RESET}"
-        echo "$stack_lines" | awk 'NR<=20' | while IFS= read -r line; do
-            [ -n "$line" ] && echo -e "  $(msg_analyze_stack_entry "$line")"
-        done
-        echo -e "  ${C_DIM}$(msg_analyze_stack_hint)${C_RESET}"
-    fi
-
     echo ""
     if [ "$_ANALYZE_TOTAL" -gt 0 ] && [ "$dry_run" = "false" ]; then
         echo -e "  ${C_BOLD}$(msg_analyze_next_review)${C_RESET}"
-    elif [ "$_ANALYZE_TOTAL" -eq 0 ]; then
+    elif [ "$_ANALYZE_TOTAL" -eq 0 ] && [ "$_ANALYZE_LAYER1_DONE" = "false" ]; then
         echo -e "  ${C_DIM}$(msg_analyze_next_noop)${C_RESET}"
     fi
     echo ""
@@ -625,7 +918,7 @@ cmd_analyze() {
             dep_file_names="${dep_file_names}${f}, "
         fi
     done
-    dep_file_names="${dep_file_names%, }"  # strip trailing ", "
+    dep_file_names="${dep_file_names%, }"
 
     if [ ${#dep_files[@]} -gt 0 ]; then
         echo -e "  $(msg_analyze_dep_files_found "$dep_file_names")"
@@ -633,119 +926,202 @@ cmd_analyze() {
         echo -e "  ${C_DIM}$(msg_analyze_no_dep_files)${C_RESET}"
     fi
 
-    # ── Build since opt ──
+    # ── Build since opt (Layer 3 only) ──
     local since_opt=""
     [ -n "$since_arg" ] && since_opt="--since=${since_arg}"
     [ -n "$since_arg" ] && echo -e "  ${C_DIM}$(msg_analyze_since_applied "$since_arg")${C_RESET}"
     [ "$dry_run" = "true" ] && echo -e "  ${C_DIM}$(msg_analyze_dry_run_banner)${C_RESET}"
-    echo ""
 
-    echo -e "  ${C_DIM}$(msg_analyze_scanning)${C_RESET}"
-
-    # ── Phase 1: collect data ──
-
-    # Determine what to collect based on --only filter
+    # ── Determine which layers / sub-types to run ──
+    local do_layer1=true do_layer2=true do_layer3=true
     local do_revert=true do_dep=true do_keyword=true do_todo=true
     if [ -n "$only_filter" ]; then
+        do_layer1=false; do_layer2=false; do_layer3=false
         do_revert=false; do_dep=false; do_keyword=false; do_todo=false
         local IFS_OLD="$IFS"
         IFS=','
         for t in $only_filter; do
             case "$t" in
-                revert)  do_revert=true ;;
-                dep)     do_dep=true ;;
-                keyword) do_keyword=true ;;
-                todo)    do_todo=true ;;
+                layer1)  do_layer1=true ;;
+                layer2)  do_layer2=true ;;
+                layer3)  do_layer3=true
+                         do_revert=true; do_dep=true; do_keyword=true; do_todo=true ;;
+                revert)  do_layer3=true; do_revert=true ;;
+                dep)     do_layer3=true; do_dep=true ;;
+                keyword) do_layer3=true; do_keyword=true ;;
+                todo)    do_layer3=true; do_todo=true ;;
             esac
         done
         IFS="$IFS_OLD"
-    fi
-
-    local reverts_data="" dep_data="" keyword_data="" todo_data="" stack_lines=""
-
-    if [ "$do_revert" = "true" ]; then
-        reverts_data="$(_analyze_detect_reverts "$since_opt")"
-        local rcount=0
-        if [ -n "$reverts_data" ]; then
-            rcount="$(echo "$reverts_data" | wc -l | tr -d '[:space:]')"
-        fi
-        echo -e "  $(msg_analyze_phase_reverts "$rcount")"
-    fi
-
-    if [ "$do_dep" = "true" ] && [ ${#dep_files[@]} -gt 0 ]; then
-        dep_data="$(_analyze_detect_dep_removals "$since_opt" "${dep_files[@]}")"
-        local dcount=0
-        if [ -n "$dep_data" ]; then
-            dcount="$(echo "$dep_data" | wc -l | tr -d '[:space:]')"
-        fi
-        echo -e "  $(msg_analyze_phase_dep "$dcount")"
-    fi
-
-    if [ "$do_keyword" = "true" ]; then
-        keyword_data="$(_analyze_detect_keyword_commits "$since_opt")"
-        local kcount=0
-        if [ -n "$keyword_data" ]; then
-            kcount="$(echo "$keyword_data" | wc -l | tr -d '[:space:]')"
-        fi
-        echo -e "  $(msg_analyze_phase_keywords "$kcount")"
-    fi
-
-    if [ "$do_todo" = "true" ]; then
-        todo_data="$(_analyze_detect_todos 20)"
-        local tcount=0
-        if [ -n "$todo_data" ]; then
-            tcount="$(echo "$todo_data" | wc -l | tr -d '[:space:]')"
-        fi
-        echo -e "  $(msg_analyze_phase_todos "$tcount")"
-    fi
-
-    # Collect current stack (always)
-    if [ ${#dep_files[@]} -gt 0 ]; then
-        stack_lines="$(_analyze_detect_current_stack "${dep_files[@]}")"
     fi
 
     # ── Reset counters ──
     _ANALYZE_COUNT_HIGH=0
     _ANALYZE_COUNT_MEDIUM=0
     _ANALYZE_COUNT_LOW=0
+    _ANALYZE_COUNT_LAYER2=0
     _ANALYZE_TOTAL=0
+    _ANALYZE_LAYER1_DONE=false
     _ANALYZE_SEEN_SLUGS=""
     _ANALYZE_CANDIDATE_LINES=""
 
     local recorded_date
     recorded_date="$(date +%Y-%m)"
 
-    echo ""
     if [ "$dry_run" = "false" ]; then
         mkdir -p "$cairn_dir/staged"
     fi
 
-    # ── Phase 2: emit candidates ──
-    # Collect dep SHAs to avoid re-emitting as keyword candidates
-    local dep_shas=""
-    [ -n "$dep_data" ] && dep_shas="$(echo "$dep_data" | cut -d'|' -f1 | sort -u)"
+    # ====================================================================
+    # Layer 1 — Current Reality
+    # ====================================================================
+    if [ "$do_layer1" = "true" ]; then
+        echo ""
+        echo -e "  ${C_BOLD}$(msg_analyze_layer1_header)${C_RESET}"
+        echo -e "  ${C_DIM}$(msg_analyze_layer1_scanning)${C_RESET}"
 
-    if [ "$do_revert" = "true" ] && [ -n "$reverts_data" ]; then
-        _analyze_emit_revert_candidates \
-            "$cairn_dir" "$dry_run" "$limit" "$recorded_date" "$reverts_data"
+        local dir_summary infra_list stack_lines domains_list
+        dir_summary="$(_analyze_detect_dir_structure "$git_root")"
+        infra_list="$(_analyze_detect_infra "$git_root")"
+
+        stack_lines=""
+        if [ ${#dep_files[@]} -gt 0 ]; then
+            stack_lines="$(_analyze_detect_current_stack "${dep_files[@]}")"
+        fi
+
+        domains_list="$(_analyze_infer_domains "$git_root" "$stack_lines")"
+
+        echo -e "  $(msg_analyze_layer1_dir_structure "$dir_summary")"
+        echo -e "  $(msg_analyze_layer1_infra "$infra_list")"
+        if [ -n "$domains_list" ]; then
+            local _dom_inline
+            _dom_inline="$(echo "$domains_list" | tr '\n' ' ' | sed 's/ *$//')"
+            echo -e "  $(msg_analyze_layer1_inferred_domains "$_dom_inline")"
+        else
+            echo -e "  $(msg_analyze_layer1_inferred_domains "(none inferred)")"
+        fi
+
+        # Show detected stack briefly
+        if [ -n "$stack_lines" ]; then
+            echo ""
+            echo -e "  ${C_BOLD}$(msg_analyze_stack_header)${C_RESET}"
+            echo "$stack_lines" | awk 'NR<=10' | while IFS= read -r line; do
+                [ -n "$line" ] && echo -e "  $(msg_analyze_stack_entry "$line")"
+            done
+            echo -e "  ${C_DIM}$(msg_analyze_stack_hint)${C_RESET}"
+        else
+            echo ""
+            echo -e "  ${C_DIM}$(msg_analyze_layer1_no_stack)${C_RESET}"
+        fi
+
+        _analyze_write_output_draft \
+            "$cairn_dir" "$stack_lines" "$domains_list" \
+            "$dir_summary" "$infra_list" "${first_date:-}"
+
+        echo ""
+        echo -e "  ${C_GREEN}$(msg_analyze_layer1_draft_written)${C_RESET}"
+        echo -e "  ${C_DIM}$(msg_analyze_layer1_draft_hint)${C_RESET}"
+        _ANALYZE_LAYER1_DONE=true
     fi
 
-    if [ "$do_dep" = "true" ] && [ -n "$dep_data" ]; then
-        _analyze_emit_dep_candidates \
-            "$cairn_dir" "$dry_run" "$limit" "$recorded_date" "$dep_data"
+    # ====================================================================
+    # Layer 2 — Explicit Intent
+    # ====================================================================
+    if [ "$do_layer2" = "true" ]; then
+        echo ""
+        echo -e "  ${C_BOLD}$(msg_analyze_layer2_header)${C_RESET}"
+        echo -e "  ${C_DIM}$(msg_analyze_layer2_scanning)${C_RESET}"
+
+        local intent_docs=""
+        intent_docs="$(_analyze_find_intent_docs "$git_root")"
+
+        if [ -n "$intent_docs" ]; then
+            local doc_count
+            doc_count="$(echo "$intent_docs" | wc -l | tr -d '[:space:]')"
+            echo -e "  $(msg_analyze_layer2_docs_found "$doc_count")"
+
+            local intent_signals=""
+            intent_signals="$(_analyze_extract_intent_signals "$intent_docs")"
+
+            local sig_count=0
+            if [ -n "$intent_signals" ]; then
+                sig_count="$(echo "$intent_signals" | wc -l | tr -d '[:space:]')"
+            fi
+            echo -e "  $(msg_analyze_layer2_signals_found "$sig_count")"
+
+            if [ -n "$intent_signals" ]; then
+                _analyze_emit_intent_candidates \
+                    "$cairn_dir" "$dry_run" "$limit" "$recorded_date" "$intent_signals"
+            fi
+        else
+            echo -e "  ${C_DIM}$(msg_analyze_layer2_no_docs)${C_RESET}"
+        fi
     fi
 
-    if [ "$do_keyword" = "true" ] && [ -n "$keyword_data" ]; then
-        _analyze_emit_keyword_candidates \
-            "$cairn_dir" "$dry_run" "$limit" "$recorded_date" \
-            "$keyword_data" "$dep_shas"
+    # ====================================================================
+    # Layer 3 — Historical Events
+    # ====================================================================
+    if [ "$do_layer3" = "true" ]; then
+        echo ""
+        echo -e "  ${C_BOLD}$(msg_analyze_layer3_header)${C_RESET}"
+        echo -e "  ${C_DIM}$(msg_analyze_scanning)${C_RESET}"
+
+        local reverts_data="" dep_data="" keyword_data="" todo_data=""
+
+        if [ "$do_revert" = "true" ]; then
+            reverts_data="$(_analyze_detect_reverts "$since_opt")"
+            local rcount=0
+            [ -n "$reverts_data" ] && rcount="$(echo "$reverts_data" | wc -l | tr -d '[:space:]')"
+            echo -e "  $(msg_analyze_phase_reverts "$rcount")"
+        fi
+
+        if [ "$do_dep" = "true" ] && [ ${#dep_files[@]} -gt 0 ]; then
+            dep_data="$(_analyze_detect_dep_removals "$since_opt" "${dep_files[@]}")"
+            local dcount=0
+            [ -n "$dep_data" ] && dcount="$(echo "$dep_data" | wc -l | tr -d '[:space:]')"
+            echo -e "  $(msg_analyze_phase_dep "$dcount")"
+        fi
+
+        if [ "$do_keyword" = "true" ]; then
+            keyword_data="$(_analyze_detect_keyword_commits "$since_opt")"
+            local kcount=0
+            [ -n "$keyword_data" ] && kcount="$(echo "$keyword_data" | wc -l | tr -d '[:space:]')"
+            echo -e "  $(msg_analyze_phase_keywords "$kcount")"
+        fi
+
+        if [ "$do_todo" = "true" ]; then
+            todo_data="$(_analyze_detect_todos 20)"
+            local tcount=0
+            [ -n "$todo_data" ] && tcount="$(echo "$todo_data" | wc -l | tr -d '[:space:]')"
+            echo -e "  $(msg_analyze_phase_todos "$tcount")"
+        fi
+
+        # Collect dep SHAs to avoid re-emitting as keyword candidates
+        local dep_shas=""
+        [ -n "$dep_data" ] && dep_shas="$(echo "$dep_data" | cut -d'|' -f1 | sort -u)"
+
+        if [ "$do_revert" = "true" ] && [ -n "$reverts_data" ]; then
+            _analyze_emit_revert_candidates \
+                "$cairn_dir" "$dry_run" "$limit" "$recorded_date" "$reverts_data"
+        fi
+
+        if [ "$do_dep" = "true" ] && [ -n "$dep_data" ]; then
+            _analyze_emit_dep_candidates \
+                "$cairn_dir" "$dry_run" "$limit" "$recorded_date" "$dep_data"
+        fi
+
+        if [ "$do_keyword" = "true" ] && [ -n "$keyword_data" ]; then
+            _analyze_emit_keyword_candidates \
+                "$cairn_dir" "$dry_run" "$limit" "$recorded_date" \
+                "$keyword_data" "$dep_shas"
+        fi
+
+        if [ "$do_todo" = "true" ] && [ -n "$todo_data" ]; then
+            _analyze_emit_todo_candidates \
+                "$cairn_dir" "$dry_run" "$limit" "$recorded_date" "$todo_data"
+        fi
     fi
 
-    if [ "$do_todo" = "true" ] && [ -n "$todo_data" ]; then
-        _analyze_emit_todo_candidates \
-            "$cairn_dir" "$dry_run" "$limit" "$recorded_date" "$todo_data"
-    fi
-
-    # ── Phase 3: summary ──
-    _analyze_print_summary "$dry_run" "$stack_lines" "$limit"
+    # ── Summary ──
+    _analyze_print_summary "$dry_run" "$limit"
 }
