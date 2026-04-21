@@ -442,6 +442,37 @@ After completing a task, evaluate whether a recordable event occurred (decision,
 2. Propose it to the user for confirmation before writing.
 3. Once confirmed, write to `.cairn/history/YYYY-MM_<short-slug>.md`.
 4. Propose updating the corresponding `domains/*.md` if needed (full overwrite, not append).
+
+---
+
+## ON TASK COMPLETION — MANDATORY GATE
+
+This gate runs before every final response. It is not optional.
+Omitting it means the task is incomplete, regardless of code correctness.
+
+### Step 1 — Classify (answer internally before writing your response)
+
+Did this task involve any of the following?
+
+- Added or removed a dependency or package
+- Changed module structure, domain boundaries, or architecture
+- Performed a migration or technology switch
+- Accepted a deficiency as debt, or explicitly rejected a direction
+- Large refactor touching multiple files in one domain
+
+**If yes to any:** run `cairn reflect` now and report its result below.
+**If no to all:** the result is `no-op`; skip running the command.
+
+### Step 2 — Append this line to your final response (verbatim)
+
+Choose exactly one and include it at the end of your response:
+
+    cairn-reflection: no-op
+    cairn-reflection: candidates-created — run `cairn stage review`
+    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
+
+The user relies on seeing this line to verify the gate ran.
+Omitting it is a protocol violation.
 SKILL_EOF
 )
 
@@ -496,6 +527,37 @@ After completing a task, evaluate whether a recordable event occurred (decision,
 2. Propose it to the user for confirmation before writing.
 3. Once confirmed, write to `.cairn/history/YYYY-MM_<short-slug>.md`.
 4. Propose updating the corresponding `domains/*.md` if needed (full overwrite, not append).
+
+---
+
+## ON TASK COMPLETION — MANDATORY GATE
+
+This gate runs before every final response. It is not optional.
+Omitting it means the task is incomplete, regardless of code correctness.
+
+### Step 1 — Classify (answer internally before writing your response)
+
+Did this task involve any of the following?
+
+- Added or removed a dependency or package
+- Changed module structure, domain boundaries, or architecture
+- Performed a migration or technology switch
+- Accepted a deficiency as debt, or explicitly rejected a direction
+- Large refactor touching multiple files in one domain
+
+**If yes to any:** run `cairn reflect` now and report its result below.
+**If no to all:** the result is `no-op`; skip running the command.
+
+### Step 2 — Append this line to your final response (verbatim)
+
+Choose exactly one and include it at the end of your response:
+
+    cairn-reflection: no-op
+    cairn-reflection: candidates-created — run `cairn stage review`
+    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
+
+The user relies on seeing this line to verify the gate ran.
+Omitting it is a protocol violation.
 SKILL_EOF
 )
 
@@ -529,6 +591,20 @@ For past decision details, read `.cairn/history/YYYY-MM_<short-slug>.md`.
 ## REACTIVE EVOLUTION
 
 After tasks, assess if a history entry is warranted (decision / rejection / transition / debt / experiment). If yes, draft it with fields: `type`, `domain`, `decision_date`, `recorded_date`, `summary`, `rejected`, `reason`, `revisit_when`. Propose to user before writing.
+
+## ON TASK COMPLETION — MANDATORY GATE
+
+Before every final response, classify the task. Did it involve: new/removed dependencies, architecture changes, migrations, accepted debt, or large refactors across a domain?
+
+**If yes:** run `cairn reflect` and report its result. **If no:** the result is `no-op`.
+
+End your response with exactly one of:
+
+    cairn-reflection: no-op
+    cairn-reflection: candidates-created — run `cairn stage review`
+    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
+
+Omitting this line is a protocol violation.
 SKILL_EOF
 )
 
@@ -564,6 +640,20 @@ For past decision details, read `.cairn/history/YYYY-MM_<short-slug>.md`.
 ## REACTIVE EVOLUTION
 
 After tasks, assess if a history entry is warranted (decision / rejection / transition / debt / experiment). If yes, draft it with fields: `type`, `domain`, `decision_date`, `recorded_date`, `summary`, `rejected`, `reason`, `revisit_when`. Propose to user before writing.
+
+## ON TASK COMPLETION — MANDATORY GATE
+
+Before every final response, classify the task. Did it involve: new/removed dependencies, architecture changes, migrations, accepted debt, or large refactors across a domain?
+
+**If yes:** run `cairn reflect` and report its result. **If no:** the result is `no-op`.
+
+End your response with exactly one of:
+
+    cairn-reflection: no-op
+    cairn-reflection: candidates-created — run `cairn stage review`
+    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
+
+Omitting this line is a protocol violation.
 SKILL_EOF
 )
 
@@ -599,6 +689,20 @@ For past decision details, read `.cairn/history/YYYY-MM_<short-slug>.md`.
 ## REACTIVE EVOLUTION
 
 After tasks, assess if a history entry is warranted (decision / rejection / transition / debt / experiment). If yes, draft it with fields: `type`, `domain`, `decision_date`, `recorded_date`, `summary`, `rejected`, `reason`, `revisit_when`. Propose to user before writing.
+
+## ON TASK COMPLETION — MANDATORY GATE
+
+Before every final response, classify the task. Did it involve: new/removed dependencies, architecture changes, migrations, accepted debt, or large refactors across a domain?
+
+**If yes:** run `cairn reflect` and report its result. **If no:** the result is `no-op`.
+
+End your response with exactly one of:
+
+    cairn-reflection: no-op
+    cairn-reflection: candidates-created — run `cairn stage review`
+    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
+
+Omitting this line is a protocol violation.
 SKILL_EOF
 )
 

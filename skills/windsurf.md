@@ -78,22 +78,31 @@ If yes:
 
 ---
 
-## ON TASK COMPLETION
+## ON TASK COMPLETION — MANDATORY GATE
 
-A task is not truly complete until Cairn reflection has run.
+This gate runs before every final response. It is not optional.
+Omitting it means the task is incomplete, regardless of code correctness.
 
-After finishing any feature, refactor, migration, or significant change:
+### Step 1 — Classify (answer internally before writing your response)
 
-1. Summarize what changed.
-2. Determine whether project state may have changed (architecture, dependencies, domain boundaries, accepted constraints).
-3. Run or instruct the user to run: `cairn reflect`
-4. Report the reflection result explicitly:
-   - **no-op** — no Cairn update needed; reflection still recorded.
-   - **candidates-created** — staged updates written; run `cairn stage review`.
-   - **audit-required** — migration detected; run `cairn stage review` then `cairn audit start`.
+Did this task involve any of the following?
 
-**What triggers reflection:** new/removed dependencies, domain-level file changes, architecture changes, migrations, large refactors touching multiple files in one domain.
+- Added or removed a dependency or package
+- Changed module structure, domain boundaries, or architecture
+- Performed a migration or technology switch
+- Accepted a deficiency as debt, or explicitly rejected a direction
+- Large refactor touching multiple files in one domain
 
-**What produces no-op:** copy or text-only changes, small bug fixes with no architecture implications, isolated implementation details that don't affect future AI guidance.
+**If yes to any:** run `cairn reflect` now and report its result below.
+**If no to all:** the result is `no-op`; skip running the command.
 
-Reflection is always required. Even a no-op result is a valid outcome — it proves the step ran.
+### Step 2 — Append this line to your final response (verbatim)
+
+Choose exactly one and include it at the end of your response:
+
+    cairn-reflection: no-op
+    cairn-reflection: candidates-created — run `cairn stage review`
+    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
+
+The user relies on seeing this line to verify the gate ran.
+Omitting it is a protocol violation.
