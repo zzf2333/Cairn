@@ -77,3 +77,25 @@ If yes:
 2. Propose it to the user for confirmation before writing.
 3. Once confirmed, write to `.cairn/history/YYYY-MM_<short-slug>.md`.
 4. Propose updating the corresponding `.cairn/domains/*.md` (full overwrite, not append) if the domain file needs to reflect the new state.
+
+---
+
+## ON TASK COMPLETION
+
+A task is not truly complete until Cairn reflection has run.
+
+After finishing any feature, refactor, migration, or significant change:
+
+1. Summarize what changed.
+2. Determine whether project state may have changed (architecture, dependencies, domain boundaries, accepted constraints).
+3. Run or instruct the user to run: `cairn reflect`
+4. Report the reflection result explicitly:
+   - **no-op** — no Cairn update needed; reflection still recorded.
+   - **candidates-created** — staged updates written; run `cairn stage review`.
+   - **audit-required** — migration detected; run `cairn stage review` then `cairn audit start`.
+
+**What triggers reflection:** new/removed dependencies, domain-level file changes, architecture changes, migrations, large refactors touching multiple files in one domain.
+
+**What produces no-op:** copy or text-only changes, small bug fixes with no architecture implications, isolated implementation details that don't affect future AI guidance.
+
+Reflection is always required. Even a no-op result is a valid outcome — it proves the step ran.

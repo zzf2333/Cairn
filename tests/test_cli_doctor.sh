@@ -510,3 +510,44 @@ mkdir -p "$_doctor_audit_ok_dir/.cairn/history" "$_doctor_audit_ok_dir/.cairn/do
 _audit_ok_exit=0
 (cd "$_doctor_audit_ok_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null) || _audit_ok_exit=$?
 assert_exit_code "audit ok: doctor exits 0" 0 "$_audit_ok_exit"
+
+# =============================================================================
+# v0.0.9: doctor warns when no reflections/ directory at all
+# =============================================================================
+
+start_suite "cairn doctor — Reflections Section (No reflections/ dir)"
+
+_doctor_no_refl_dir="$_CAIRN_TMPDIR/doctor_no_refl_$$"
+_create_doctor_clean_fixture "$_doctor_no_refl_dir"
+# Ensure no reflections/ directory
+rm -rf "$_doctor_no_refl_dir/.cairn/reflections"
+
+_no_refl_out="$(cd "$_doctor_no_refl_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null || true)"
+# Doctor should output the reflections section header
+assert_exit_code "doctor includes reflections section" \
+    "0" "$(echo "$_no_refl_out" | grep -qi "reflect" && echo 0 || echo 1)"
+
+# =============================================================================
+# v0.0.9: doctor no missing-reflection warning when recent record exists
+# =============================================================================
+
+start_suite "cairn doctor — No Missing-Reflection Warning With Recent Record"
+
+_doctor_has_refl_dir="$_CAIRN_TMPDIR/doctor_has_refl_$$"
+_create_doctor_clean_fixture "$_doctor_has_refl_dir"
+mkdir -p "$_doctor_has_refl_dir/.cairn/reflections"
+
+# Write a reflection record with today's timestamp
+{
+    echo "---"
+    echo "checked_range: HEAD~1..HEAD"
+    echo "result: no-op"
+    echo "audit_required: false"
+    echo "---"
+    echo "- total: 0"
+} > "$_doctor_has_refl_dir/.cairn/reflections/$(date +%Y-%m-%d)_no-op.md"
+
+_has_refl_out="$(cd "$_doctor_has_refl_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null || true)"
+# Should NOT warn about missing reflection
+assert_exit_code "recent reflection record: no missing-reflection warning" \
+    "0" "$(echo "$_has_refl_out" | grep -qi "no reflection record" && echo 1 || echo 0)"

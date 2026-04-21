@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.9] - 2026-04-21
+
+### Added
+
+- **`cairn reflect` — explicit result classification** — Every run now emits one of three explicit outcomes: `no-op` (no signals detected), `candidates-created` (staged candidates written), or `audit-required` (migration pattern detected). A task is not truly complete until `cairn reflect` has run and returned an explicit result.
+- **`cairn reflect --from-range SHA1..SHA2`** — New flag for reflecting on an explicit commit range (complements existing `--since`, `--from-commit`, `--from-diff`).
+- **`.cairn/reflections/` reflection records** — Every `cairn reflect` run writes a minimal record to `.cairn/reflections/YYYY-MM-DD_<result>.md`. Format: `checked_range`, `result`, `domains`, `audit_required`, and per-kind candidate counts. Dry-run skips record writing. Records persist as a durable trace that `cairn doctor` can inspect.
+- **`cairn reflect` candidate metadata** — All reflect-generated staged candidates now include `# source_commit_range:` and `# review_required: true` meta-comment lines. Version header updated from `v0.0.8` to `v0.0.9`.
+- **`cairn doctor` reflection checks** — New `_doctor_check_reflections` section: warns when the last commit changed ≥15 files but no reflection record exists in the last 7 days; warns when any of the last 5 commits has migration-like subjects but no recent reflection. Output styled as `⚠` with a suggested `cairn reflect --since HEAD~N` action.
+- **`cairn stage review` source range display** — When reviewing reflect-generated candidates, the commit range (`# source_commit_range:`) is now shown below the confidence/source line if present.
+- **AI tool adapters — task-completion reflection rule** — All 8 skill/adapter files (`skills/claude-code/SKILL.md`, `cursor.mdc`, `cline.md`, `windsurf.md`, `copilot-instructions.md`, `codex.md`, `gemini-cli.md`, `opencode.md`) now include an `## ON TASK COMPLETION` section stating: "A task is not truly complete until Cairn reflection has run."
+
+### Changed
+
+- **`cairn reflect` summary** — Now prints the reflection result classification after the candidate counts summary.
+- **`cairn stage review` meta stripping** — `_stage_strip_meta` now also strips `# source_commit_range:` and `# review_required:` lines on accept.
+- **CLI version** — `cli/cairn` version bumped to `0.0.9`.
+
 ## [0.0.8] - 2026-04-21
 
 ### Added

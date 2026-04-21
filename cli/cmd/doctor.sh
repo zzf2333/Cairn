@@ -466,6 +466,78 @@ _doctor_check_audits() {
 }
 
 # -----------------------------------------------------------------------------
+# Check reflections/ directory: warn on large/migration changes with no recent record.
+# "Recent" = a reflection file written within the last 7 days.
+# -----------------------------------------------------------------------------
+_doctor_check_reflections() {
+    local cairn_dir="$1"
+    local reflections_dir="$cairn_dir/reflections"
+
+    echo ""
+    echo -e "${C_BOLD}$(msg_doctor_section_reflections)${C_RESET}"
+
+    # Find most recent reflection timestamp
+    local now
+    now="$(date +%s)"
+    local seven_days=$(( 7 * 86400 ))
+    local recent_reflection=false
+
+    if [ -d "$reflections_dir" ]; then
+        while IFS= read -r rfile; do
+            [ -z "$rfile" ] && continue
+            local mtime
+            mtime="$(_doctor_mtime "$rfile")"
+            local age=$(( now - mtime ))
+            if [ "$age" -le "$seven_days" ]; then
+                recent_reflection=true
+                break
+            fi
+        done < <(find "$reflections_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | sort -r)
+    else
+        echo -e "  ${C_DIM}$(msg_doctor_reflect_none_yet)${C_RESET}"
+        return 0
+    fi
+
+    local found_issue=false
+
+    # Check 1: last commit changed many files but no recent reflection
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        local last_changed_count
+        last_changed_count="$(git diff --name-only HEAD~1..HEAD 2>/dev/null | wc -l | tr -d '[:space:]' || echo 0)"
+
+        if [ "$last_changed_count" -ge 15 ] && [ "$recent_reflection" = "false" ]; then
+            echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_reflect_missing_large "$last_changed_count")"
+            echo -e "  ${C_DIM}$(msg_doctor_reflect_suggest 3)${C_RESET}"
+            _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+            found_issue=true
+        fi
+
+        # Check 2: any of the last 5 commits looks like a migration but no recent reflection
+        if [ "$recent_reflection" = "false" ]; then
+            local migration_keywords='migrate|migration|migrated|replace|replaced|refactor|removed|dropped'
+            local migration_subject
+            migration_subject="$(git log --format='%s' -5 2>/dev/null \
+                | (grep -iEm1 "$migration_keywords" || true) | head -1)"
+
+            if [ -n "$migration_subject" ]; then
+                echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_reflect_missing_migration "$migration_subject")"
+                echo -e "  ${C_DIM}$(msg_doctor_reflect_suggest 5)${C_RESET}"
+                _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                found_issue=true
+            fi
+        fi
+    fi
+
+    if [ "$found_issue" = false ]; then
+        if [ "$recent_reflection" = "true" ]; then
+            echo -e "  ${C_GREEN}✓${C_RESET}  $(msg_doctor_reflect_ok)"
+        else
+            echo -e "  ${C_DIM}$(msg_doctor_reflect_none_yet)${C_RESET}"
+        fi
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Main command
 # -----------------------------------------------------------------------------
 cmd_doctor() {
@@ -482,6 +554,7 @@ cmd_doctor() {
     _doctor_check_hooks "$cairn_dir"
     _doctor_check_staged "$cairn_dir"
     _doctor_check_audits "$cairn_dir"
+    _doctor_check_reflections "$cairn_dir"
 
     echo ""
     if [ "$_DOCTOR_FAIL" -eq 0 ]; then

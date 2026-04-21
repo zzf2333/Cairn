@@ -35,7 +35,7 @@ done
 CAIRN_CLI_DIR="$(cd -P "$(dirname "$_cairn_src")" && pwd)"
 unset _cairn_src _cairn_dir
 
-CAIRN_VERSION="0.0.8"
+CAIRN_VERSION="0.0.9"
 
 # =============================================================================
 # Color support

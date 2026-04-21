@@ -498,9 +498,12 @@ confirm the domain is up to date.
 After a meaningful feature, refactor, or migration, Cairn needs to reflect on what changed.
 Without a write-back step, Cairn becomes stale and the next AI session reads outdated memory.
 
+**Core rule: a task is not truly complete until `cairn reflect` has run.**
+
 ### `cairn reflect`
 
 Analyzes recent commits and produces staged candidate updates across all four kinds.
+Always emits an explicit reflection result.
 
 ```bash
 # Reflect on the last 3 commits
@@ -509,17 +512,36 @@ cairn reflect --since HEAD~3
 # Reflect on changes since a specific commit
 cairn reflect --from-commit <sha>
 
+# Reflect on an explicit commit range
+cairn reflect --from-range abc123..def456
+
+# Reflect on currently staged/unstaged changes
+cairn reflect --from-diff
+
 # Preview candidates without writing (dry-run)
 cairn reflect --dry-run
 ```
 
-After running, review the generated candidates:
+#### Reflection results
+
+Every `cairn reflect` run emits one of three explicit outcomes:
+
+| Result | Meaning | Next step |
+|--------|---------|-----------|
+| `no-op` | No signals detected; Cairn does not need updating | Nothing required; record written |
+| `candidates-created` | Staged candidates written | Run `cairn stage review` |
+| `audit-required` | Migration pattern detected | Run `cairn stage review` then `cairn audit start` |
+
+A `no-op` is a valid and expected outcome for small changes. The reflection record is still
+written to `.cairn/reflections/` so `cairn doctor` can verify that reflection ran.
+
+After `candidates-created` or `audit-required`, review the generated candidates:
 
 ```bash
 cairn stage review
 ```
 
-`cairn stage review` now routes each candidate based on its filename prefix:
+`cairn stage review` routes each candidate based on its filename prefix:
 - `history-candidate_*` → moves to `.cairn/history/`
 - `domain-update-candidate_*` → opens your editor on the target domain file
 - `output-update-candidate_*` → opens your editor on `output.md`
@@ -543,7 +565,7 @@ Check `.cairn/audits/<name>.md` to review findings and mark items resolved.
 ### Recommended after-task workflow
 
 1. Finish coding
-2. `cairn reflect --since HEAD~3` → generates staged candidates
-3. `cairn stage review` → review and accept each candidate
-4. (After large migrations) `cairn audit start <domain> --trigger "<change>"` + `cairn audit scan`
-5. `cairn doctor` → confirm no drift or stale audits remain
+2. `cairn reflect --since HEAD~3` → always emits explicit result
+3. If `candidates-created` or `audit-required`: `cairn stage review`
+4. If `audit-required`: `cairn audit start <domain> --trigger "<change>"` + `cairn audit scan`
+5. `cairn doctor` → confirm no drift, stale audits, or missing reflections remain

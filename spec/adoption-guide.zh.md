@@ -395,3 +395,80 @@ cairn sync api-layer --copy
 生成的提示词指示 AI 按照 Cairn 格式覆盖域文件，并包含历史记录中的所有被拒路径。AI 生成新文件后，将其保存到 `.cairn/domains/<domain>.md` 并运行 `cairn status` 确认域已是最新状态。
 
 **Phase 3 说明：** 如果你使用 Cairn MCP Server（`mcp/`），请使用 `cairn_sync_domain("api-layer")` 代替——它直接将相同的提示词上下文返回给 AI，无需复制粘贴步骤。
+
+---
+
+## Phase 3: 任务后写回
+
+完成有意义的功能、重构或迁移后，Cairn 需要反思发生了什么变更。
+没有写回步骤，Cairn 会变得过期，下次 AI 会话读取的是过时的记忆。
+
+**核心规则：任务未完成直到 `cairn reflect` 运行。**
+
+### `cairn reflect`
+
+分析近期提交并生成四种类型的暂存候选更新。始终输出显式反思结果。
+
+```bash
+# 反思最近 3 次提交
+cairn reflect --since HEAD~3
+
+# 反思自特定提交起的变更
+cairn reflect --from-commit <sha>
+
+# 反思显式提交范围
+cairn reflect --from-range abc123..def456
+
+# 反思当前已暂存/未暂存的变更
+cairn reflect --from-diff
+
+# 预览候选条目，不写入（dry-run）
+cairn reflect --dry-run
+```
+
+#### 反思结果
+
+每次 `cairn reflect` 运行都会输出三种明确结果之一：
+
+| 结果 | 含义 | 下一步 |
+|------|------|--------|
+| `no-op` | 未检测到信号；Cairn 无需更新 | 无需操作；记录已写入 |
+| `candidates-created` | 已写入暂存候选 | 运行 `cairn stage review` |
+| `audit-required` | 检测到迁移模式 | 运行 `cairn stage review` 后再运行 `cairn audit start` |
+
+`no-op` 对于小改动是预期且有效的结果。反思记录仍会写入 `.cairn/reflections/`，供 `cairn doctor` 验证反思已执行。
+
+若结果为 `candidates-created` 或 `audit-required`，审查生成的候选条目：
+
+```bash
+cairn stage review
+```
+
+`cairn stage review` 根据文件名前缀路由每个候选：
+- `history-candidate_*` → 移至 `.cairn/history/`
+- `domain-update-candidate_*` → 在编辑器中打开目标域文件
+- `output-update-candidate_*` → 在编辑器中打开 `output.md`
+- `audit-candidate_*` → 移至 `.cairn/audits/`
+
+### `cairn audit`
+
+对于大型迁移，显式追踪清理义务。
+
+```bash
+# 迁移后创建审计文件
+cairn audit start state-management --trigger "从 Redux 迁移到 Zustand"
+
+# 扫描残留（遗留的 import、已删除的依赖仍被引用）
+cairn audit scan
+cairn audit scan state-management   # 只扫描某个域
+```
+
+查看 `.cairn/audits/<name>.md` 以审查发现并标记已解决的项目。
+
+### 推荐的任务后工作流
+
+1. 完成编码
+2. `cairn reflect --since HEAD~3` → 始终输出显式结果
+3. 若为 `candidates-created` 或 `audit-required`：`cairn stage review`
+4. 若为 `audit-required`：`cairn audit start <domain> --trigger "<变更>"` + `cairn audit scan`
+5. `cairn doctor` → 确认无漂移、过期审计或缺失反思记录

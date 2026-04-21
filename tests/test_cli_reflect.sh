@@ -280,3 +280,177 @@ assert_exit_code "all reflect-generated staged files have valid kind prefix" \
     "0" "$([ "$_rf_bad_prefix" -eq 0 ] && echo 0 || echo 1)"
 
 cd - >/dev/null
+
+# =============================================================================
+# v0.0.9: --from-range flag works
+# =============================================================================
+
+start_suite "cairn reflect — --from-range flag"
+
+_rf_range_dir="$_CAIRN_TMPDIR/reflect_range_$$"
+_setup_reflect_fixture "$_rf_range_dir"
+cd "$_rf_range_dir"
+
+echo "// v2" >> index.js
+git add index.js
+git commit -q -m "refactor: migrated state module"
+
+# Get sha of first commit (initial) and latest
+_rf_range_base="$(git rev-list --max-parents=0 HEAD)"
+_rf_range_tip="HEAD"
+_rf_range_exit=0
+(bash "$_CAIRN_BIN" reflect --from-range "${_rf_range_base}..${_rf_range_tip}" 2>/dev/null) \
+    || _rf_range_exit=$?
+assert_exit_code "--from-range exits 0" 0 "$_rf_range_exit"
+
+cd - >/dev/null
+
+# =============================================================================
+# v0.0.9: reflection record written to .cairn/reflections/
+# =============================================================================
+
+start_suite "cairn reflect — Reflection Record Written to .cairn/reflections/"
+
+_rf_rec_dir="$_CAIRN_TMPDIR/reflect_record_$$"
+_setup_reflect_fixture "$_rf_rec_dir"
+cd "$_rf_rec_dir"
+
+echo "// change" >> index.js
+git add index.js
+git commit -q -m "refactor: migrated from old module"
+
+(bash "$_CAIRN_BIN" reflect --since HEAD~1 2>/dev/null) || true
+
+# A reflection record should exist in .cairn/reflections/
+_rf_rec_count=0
+if ls .cairn/reflections/*.md >/dev/null 2>&1; then
+    _rf_rec_count="$(ls .cairn/reflections/*.md | wc -l | tr -d '[:space:]')"
+fi
+assert_exit_code "reflection record written to .cairn/reflections/" \
+    "0" "$([ "$_rf_rec_count" -ge 1 ] && echo 0 || echo 1)"
+
+_rf_rec_file="$(ls .cairn/reflections/*.md 2>/dev/null | head -1)"
+if [ -n "$_rf_rec_file" ]; then
+    assert_contains "reflection record has result field" \
+        "$_rf_rec_file" "^result:"
+    assert_contains "reflection record has checked_range field" \
+        "$_rf_rec_file" "^checked_range:"
+    assert_contains "reflection record has audit_required field" \
+        "$_rf_rec_file" "^audit_required:"
+fi
+
+cd - >/dev/null
+
+# =============================================================================
+# v0.0.9: no-op result when no signals detected
+# =============================================================================
+
+start_suite "cairn reflect — No-op Result When No Signals"
+
+_rf_noop_dir="$_CAIRN_TMPDIR/reflect_noop_$$"
+_setup_reflect_fixture "$_rf_noop_dir"
+cd "$_rf_noop_dir"
+
+# A commit with no migrate/revert keywords
+echo "// just a comment update" >> index.js
+git add index.js
+git commit -q -m "docs: update inline comment"
+
+_rf_noop_out="$(bash "$_CAIRN_BIN" reflect --since HEAD~1 2>/dev/null || true)"
+
+# Should still write a reflection record even on no-op
+_rf_noop_rec_count=0
+if ls .cairn/reflections/*.md >/dev/null 2>&1; then
+    _rf_noop_rec_count="$(ls .cairn/reflections/*.md | wc -l | tr -d '[:space:]')"
+fi
+assert_exit_code "no-op: reflection record still written" \
+    "0" "$([ "$_rf_noop_rec_count" -ge 1 ] && echo 0 || echo 1)"
+
+_rf_noop_rec="$(ls .cairn/reflections/*.md 2>/dev/null | head -1)"
+if [ -n "$_rf_noop_rec" ]; then
+    # Result should be no-op or candidates-created (stack drift may trigger output-update)
+    _rf_noop_result="$(grep '^result:' "$_rf_noop_rec" 2>/dev/null | head -1 | sed 's/^result: //')"
+    assert_exit_code "no-op record has result field with a value" \
+        "0" "$([ -n "$_rf_noop_result" ] && echo 0 || echo 1)"
+fi
+
+cd - >/dev/null
+
+# =============================================================================
+# v0.0.9: audit-required result classification
+# =============================================================================
+
+start_suite "cairn reflect — audit-required Result When Migration Detected"
+
+_rf_audit_res_dir="$_CAIRN_TMPDIR/reflect_audit_res_$$"
+_setup_reflect_fixture "$_rf_audit_res_dir"
+cd "$_rf_audit_res_dir"
+
+echo "// state" >> index.js
+git add index.js
+git commit -q -m "feat: migrated from redux to zustand"
+
+(bash "$_CAIRN_BIN" reflect --since HEAD~1 2>/dev/null) || true
+
+_rf_audit_res_rec="$(ls .cairn/reflections/*.md 2>/dev/null | head -1)"
+if [ -n "$_rf_audit_res_rec" ]; then
+    _rf_audit_result="$(grep '^result:' "$_rf_audit_res_rec" 2>/dev/null | head -1 | sed 's/^result: //')"
+    assert_exit_code "migration commit produces audit-required result" \
+        "0" "$([ "$_rf_audit_result" = "audit-required" ] && echo 0 || echo 1)"
+fi
+
+cd - >/dev/null
+
+# =============================================================================
+# v0.0.9: --dry-run does not write reflection record
+# =============================================================================
+
+start_suite "cairn reflect — Dry Run Does Not Write Reflection Record"
+
+_rf_dry_rec_dir="$_CAIRN_TMPDIR/reflect_dry_rec_$$"
+_setup_reflect_fixture "$_rf_dry_rec_dir"
+cd "$_rf_dry_rec_dir"
+
+echo "// change" >> index.js
+git add index.js
+git commit -q -m "refactor: migrated module"
+
+(bash "$_CAIRN_BIN" reflect --since HEAD~1 --dry-run 2>/dev/null) || true
+
+_rf_dry_rec_count=0
+if ls .cairn/reflections/*.md >/dev/null 2>&1; then
+    _rf_dry_rec_count="$(ls .cairn/reflections/*.md | wc -l | tr -d '[:space:]')"
+fi
+assert_exit_code "dry-run: no reflection record written" \
+    "0" "$([ "$_rf_dry_rec_count" -eq 0 ] && echo 0 || echo 1)"
+
+cd - >/dev/null
+
+# =============================================================================
+# v0.0.9: staged candidates include source_commit_range meta-comment
+# =============================================================================
+
+start_suite "cairn reflect — Candidates Include source_commit_range Meta"
+
+_rf_range_meta_dir="$_CAIRN_TMPDIR/reflect_range_meta_$$"
+_setup_reflect_fixture "$_rf_range_meta_dir"
+cd "$_rf_range_meta_dir"
+
+echo "// new" >> index.js
+git add index.js
+git commit -q -m "refactor: migrated from old lib"
+
+(bash "$_CAIRN_BIN" reflect --since HEAD~1 2>/dev/null) || true
+
+_rf_range_meta_found=false
+for f in .cairn/staged/*.md 2>/dev/null; do
+    [ -f "$f" ] || continue
+    if grep -q "^# source_commit_range:" "$f" 2>/dev/null; then
+        _rf_range_meta_found=true
+        break
+    fi
+done
+assert_exit_code "staged candidates include source_commit_range meta-comment" \
+    "0" "$([ "$_rf_range_meta_found" = "true" ] && echo 0 || echo 1)"
+
+cd - >/dev/null

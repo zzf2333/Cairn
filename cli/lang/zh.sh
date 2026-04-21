@@ -461,6 +461,15 @@ msg_reflect_dry_run_total()     { echo "  合计：${1} 个候选条目将被写
 msg_reflect_next_review()       { echo "下一步：运行 'cairn stage review' 审核并接受候选条目"; }
 msg_reflect_next_noop()         { echo "未生成候选条目 — 在指定范围内未检测到显著变更。"; }
 msg_reflect_dry_run_banner()    { echo "[dry-run] 候选条目未写入 staged/"; }
+msg_reflect_range_mode()        { echo "模式：提交范围 ${1}"; }
+
+# ── reflect 结果分类（v0.0.9）──────────────────────────────────────────────────
+msg_reflect_result_label()      { echo "反思结果："; }
+msg_reflect_result_noop()       { echo "  ✓ no-op — 此任务无需更新 Cairn"; }
+msg_reflect_result_candidates() { echo "  ● candidates-created — 已写入 ${1} 个候选条目，运行 cairn stage review"; }
+msg_reflect_result_audit()      { echo "  ⚠ audit-required — 检测到迁移模式，运行 cairn stage review 后再运行 cairn audit start"; }
+msg_reflect_record_written()    { echo "  反思记录：.cairn/reflections/${1}"; }
+msg_reflect_record_note()       { echo "  （记录已写入 — cairn doctor 可使用反思追踪信息）"; }
 
 msg_reflect_help()              { cat <<'HELP'
 用法：cairn reflect [选项]
@@ -468,17 +477,26 @@ msg_reflect_help()              { cat <<'HELP'
 分析近期工作，跨四种候选类型生成结构化暂存更新候选：
 history、domain-update、output-update、audit。
 
+始终输出显式反思结果：no-op | candidates-created | audit-required。
+任务未完成直到 cairn reflect 运行。
+
 选项：
-  --from-diff         反思当前已暂存和未暂存的变更（git diff）
-  --since REF         反思自 REF 起的提交（例如 HEAD~3、SHA、分支名）
-  --from-commit SHA   反思自 SHA 起的提交（含该提交）
-  --dry-run           预览候选条目，不写入 staged/
+  --from-diff               反思当前已暂存和未暂存的变更（git diff）
+  --since REF               反思自 REF 起的提交（例如 HEAD~3、SHA、分支名）
+  --from-commit SHA         反思自 SHA 起的提交（含该提交）
+  --from-range SHA1..SHA2   反思显式提交范围
+  --dry-run                 预览候选条目，不写入 staged/
 
 生成的候选类型：
   history-candidate_       — 检测到的 revert 和迁移事件
   domain-update-candidate_ — 此范围内文件被修改的域
   output-update-candidate_ — output.md 与当前依赖之间的 stack 漂移
   audit-candidate_         — 可能需要清理追踪的迁移提交
+
+反思结果：
+  no-op              — 未检测到信号；仍记录反思已运行
+  candidates-created — 已写入暂存候选；运行 cairn stage review
+  audit-required     — 检测到迁移；运行 cairn stage review + cairn audit start
 
 运行后：cairn stage review
 HELP
@@ -538,3 +556,11 @@ msg_doctor_stack_section()      { echo "── Stack 漂移"; }
 msg_doctor_stack_ok()           { echo "stack 条目与当前依赖文件匹配"; }
 msg_doctor_stack_drift()        { echo "stack 条目 '${1}: ${2}' 在当前依赖文件中未找到 — 可能已过期"; }
 msg_doctor_stack_no_deps()      { echo "（未找到依赖文件 — 跳过 stack 漂移检查）"; }
+
+# ── doctor 反思检查（v0.0.9）──────────────────────────────────────────────────
+msg_doctor_section_reflections()    { echo "── 反思记录"; }
+msg_doctor_reflect_ok()             { echo "近期变更存在反思记录"; }
+msg_doctor_reflect_none_yet()       { echo "（未找到 reflections/ 目录 — 请在重大任务后运行 cairn reflect）"; }
+msg_doctor_reflect_missing_large()  { echo "最近提交变更较大（${1} 个文件）但 7 天内无反思记录"; }
+msg_doctor_reflect_missing_migration() { echo "检测到迁移类提交（'${1}'）但未找到反思记录"; }
+msg_doctor_reflect_suggest()        { echo "  建议操作：运行 cairn reflect --since HEAD~${1}"; }

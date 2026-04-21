@@ -460,6 +460,15 @@ msg_reflect_dry_run_total()     { echo "  total: ${1} candidate(s) would be writ
 msg_reflect_next_review()       { echo "Next: run 'cairn stage review' to review and accept candidates"; }
 msg_reflect_next_noop()         { echo "No candidates generated — no significant changes detected in range."; }
 msg_reflect_dry_run_banner()    { echo "[dry-run] candidates not written to staged/"; }
+msg_reflect_range_mode()        { echo "mode: commit range ${1}"; }
+
+# ── reflect result classification (v0.0.9) ─────────────────────────────────────
+msg_reflect_result_label()      { echo "Reflection result:"; }
+msg_reflect_result_noop()       { echo "  ✓ no-op — no Cairn updates needed for this task"; }
+msg_reflect_result_candidates() { echo "  ● candidates-created — ${1} candidate(s) written; run cairn stage review"; }
+msg_reflect_result_audit()      { echo "  ⚠ audit-required — migration pattern detected; run cairn stage review then cairn audit start"; }
+msg_reflect_record_written()    { echo "  Reflection record: .cairn/reflections/${1}"; }
+msg_reflect_record_note()       { echo "  (record written — reflection trace available for cairn doctor)"; }
 
 msg_reflect_help()              { cat <<'HELP'
 Usage: cairn reflect [options]
@@ -467,17 +476,26 @@ Usage: cairn reflect [options]
 Analyze recent work and produce structured staged update candidates
 across all four candidate kinds: history, domain-update, output-update, audit.
 
+Always emits an explicit reflection result: no-op | candidates-created | audit-required.
+A task is not truly complete until cairn reflect has run.
+
 Options:
-  --from-diff         Reflect on currently staged and unstaged changes (git diff)
-  --since REF         Reflect on commits since REF (e.g. HEAD~3, a SHA, a branch)
-  --from-commit SHA   Reflect on commits starting from SHA (inclusive)
-  --dry-run           Preview candidates without writing to staged/
+  --from-diff               Reflect on currently staged and unstaged changes (git diff)
+  --since REF               Reflect on commits since REF (e.g. HEAD~3, a SHA, a branch)
+  --from-commit SHA         Reflect on commits starting from SHA (inclusive)
+  --from-range SHA1..SHA2   Reflect on an explicit commit range
+  --dry-run                 Preview candidates without writing to staged/
 
 Candidate kinds generated:
   history-candidate_       — detected reverts and migration events
   domain-update-candidate_ — domains whose files were modified in this range
   output-update-candidate_ — stack drift between output.md and current deps
   audit-candidate_         — migration commits that may need cleanup tracking
+
+Reflection results:
+  no-op              — no signals detected; still records that reflection ran
+  candidates-created — staged candidates written; run cairn stage review
+  audit-required     — migration detected; run cairn stage review + cairn audit start
 
 After running: cairn stage review
 HELP
@@ -537,3 +555,11 @@ msg_doctor_stack_section()      { echo "── Stack drift"; }
 msg_doctor_stack_ok()           { echo "stack entries match current dependency files"; }
 msg_doctor_stack_drift()        { echo "stack entry '${1}: ${2}' not found in current dependency files — may be stale"; }
 msg_doctor_stack_no_deps()      { echo "(no dependency files found — skipping stack drift check)"; }
+
+# ── doctor reflection checks (v0.0.9) ─────────────────────────────────────────
+msg_doctor_section_reflections()    { echo "── Reflections"; }
+msg_doctor_reflect_ok()             { echo "reflection records present for recent changes"; }
+msg_doctor_reflect_none_yet()       { echo "(no reflections/ directory found — run cairn reflect after significant tasks)"; }
+msg_doctor_reflect_missing_large()  { echo "large recent change (${1} files in last commit) but no reflection record in last 7 days"; }
+msg_doctor_reflect_missing_migration() { echo "migration-like commit detected ('${1}') but no reflection record found"; }
+msg_doctor_reflect_suggest()        { echo "  Suggested action: run cairn reflect --since HEAD~${1}"; }

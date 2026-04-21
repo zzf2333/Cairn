@@ -2,13 +2,19 @@
 # cairn reflect — Post-task write-back: scan recent changes, generate staged candidates
 #
 # Usage:
-#   cairn reflect [--from-diff] [--since REF] [--from-commit SHA] [--dry-run]
+#   cairn reflect [--from-diff] [--since REF] [--from-commit SHA]
+#                 [--from-range SHA1..SHA2] [--dry-run]
 #
 # Candidate kinds generated:
 #   history-candidate_       reverts and migration events
 #   domain-update-candidate_ domains whose files were touched in range
 #   output-update-candidate_ stack drift between output.md and current deps
 #   audit-candidate_         migration commits that may need cleanup tracking
+#
+# Reflection results (always explicit):
+#   no-op              — no signals detected; reflection record still written
+#   candidates-created — staged candidates written
+#   audit-required     — migration pattern found; audit recommended
 #
 # Compatible with bash 3.2+ (macOS system bash).
 
@@ -46,10 +52,12 @@ _reflect_write_candidate() {
     mkdir -p "$(dirname "$out_file")"
 
     {
-        echo "# cairn-reflect: v0.0.8"
+        echo "# cairn-reflect: v0.0.9"
         echo "# kind: ${kind}"
         echo "# confidence: ${confidence}"
         echo "# source: ${source_desc}"
+        [ -n "${_REFLECT_SOURCE_RANGE:-}" ] && echo "# source_commit_range: ${_REFLECT_SOURCE_RANGE}"
+        echo "# review_required: true"
         # Print remaining args as content lines
         local line
         for line in "$@"; do
@@ -282,10 +290,12 @@ _reflect_emit_audit_candidate() {
     if [ "$dry_run" = "false" ]; then
         mkdir -p "${cairn_dir}/staged"
         {
-            echo "# cairn-reflect: v0.0.8"
+            echo "# cairn-reflect: v0.0.9"
             echo "# kind: audit"
             echo "# confidence: medium"
             echo "# source: ${source_desc}"
+            [ -n "${_REFLECT_SOURCE_RANGE:-}" ] && echo "# source_commit_range: ${_REFLECT_SOURCE_RANGE}"
+            echo "# review_required: true"
             echo "# Audit: [TODO — describe the migration this commit is part of]"
             echo "date: ${yymm}"
             echo "domain: [TODO]"
@@ -322,10 +332,12 @@ _reflect_emit_domain_candidate() {
     if [ "$dry_run" = "false" ]; then
         mkdir -p "${cairn_dir}/staged"
         {
-            echo "# cairn-reflect: v0.0.8"
+            echo "# cairn-reflect: v0.0.9"
             echo "# kind: domain-update"
             echo "# confidence: medium"
             echo "# source: ${source_desc}"
+            [ -n "${_REFLECT_SOURCE_RANGE:-}" ] && echo "# source_commit_range: ${_REFLECT_SOURCE_RANGE}"
+            echo "# review_required: true"
             echo "# target-domain: ${domain}"
             echo "# Review the current domains/${domain}.md and update if the recent"
             echo "# changes affected any of its sections (current design, trajectory,"
@@ -367,10 +379,12 @@ _reflect_emit_output_candidate() {
     if [ "$dry_run" = "false" ]; then
         mkdir -p "${cairn_dir}/staged"
         {
-            echo "# cairn-reflect: v0.0.8"
+            echo "# cairn-reflect: v0.0.9"
             echo "# kind: output-update"
             echo "# confidence: low"
             echo "# source: ${source_desc}"
+            [ -n "${_REFLECT_SOURCE_RANGE:-}" ] && echo "# source_commit_range: ${_REFLECT_SOURCE_RANGE}"
+            echo "# review_required: true"
             echo "# Review .cairn/output.md ## stack section."
             echo "# The following entries were not found in current dependency files."
             echo ""
@@ -424,10 +438,91 @@ _reflect_print_summary() {
     echo ""
 }
 
+# ── Compute explicit result type ───────────────────────────────────────────────
+# Returns: no-op | candidates-created | audit-required
+_reflect_compute_result() {
+    local total=$(( _REFLECT_COUNT_HISTORY + _REFLECT_COUNT_DOMAIN + \
+                    _REFLECT_COUNT_OUTPUT + _REFLECT_COUNT_AUDIT ))
+    if [ "$total" -eq 0 ]; then
+        echo "no-op"
+    elif [ "$_REFLECT_COUNT_AUDIT" -gt 0 ]; then
+        echo "audit-required"
+    else
+        echo "candidates-created"
+    fi
+}
+
+# ── Print result classification ────────────────────────────────────────────────
+_reflect_print_result() {
+    local result_type="$1" dry_run="$2"
+    local total=$(( _REFLECT_COUNT_HISTORY + _REFLECT_COUNT_DOMAIN + \
+                    _REFLECT_COUNT_OUTPUT + _REFLECT_COUNT_AUDIT ))
+
+    echo -e "  ${C_BOLD}$(msg_reflect_result_label)${C_RESET}"
+    case "$result_type" in
+        no-op)
+            echo -e "  ${C_GREEN}$(msg_reflect_result_noop)${C_RESET}"
+            ;;
+        candidates-created)
+            echo -e "  ${C_CYAN}$(msg_reflect_result_candidates "$total")${C_RESET}"
+            ;;
+        audit-required)
+            echo -e "  ${C_YELLOW}$(msg_reflect_result_audit)${C_RESET}"
+            ;;
+    esac
+    echo ""
+}
+
+# ── Write reflection record ────────────────────────────────────────────────────
+# Always writes, even for no-op. This is the durable trace that doctor reads.
+_reflect_write_record() {
+    local cairn_dir="$1" result_type="$2" source_range="$3" dry_run="$4"
+    local domains="$5"   # space-separated list of impacted domains
+    local recorded_date
+    recorded_date="$(date +%Y-%m-%d)"
+    local total=$(( _REFLECT_COUNT_HISTORY + _REFLECT_COUNT_DOMAIN + \
+                    _REFLECT_COUNT_OUTPUT + _REFLECT_COUNT_AUDIT ))
+
+    # Build slug from date + result
+    local slug
+    slug="${recorded_date}_${result_type}"
+    # Append first domain if present
+    if [ -n "$domains" ]; then
+        local first_domain
+        first_domain="$(echo "$domains" | awk '{print $1}')"
+        slug="${slug}_${first_domain}"
+    fi
+
+    local fname="${slug}.md"
+    local reflections_dir="${cairn_dir}/reflections"
+
+    if [ "$dry_run" = "true" ]; then
+        return 0
+    fi
+
+    mkdir -p "$reflections_dir"
+
+    {
+        echo "---"
+        echo "checked_range: ${source_range:-[not specified]}"
+        echo "result: ${result_type}"
+        [ -n "$domains" ] && echo "domains: [$(echo "$domains" | tr ' ' ',')]"
+        echo "audit_required: $([ "$result_type" = "audit-required" ] && echo true || echo false)"
+        echo "---"
+        echo "- history-candidate: ${_REFLECT_COUNT_HISTORY}"
+        echo "- domain-update-candidate: ${_REFLECT_COUNT_DOMAIN}"
+        echo "- output-update-candidate: ${_REFLECT_COUNT_OUTPUT}"
+        echo "- audit-candidate: ${_REFLECT_COUNT_AUDIT}"
+        echo "- total: ${total}"
+    } > "${reflections_dir}/${fname}"
+
+    echo -e "  ${C_DIM}$(msg_reflect_record_written "$fname")${C_RESET}"
+}
+
 # ── Main command ──────────────────────────────────────────────────────────────
 cmd_reflect() {
     local dry_run=false
-    local mode=""          # "diff" | "since" | "commit" | "" (default: HEAD~5)
+    local mode=""          # "diff" | "since" | "commit" | "range" | "" (default: HEAD~5)
     local mode_ref=""
 
     while [ $# -gt 0 ]; do
@@ -438,6 +533,8 @@ cmd_reflect() {
                 mode="since"; mode_ref="$2"; shift 2 ;;
             --from-commit)
                 mode="commit"; mode_ref="$2"; shift 2 ;;
+            --from-range)
+                mode="range"; mode_ref="$2"; shift 2 ;;
             --dry-run)
                 dry_run=true; shift ;;
             --help|-h)
@@ -478,24 +575,33 @@ cmd_reflect() {
 
     # ── Build git range args ──
     local git_range_args=""
+    _REFLECT_SOURCE_RANGE=""
     case "$mode" in
         diff)
             echo -e "  $(msg_reflect_diff_mode)"
-            # For diff mode, get staged + unstaged file list; range args unused for commit log
+            _REFLECT_SOURCE_RANGE="--from-diff"
             ;;
         since)
             echo -e "  $(msg_reflect_since_mode "$mode_ref")"
             git_range_args="${mode_ref}..HEAD"
+            _REFLECT_SOURCE_RANGE="${git_range_args}"
             ;;
         commit)
             echo -e "  $(msg_reflect_commit_mode "$mode_ref")"
             git_range_args="${mode_ref}..HEAD"
+            _REFLECT_SOURCE_RANGE="${git_range_args}"
+            ;;
+        range)
+            echo -e "  $(msg_reflect_range_mode "$mode_ref")"
+            git_range_args="$mode_ref"
+            _REFLECT_SOURCE_RANGE="${git_range_args}"
             ;;
         *)
             # Default: last 5 commits
             local default_ref="HEAD~5"
             echo -e "  $(msg_reflect_git_range "${default_ref}..HEAD (default)")"
             git_range_args="${default_ref}..HEAD"
+            _REFLECT_SOURCE_RANGE="${git_range_args}"
             ;;
     esac
 
@@ -515,6 +621,11 @@ $(git diff --staged --name-only 2>/dev/null || true)"
         if [ "$commit_count" -eq 0 ]; then
             echo -e "  ${C_YELLOW}$(msg_reflect_no_commits)${C_RESET}"
             echo ""
+            # Still write a no-op reflection record so doctor knows reflection ran
+            _REFLECT_COUNT_HISTORY=0; _REFLECT_COUNT_DOMAIN=0
+            _REFLECT_COUNT_OUTPUT=0;  _REFLECT_COUNT_AUDIT=0
+            _reflect_print_result "no-op" "$dry_run"
+            _reflect_write_record "$cairn_dir" "no-op" "${_REFLECT_SOURCE_RANGE}" "$dry_run" ""
             return 0
         fi
     fi
@@ -619,6 +730,15 @@ $(git diff --staged --name-only 2>/dev/null || true)"
             "$cairn_dir" "$dry_run" "$recorded_date" "$drift_lines"
     fi
 
-    # ── Summary ──
+    # ── Summary + result classification ──
     _reflect_print_summary "$dry_run"
+
+    local result_type
+    result_type="$(_reflect_compute_result)"
+    _reflect_print_result "$result_type" "$dry_run"
+
+    # ── Write reflection record (always, even for no-op) ──
+    _reflect_write_record \
+        "$cairn_dir" "$result_type" "${_REFLECT_SOURCE_RANGE}" "$dry_run" \
+        "$(echo "$touched_domains" | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
 }

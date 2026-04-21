@@ -60,12 +60,13 @@ _stage_extract_candidate_domain() {
 
 # -----------------------------------------------------------------------------
 # Extract cairn-analyze or cairn-reflect meta-comment values from a staged file.
-# Sets _STAGE_META_CONFIDENCE and _STAGE_META_SOURCE.
+# Sets _STAGE_META_CONFIDENCE, _STAGE_META_SOURCE, _STAGE_META_COMMIT_RANGE.
 # -----------------------------------------------------------------------------
 _stage_extract_meta() {
     local file="$1"
     _STAGE_META_CONFIDENCE=""
     _STAGE_META_SOURCE=""
+    _STAGE_META_COMMIT_RANGE=""
     _STAGE_META_IS_ANALYZE=false
 
     if grep -qE '^# cairn-(analyze|reflect):' "$file" 2>/dev/null; then
@@ -74,6 +75,8 @@ _stage_extract_meta() {
             | head -1 | sed 's/^# confidence: *//' || true)"
         _STAGE_META_SOURCE="$(grep '^# source:' "$file" 2>/dev/null \
             | head -1 | sed 's/^# source: *//' || true)"
+        _STAGE_META_COMMIT_RANGE="$(grep '^# source_commit_range:' "$file" 2>/dev/null \
+            | head -1 | sed 's/^# source_commit_range: *//' || true)"
     fi
 }
 
@@ -85,7 +88,7 @@ _stage_extract_meta() {
 _stage_strip_meta() {
     local src_file="$1"
     local dst_file="$2"
-    grep -v '^# cairn-analyze:\|^# cairn-reflect:\|^# confidence:\|^# source:\|^# layer:\|^# kind:\|^# target-domain:' \
+    grep -v '^# cairn-analyze:\|^# cairn-reflect:\|^# confidence:\|^# source:\|^# source_commit_range:\|^# review_required:\|^# layer:\|^# kind:\|^# target-domain:' \
         "$src_file" > "$dst_file"
 }
 
@@ -153,11 +156,14 @@ _stage_review() {
             esac
             echo -e "${conf_color}$(msg_stage_analyze_meta \
                 "$_STAGE_META_CONFIDENCE" "$_STAGE_META_SOURCE")${C_RESET}"
+            if [ -n "$_STAGE_META_COMMIT_RANGE" ]; then
+                echo -e "  ${C_DIM}range: ${_STAGE_META_COMMIT_RANGE}${C_RESET}"
+            fi
         fi
 
         echo ""
         # Show file content (skip all tool meta-comment lines) with [TODO] highlighted
-        grep -v '^# cairn-analyze:\|^# cairn-reflect:\|^# confidence:\|^# source:\|^# layer:\|^# kind:\|^# target-domain:' \
+        grep -v '^# cairn-analyze:\|^# cairn-reflect:\|^# confidence:\|^# source:\|^# source_commit_range:\|^# review_required:\|^# layer:\|^# kind:\|^# target-domain:' \
             "$staged_file" | _stage_highlight_todo
         echo ""
 
