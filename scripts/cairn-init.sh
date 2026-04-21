@@ -715,7 +715,7 @@ step5_install_skills() {
     echo ""
     echo -e "  $(msg_init_skills_intro)"
     echo ""
-    echo -e "    ${C_DIM}1)${C_RESET} ${C_BOLD}Claude Code${C_RESET}     (.claude/skills/cairn/SKILL.md)"
+    echo -e "    ${C_DIM}1)${C_RESET} ${C_BOLD}Claude Code${C_RESET}     (.claude/CLAUDE.md, append)"
     echo -e "    ${C_DIM}2)${C_RESET} ${C_BOLD}Cursor${C_RESET}          (.cursor/rules/cairn.mdc)"
     echo -e "    ${C_DIM}3)${C_RESET} ${C_BOLD}Cline/Roo Code${C_RESET}  (.clinerules, append)"
     echo -e "    ${C_DIM}4)${C_RESET} ${C_BOLD}Windsurf${C_RESET}        (.windsurfrules, append)"
@@ -741,12 +741,20 @@ step5_install_skills() {
 
         case "$token" in
             1)
-                local target_dir=".claude/skills/cairn"
-                local target_file="${target_dir}/SKILL.md"
-                mkdir -p "$target_dir"
-                echo "$SKILL_CLAUDE_CODE" > "$target_file"
-                CREATED_FILES+=("$target_file")
-                print_ok "$(msg_init_written "$target_file")"
+                local target_file=".claude/CLAUDE.md"
+                if grep -qF "<!-- cairn:start -->" "$target_file" 2>/dev/null; then
+                    print_info "Cairn already installed in $target_file"
+                else
+                    mkdir -p ".claude"
+                    printf '\n' >> "$target_file"
+                    {
+                        echo "<!-- cairn:start -->"
+                        echo "$SKILL_CLAUDE_CODE"
+                        echo "<!-- cairn:end -->"
+                    } >> "$target_file"
+                    CREATED_FILES+=("$target_file")
+                    print_ok "$(msg_init_appended "$target_file")"
+                fi
                 ;;
             2)
                 local target_dir=".cursor/rules"

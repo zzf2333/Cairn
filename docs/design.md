@@ -533,7 +533,7 @@ history/（精确查询时）：
 
 | 工具             | 适配文件位置                              |
 | ---------------- | ----------------------------------------- |
-| Claude Code      | `.claude/skills/cairn/SKILL.md`           |
+| Claude Code      | `.claude/CLAUDE.md`（追加）               |
 | Cursor           | `.cursor/rules/cairn.mdc`                 |
 | Windsurf         | `.windsurfrules`（追加）                  |
 | Cline / Roo Code | `.clinerules`（追加）                     |

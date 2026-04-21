@@ -354,7 +354,7 @@ See [`mcp/README.md`](mcp/README.md) for full configuration options and the reco
 
 | Tool | Adapter File | Install Location |
 |------|-------------|-----------------|
-| Claude Code | `skills/claude-code/SKILL.md` | `.claude/skills/cairn/SKILL.md` |
+| Claude Code | `skills/claude-code/SKILL.md` | `.claude/CLAUDE.md` (append) |
 | Cursor | `skills/cursor.mdc` | `.cursor/rules/cairn.mdc` |
 | Cline / Roo Code | `skills/cline.md` | `.clinerules` (append) |
 | Windsurf | `skills/windsurf.md` | `.windsurfrules` (append) |

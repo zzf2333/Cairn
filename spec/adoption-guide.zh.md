@@ -161,7 +161,7 @@ mkdir -p .cairn/domains/
 
 | 工具 | 要安装的文件 | 位置 |
 |------|------------|------|
-| Claude Code | `skills/claude-code/SKILL.md` | `.claude/skills/cairn/SKILL.md` |
+| Claude Code | `skills/claude-code/SKILL.md` | `.claude/CLAUDE.md`（追加） |
 | Cursor | `skills/cursor.mdc` | `.cursor/rules/cairn.mdc` |
 | Windsurf | `skills/windsurf.md` | 追加到 `.windsurfrules` |
 | Cline / Roo Code | `skills/cline.md` | 追加到 `.clinerules` |

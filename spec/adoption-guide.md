@@ -189,7 +189,7 @@ Copy the Cairn skill file for the AI tool(s) your team uses:
 
 | Tool | File to install | Location |
 |------|-----------------|----------|
-| Claude Code | `skills/claude-code/SKILL.md` | `.claude/skills/cairn/SKILL.md` |
+| Claude Code | `skills/claude-code/SKILL.md` | `.claude/CLAUDE.md` (append) |
 | Cursor | `skills/cursor.mdc` | `.cursor/rules/cairn.mdc` |
 | Windsurf | `skills/windsurf.md` | Append to `.windsurfrules` |
 | Cline / Roo Code | `skills/cline.md` | Append to `.clinerules` |

@@ -136,7 +136,7 @@ mkdir -p "$_EMBED_DIR"
     | bash "$REPO_ROOT/scripts/cairn-init.sh") >/dev/null 2>&1
 
 check_skill "embedded: Claude Code (SKILL_CLAUDE_CODE in cairn-init.sh)" \
-    "$_EMBED_DIR/.claude/skills/cairn/SKILL.md"
+    "$_EMBED_DIR/.claude/CLAUDE.md"
 
 check_skill "embedded: Cursor (SKILL_CURSOR in cairn-init.sh)" \
     "$_EMBED_DIR/.cursor/rules/cairn.mdc"

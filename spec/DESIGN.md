@@ -317,7 +317,7 @@ Skill adapter file locations:
 
 | Tool | Location |
 |------|----------|
-| Claude Code | `.claude/skills/cairn/SKILL.md` |
+| Claude Code | `.claude/CLAUDE.md` (appended) |
 | Cursor | `.cursor/rules/cairn.mdc` |
 | Windsurf | `.windsurfrules` (appended) |
 | Cline / Roo Code | `.clinerules` (appended) |
