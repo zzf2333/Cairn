@@ -115,8 +115,8 @@ Three concepts produce distinct AI behavior changes:
 Cairn is a **pure file format** — no runtime, no background process, no external service required.
 The `.cairn/` directory is plain Markdown with a defined structure, versioned alongside your code.
 
-**Layer 1 (`output.md`):** Five required YAML-headlined sections (`stage`, `no-go`, `hooks`,
-`stack`, `debt`). Hard-limited to 800 tokens. AI reads this before every response.
+**Layer 1 (`output.md`):** Six required YAML-headlined sections (`stage`, `no-go`, `hooks`,
+`stack`, `debt`, `open questions`). Hard-limited to 800 tokens. AI reads this before every response.
 
 **Layer 2 (domain files):** YAML frontmatter with `hooks` keyword lists for intent detection,
 followed by Markdown sections for no-go rules, known pitfalls, and evolution history. Written
@@ -219,6 +219,14 @@ cairn sync api-layer
 cairn sync --stale          # all stale domains at once
 cairn sync api-layer --copy # copy prompt to clipboard
 cairn sync --hooks          # regenerate output.md ## hooks from domain frontmatter
+
+# After a feature or refactor — reflect on recent commits and stage update candidates
+cairn reflect --since HEAD~10
+cairn stage review           # review, accept, edit, or skip each candidate
+
+# Track migration cleanup obligations
+cairn audit start state-management --trigger "migrated from Redux to Zustand"
+cairn audit scan              # scan source for rejected-path keyword residue
 ```
 
 **Stale detection:** `cairn status` compares each domain file's `updated:` frontmatter

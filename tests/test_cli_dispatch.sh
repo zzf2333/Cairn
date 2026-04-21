@@ -117,12 +117,14 @@ assert_exit_code "cairn stage review without .cairn/ exits non-zero" 1 "$_stage_
 # Help output — v0.0.3 and v0.0.5 commands appear
 # =============================================================================
 
-start_suite "CLI Dispatch — Help Mentions v0.0.3 and v0.0.5 Commands"
+start_suite "CLI Dispatch — Help Mentions All Commands"
 
 # Re-use the help output captured above
 assert_contains "help mentions doctor command"  "$_help_tmp" "doctor"
 assert_contains "help mentions stage command"   "$_help_tmp" "stage"
 assert_contains "help mentions analyze command" "$_help_tmp" "analyze"
+assert_contains "help mentions reflect command" "$_help_tmp" "reflect"
+assert_contains "help mentions audit command"   "$_help_tmp" "audit"
 
 # =============================================================================
 # Stage subcommand — help/no-args exits 0

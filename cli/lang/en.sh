@@ -121,6 +121,8 @@ msg_help_cmd_help()            { echo "Print this help message"; }
 msg_help_cmd_doctor()          { echo "Run health checks on the .cairn/ structure (rules-only, no LLM)"; }
 msg_help_cmd_stage()           { echo "Manage staged history entries (review / accept / skip)"; }
 msg_help_cmd_analyze()         { echo "Analyze git history to generate staged candidates"; }
+msg_help_cmd_reflect()         { echo "Reflect on recent work and generate staged update candidates"; }
+msg_help_cmd_audit()           { echo "Track migration cleanup: start an audit or scan for residue"; }
 msg_help_examples_label()      { echo "Examples:"; }
 msg_help_spec_hint()           { echo "See spec/FORMAT.md for the full Cairn format specification."; }
 
@@ -419,3 +421,119 @@ HELP
 msg_stage_analyze_meta()        { echo "  [confidence: ${1} | source: ${2}]"; }
 msg_stage_low_confidence_warn() { echo "⚠  low confidence — please verify this candidate before accepting"; }
 msg_stage_meta_stripped()       { true; }  # silent strip of analyze meta on accept
+
+# stage candidate-kind dispatch hints (v0.0.8)
+msg_stage_kind_history()        { echo "  [history-candidate] → will move to .cairn/history/ on accept"; }
+msg_stage_kind_domain()         { echo "  [domain-update-candidate] → will open \$EDITOR on target domain file on accept"; }
+msg_stage_kind_output()         { echo "  [output-update-candidate] → will open \$EDITOR on .cairn/output.md on accept"; }
+msg_stage_kind_audit()          { echo "  [audit-candidate] → will move to .cairn/audits/ on accept"; }
+msg_stage_kind_legacy()         { echo "  [history-candidate (legacy)] → will move to .cairn/history/ on accept"; }
+msg_stage_accepted_audit()      { echo "✓  accepted → audits/${1}"; }
+msg_stage_open_editor_domain()  { echo "  Opening \$EDITOR on .cairn/domains/${1}.md — paste or merge the candidate content"; }
+msg_stage_open_editor_output()  { echo "  Opening \$EDITOR on .cairn/output.md — paste or merge the candidate content"; }
+msg_stage_editor_fallback()     { echo "  \$EDITOR not set — candidate left in staged/ for manual review"; }
+msg_stage_audits_dir_created()  { echo "  Created .cairn/audits/"; }
+
+# ── reflect command ───────────────────────────────────────────────────────────
+msg_reflect_title()             { echo "Cairn Reflect — post-task write-back"; }
+msg_reflect_no_git()            { echo "not a git repository — cairn reflect requires git history"; }
+msg_reflect_no_cairn_warning()  { echo "no .cairn/ directory found — run cairn init first to set up Cairn"; }
+msg_reflect_no_commits()        { echo "no commits found in the specified range"; }
+msg_reflect_scanning()          { echo "Scanning recent changes..."; }
+msg_reflect_git_range()         { echo "commit range: ${1}"; }
+msg_reflect_diff_mode()         { echo "mode: staged diff (git diff --staged + unstaged)"; }
+msg_reflect_since_mode()        { echo "mode: commits since ${1}"; }
+msg_reflect_commit_mode()       { echo "mode: commits since ${1}"; }
+msg_reflect_commits_found()     { echo "commits in range: ${1}"; }
+msg_reflect_phase_reverts()     { echo "  reverts: ${1} found"; }
+msg_reflect_phase_migrations()  { echo "  migration-keyword commits: ${1} found"; }
+msg_reflect_phase_domains()     { echo "  domain-touching commits: ${1} found"; }
+msg_reflect_phase_stack()       { echo "  stack drift signals: ${1} found"; }
+msg_reflect_candidate_written() { echo "  ✓ ${1}  [${2}]"; }
+msg_reflect_summary_header()    { echo "Generated candidates:"; }
+msg_reflect_summary_history()   { echo "  ● history-candidate     : ${1}"; }
+msg_reflect_summary_domain()    { echo "  ● domain-update-candidate: ${1}"; }
+msg_reflect_summary_output()    { echo "  ● output-update-candidate: ${1}"; }
+msg_reflect_summary_audit()     { echo "  ● audit-candidate        : ${1}"; }
+msg_reflect_summary_total()     { echo "  total: ${1} candidate(s) written to .cairn/staged/"; }
+msg_reflect_dry_run_total()     { echo "  total: ${1} candidate(s) would be written (dry-run, nothing saved)"; }
+msg_reflect_next_review()       { echo "Next: run 'cairn stage review' to review and accept candidates"; }
+msg_reflect_next_noop()         { echo "No candidates generated — no significant changes detected in range."; }
+msg_reflect_dry_run_banner()    { echo "[dry-run] candidates not written to staged/"; }
+
+msg_reflect_help()              { cat <<'HELP'
+Usage: cairn reflect [options]
+
+Analyze recent work and produce structured staged update candidates
+across all four candidate kinds: history, domain-update, output-update, audit.
+
+Options:
+  --from-diff         Reflect on currently staged and unstaged changes (git diff)
+  --since REF         Reflect on commits since REF (e.g. HEAD~3, a SHA, a branch)
+  --from-commit SHA   Reflect on commits starting from SHA (inclusive)
+  --dry-run           Preview candidates without writing to staged/
+
+Candidate kinds generated:
+  history-candidate_       — detected reverts and migration events
+  domain-update-candidate_ — domains whose files were modified in this range
+  output-update-candidate_ — stack drift between output.md and current deps
+  audit-candidate_         — migration commits that may need cleanup tracking
+
+After running: cairn stage review
+HELP
+}
+
+# ── audit command ─────────────────────────────────────────────────────────────
+msg_audit_title()               { echo "Cairn Audit — migration cleanup tracking"; }
+msg_audit_no_cairn_warning()    { echo "no .cairn/ directory found — run cairn init first to set up Cairn"; }
+msg_audit_start_header()        { echo "Creating audit file for domain '${1}'..."; }
+msg_audit_start_written()       { echo "✓  Created .cairn/audits/${1}"; }
+msg_audit_start_hint()          { echo "  Edit the file to add expected removals, then run: cairn audit scan ${2}"; }
+msg_audit_start_conflict()      { echo "conflict: .cairn/audits/${1} already exists — rename or delete first"; }
+msg_audit_start_domain_warn()   { echo "warning: domain '${1}' is not in the locked domain list (proceeding anyway)"; }
+msg_audit_scan_header()         { echo "Cairn Audit Scan — residue detection"; }
+msg_audit_scan_scanning()       { echo "Scanning for residue..."; }
+msg_audit_scan_domain_filter()  { echo "Filtering to domain: ${1}"; }
+msg_audit_scan_no_audits()      { echo "No audit files found in .cairn/audits/ — run: cairn audit start <domain> --trigger \"...\""; }
+msg_audit_scan_file()           { echo "  Audit: ${1}  (${2})"; }
+msg_audit_scan_rejected_kw()    { echo "    checking rejected-paths keywords from domains/${1}.md..."; }
+msg_audit_scan_hit()            { echo "    ${C_YELLOW}⚠${C_RESET}  ${1}: pattern '${2}' matched in ${3}"; }
+msg_audit_scan_no_hits()        { echo "    ${C_GREEN}✓${C_RESET}  no residue found for this audit"; }
+msg_audit_scan_summary()        { echo "Scan complete: ${1} residue match(es) found across ${2} audit file(s)"; }
+msg_audit_scan_hint()           { echo "  Update .cairn/audits/ files with findings, then run: cairn doctor"; }
+msg_audit_missing_trigger()     { echo "error: --trigger is required — use: cairn audit start <domain> --trigger \"<change>\""; }
+msg_audit_missing_domain()      { echo "error: domain name required — use: cairn audit start <domain> --trigger \"<change>\""; }
+msg_audit_unknown_sub()         { echo "unknown subcommand '${1}' — try: cairn audit start | cairn audit scan"; }
+
+msg_audit_help()                { cat <<'HELP'
+Usage: cairn audit <subcommand> [options]
+
+Track migration cleanup obligations explicitly.
+
+Subcommands:
+  start <domain> --trigger "<change>"
+      Create a new .cairn/audits/YYYY-MM_<domain>-<slug>.md audit file.
+      Run this after a migration to record expected cleanup.
+
+  scan [<domain>]
+      Detect residue: scan source files for patterns from rejected paths
+      and check for removed dependencies still referenced in code.
+      Optional: filter to one domain.
+
+Examples:
+  cairn audit start state-management --trigger "migrated from Redux to Zustand"
+  cairn audit scan
+  cairn audit scan state-management
+HELP
+}
+
+# ── doctor audit checks (v0.0.8) ──────────────────────────────────────────────
+msg_doctor_section_audits()     { echo "── Audits"; }
+msg_doctor_audit_ok()           { echo "no audit issues"; }
+msg_doctor_audit_missing()      { echo "transition '${1}' (${2}) has no corresponding audit file — consider: cairn audit start"; }
+msg_doctor_audit_stale()        { echo "audit '${1}' has status: partial and is ${2} days old — may need follow-up"; }
+msg_doctor_audit_complete()     { echo "✓  ${1} complete"; }
+msg_doctor_stack_section()      { echo "── Stack drift"; }
+msg_doctor_stack_ok()           { echo "stack entries match current dependency files"; }
+msg_doctor_stack_drift()        { echo "stack entry '${1}: ${2}' not found in current dependency files — may be stale"; }
+msg_doctor_stack_no_deps()      { echo "(no dependency files found — skipping stack drift check)"; }

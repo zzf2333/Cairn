@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2026-04-21
+
+### Added
+
+- **`cairn reflect`** — New command. Scans recent commits (`--since`, `--from-commit`, `--from-diff`) and emits typed staged candidates: `history-candidate_` (reverts), `audit-candidate_` (migration keywords), `domain-update-candidate_` (domain hooks touched), `output-update-candidate_` (stack drift). Supports `--dry-run`.
+- **`cairn audit start <domain> --trigger "<text>"`** — Creates a new `.cairn/audits/YYYY-MM_<domain>-<slug>.md` template for tracking migration cleanup obligations.
+- **`cairn audit scan [<domain>]`** — Scans source files via `git grep` for keywords from `## rejected paths` in domain files, identifying residue from past migrations.
+- **`.cairn/staged/` typed inbox** — Four candidate kinds distinguished by filename prefix: `history-candidate_` → moves to `history/` on accept; `audit-candidate_` → moves to `audits/`; `domain-update-candidate_` → opens `$EDITOR` on target domain file; `output-update-candidate_` → opens `$EDITOR` on `output.md`. Legacy unprefixed files default to history-candidate behavior (backward compatible).
+- **`cairn doctor` audit checks** — New `_doctor_check_audits` section: warns on `type: transition` history entries without a corresponding audit file, and on `status: open|partial` audits older than 60 days.
+- **`cairn doctor` stack drift** — New `_doctor_check_stack_drift` sub-check within the output section: compares `## stack` entries against current dep files (package.json, go.mod, requirements.txt, Cargo.toml) and warns when a technology is not found.
+- **`cairn analyze` v0.0.8 extensions** — `_analyze_emit_audit_candidate`: emits `audit-candidate_` for migration-signal commits (migrat/replac keywords). `_analyze_emit_stack_drift_candidate`: emits `output-update-candidate_` when `output.md ## stack` entries are missing from dep files. Both respect the existing `--limit` and `--dry-run` flags.
+- **`## open questions` section** — Added as required 6th section of `output.md`. `scripts/cairn-init.sh` and `cli/cmd/analyze.sh` output draft now emit this section. `spec/FORMAT.md` and `spec/FORMAT.zh.md` updated.
+- **`## residue checklist` section** — Optional section 6 for domain files (`domains/*.md`). Documented in `spec/FORMAT.md`.
+- **`.cairn/audits/` format** — New support directory. `spec/FORMAT.md` documents audit file format: `date:`, `domain:`, `trigger:`, `status: open|partial|complete` + `## Expected removals`, `## Findings`, `## Follow-up`.
+- **`spec/adoption-guide.md`** — Added "Phase 3: After-Task Write-Back" section describing the reflect → stage → audit workflow.
+- **Sample audit file** — `examples/saas-18mo/.cairn/audits/2024-09_state-management-migration.md`.
+- **Test coverage** — `tests/test_cli_reflect.sh` (reflect scenarios), `tests/test_cli_audit.sh` (audit start/scan), extended `test_cli_stage.sh` (4-kind dispatch), extended `test_cli_doctor.sh` (stack drift + missing audit), extended `test_cli_analyze.sh` (output-update-candidate + audit-candidate + open questions in draft).
+
+### Changed
+
+- **`cairn stage review` accept branch** — Replaced flat `mv` with 4-way kind dispatch keyed on filename prefix. Meta-comment stripping (`_stage_strip_meta`) now applied unconditionally (no behavior change for files without meta-comment lines).
+- **MCP `generateFilename`** — Now emits `history-candidate_YYYY-MM_<slug>.md` prefix so MCP-proposed entries match the new staged inbox scheme. `stageEntry` conflict detection uses stripped name against `history/`. Approval hints updated to show `cairn stage review` as primary workflow.
+- **MCP version** — `mcp/package.json` and `mcp/src/server.ts` bumped to `0.0.8`.
+
+### Compatibility note
+
+Staged files without a recognized prefix (`history-candidate_`, `domain-update-candidate_`, `output-update-candidate_`, `audit-candidate_`) continue to be routed as history candidates by `cairn stage review`. No silent rename of existing staged files.
+
 ## [0.0.7] - 2026-04-20
 
 ### Fixed

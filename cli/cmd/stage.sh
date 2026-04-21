@@ -4,7 +4,12 @@
 # Subcommands:
 #   review    Interactively review staged entries: accept / edit / skip / quit
 #
-# Accept moves the staged file to .cairn/history/.
+# Accept routes each candidate based on its filename prefix (v0.0.8+):
+#   history-candidate_*        → .cairn/history/   (strip prefix)
+#   domain-update-candidate_*  → open $EDITOR on target domains/*.md
+#   output-update-candidate_*  → open $EDITOR on .cairn/output.md
+#   audit-candidate_*          → .cairn/audits/    (strip prefix)
+#   <no prefix>                → .cairn/history/   (legacy behavior)
 # Edit invokes $EDITOR (falls back to vi).
 # Skip leaves the entry in staged/.
 # Quit stops without processing remaining entries.
@@ -23,7 +28,38 @@ _stage_highlight_todo() {
 }
 
 # -----------------------------------------------------------------------------
-# Extract cairn-analyze meta-comment values from a staged file.
+# Detect candidate kind from filename prefix (v0.0.8+).
+# Outputs: history | domain-update | output-update | audit | legacy
+# -----------------------------------------------------------------------------
+_stage_detect_kind() {
+    local fname="$1"
+    case "$fname" in
+        history-candidate_*)       echo "history" ;;
+        domain-update-candidate_*) echo "domain-update" ;;
+        output-update-candidate_*) echo "output-update" ;;
+        audit-candidate_*)         echo "audit" ;;
+        *)                         echo "legacy" ;;
+    esac
+}
+
+# -----------------------------------------------------------------------------
+# Extract target domain from a domain-update-candidate file.
+# Checks # target-domain: meta-comment first, then domain: field.
+# -----------------------------------------------------------------------------
+_stage_extract_candidate_domain() {
+    local file="$1"
+    local td
+    td="$(grep '^# target-domain:' "$file" 2>/dev/null | head -1 \
+        | sed 's/^# target-domain: *//' | tr -d '[:space:]' || true)"
+    if [ -z "$td" ]; then
+        td="$(grep '^domain:' "$file" 2>/dev/null | head -1 \
+            | sed 's/^domain: *//' | tr -d '[:space:]' || true)"
+    fi
+    echo "$td"
+}
+
+# -----------------------------------------------------------------------------
+# Extract cairn-analyze or cairn-reflect meta-comment values from a staged file.
 # Sets _STAGE_META_CONFIDENCE and _STAGE_META_SOURCE.
 # -----------------------------------------------------------------------------
 _stage_extract_meta() {
@@ -32,24 +68,25 @@ _stage_extract_meta() {
     _STAGE_META_SOURCE=""
     _STAGE_META_IS_ANALYZE=false
 
-    if grep -q '^# cairn-analyze:' "$file" 2>/dev/null; then
+    if grep -qE '^# cairn-(analyze|reflect):' "$file" 2>/dev/null; then
         _STAGE_META_IS_ANALYZE=true
         _STAGE_META_CONFIDENCE="$(grep '^# confidence:' "$file" 2>/dev/null \
-            | head -1 | sed 's/^# confidence: *//')"
+            | head -1 | sed 's/^# confidence: *//' || true)"
         _STAGE_META_SOURCE="$(grep '^# source:' "$file" 2>/dev/null \
-            | head -1 | sed 's/^# source: *//')"
+            | head -1 | sed 's/^# source: *//' || true)"
     fi
 }
 
 # -----------------------------------------------------------------------------
-# Write a copy of the staged file with all cairn-analyze meta-comment lines
-# stripped (lines starting with "# cairn-analyze:", "# confidence:", "# source:").
-# Used when accepting an analyze-sourced entry into history/.
+# Write a copy of the staged file with all tool meta-comment lines stripped.
+# Covers both cairn-analyze and cairn-reflect meta-comment headers.
+# Used when accepting any tool-generated entry.
 # -----------------------------------------------------------------------------
 _stage_strip_meta() {
     local src_file="$1"
     local dst_file="$2"
-    grep -v '^# cairn-analyze:\|^# confidence:\|^# source:\|^# layer:' "$src_file" > "$dst_file"
+    grep -v '^# cairn-analyze:\|^# cairn-reflect:\|^# confidence:\|^# source:\|^# layer:\|^# kind:\|^# target-domain:' \
+        "$src_file" > "$dst_file"
 }
 
 # -----------------------------------------------------------------------------
@@ -86,14 +123,27 @@ _stage_review() {
         local fname
         fname="$(basename "$staged_file")"
 
-        # Extract analyze metadata (sets _STAGE_META_* globals)
+        # Detect candidate kind (v0.0.8+)
+        local kind
+        kind="$(_stage_detect_kind "$fname")"
+
+        # Extract analyze/reflect metadata (sets _STAGE_META_* globals)
         _stage_extract_meta "$staged_file"
 
         # Display entry header
         echo ""
         echo -e "${C_BOLD}$(msg_stage_entry_header "$(( idx + 1 ))" "$total" "$fname")${C_RESET}"
 
-        # Show analyze confidence/source if present
+        # Show candidate kind routing hint
+        case "$kind" in
+            history)       echo -e "  ${C_DIM}$(msg_stage_kind_history)${C_RESET}" ;;
+            domain-update) echo -e "  ${C_CYAN}$(msg_stage_kind_domain)${C_RESET}" ;;
+            output-update) echo -e "  ${C_YELLOW}$(msg_stage_kind_output)${C_RESET}" ;;
+            audit)         echo -e "  ${C_CYAN}$(msg_stage_kind_audit)${C_RESET}" ;;
+            legacy)        echo -e "  ${C_DIM}$(msg_stage_kind_legacy)${C_RESET}" ;;
+        esac
+
+        # Show analyze/reflect confidence/source if present
         if [ "$_STAGE_META_IS_ANALYZE" = "true" ]; then
             local conf_color="$C_DIM"
             case "$_STAGE_META_CONFIDENCE" in
@@ -106,9 +156,9 @@ _stage_review() {
         fi
 
         echo ""
-        # Show file content (skip meta-comment lines for display) with [TODO] highlighted
-        grep -v '^# cairn-analyze:\|^# confidence:\|^# source:' "$staged_file" \
-            | _stage_highlight_todo
+        # Show file content (skip all tool meta-comment lines) with [TODO] highlighted
+        grep -v '^# cairn-analyze:\|^# cairn-reflect:\|^# confidence:\|^# source:\|^# layer:\|^# kind:\|^# target-domain:' \
+            "$staged_file" | _stage_highlight_todo
         echo ""
 
         # Warn if [TODO] fields present
@@ -145,35 +195,81 @@ _stage_review() {
                     fi
                 fi
 
-                # Safety check: no collision in history/
-                local history_target="$history_dir/$fname"
-                if [ -f "$history_target" ]; then
-                    echo -e "  ${C_RED}error:${C_RESET} $(msg_stage_conflict "$fname")" >&2
-                    skipped=$(( skipped + 1 ))
-                    idx=$(( idx + 1 ))
-                    continue
-                fi
+                # Dispatch by candidate kind
+                case "$kind" in
+                    history|legacy)
+                        local hist_target_name="$fname"
+                        case "$fname" in
+                            history-candidate_*) hist_target_name="${fname#history-candidate_}" ;;
+                        esac
+                        local history_target="$history_dir/$hist_target_name"
+                        if [ -f "$history_target" ]; then
+                            echo -e "  ${C_RED}error:${C_RESET} $(msg_stage_conflict "$hist_target_name")" >&2
+                            skipped=$(( skipped + 1 ))
+                            idx=$(( idx + 1 ))
+                            continue
+                        fi
+                        mkdir -p "$history_dir"
+                        _stage_strip_meta "$staged_file" "$history_target"
+                        rm "$staged_file"
+                        echo ""
+                        echo -e "  ${C_GREEN}$(msg_stage_accepted "$hist_target_name")${C_RESET}"
+                        local domain_val=""
+                        domain_val="$(grep "^domain:" "$history_target" 2>/dev/null | head -1 \
+                            | sed 's/^domain: //' | tr -d '[:space:]' || true)"
+                        if [ -n "$domain_val" ] && [ "$domain_val" != "[TODO]" ]; then
+                            echo -e "  ${C_DIM}$(msg_stage_accepted_next "$domain_val")${C_RESET}"
+                        fi
+                        ;;
 
-                mkdir -p "$history_dir"
+                    audit)
+                        local audit_target_name="$fname"
+                        case "$fname" in
+                            audit-candidate_*) audit_target_name="${fname#audit-candidate_}" ;;
+                        esac
+                        local audits_dir="$cairn_dir/audits"
+                        local audit_target="$audits_dir/$audit_target_name"
+                        if [ -f "$audit_target" ]; then
+                            echo -e "  ${C_RED}error:${C_RESET} $(msg_stage_conflict "$audit_target_name")" >&2
+                            skipped=$(( skipped + 1 ))
+                            idx=$(( idx + 1 ))
+                            continue
+                        fi
+                        mkdir -p "$audits_dir"
+                        _stage_strip_meta "$staged_file" "$audit_target"
+                        rm "$staged_file"
+                        echo ""
+                        echo -e "  ${C_GREEN}$(msg_stage_accepted_audit "$audit_target_name")${C_RESET}"
+                        ;;
 
-                # If this is an analyze-sourced entry, strip meta-comments before moving
-                if [ "$_STAGE_META_IS_ANALYZE" = "true" ]; then
-                    _stage_strip_meta "$staged_file" "$history_target"
-                    rm "$staged_file"
-                else
-                    mv "$staged_file" "$history_target"
-                fi
+                    domain-update)
+                        local target_domain=""
+                        target_domain="$(_stage_extract_candidate_domain "$staged_file")"
+                        if [ -z "$target_domain" ]; then
+                            echo -e "  ${C_RED}error:${C_RESET} no target domain found — skipping" >&2
+                            skipped=$(( skipped + 1 ))
+                            idx=$(( idx + 1 ))
+                            continue
+                        fi
+                        local domain_target="$cairn_dir/domains/${target_domain}.md"
+                        local editor_cmd="${EDITOR:-vi}"
+                        echo ""
+                        echo -e "  ${C_CYAN}$(msg_stage_open_editor_domain "$target_domain")${C_RESET}"
+                        "$editor_cmd" "$domain_target"
+                        rm "$staged_file"
+                        echo -e "  ${C_GREEN}✓  merged — staged file removed${C_RESET}"
+                        ;;
 
-                echo ""
-                echo -e "  ${C_GREEN}$(msg_stage_accepted "$fname")${C_RESET}"
-
-                # Show next-step hint for cairn sync
-                local domain_val=""
-                domain_val="$(grep "^domain:" "$history_target" 2>/dev/null | head -1 \
-                    | sed 's/^domain: //' | tr -d '[:space:]' || true)"
-                if [ -n "$domain_val" ] && [ "$domain_val" != "[TODO]" ]; then
-                    echo -e "  ${C_DIM}$(msg_stage_accepted_next "$domain_val")${C_RESET}"
-                fi
+                    output-update)
+                        local output_target="$cairn_dir/output.md"
+                        local editor_cmd="${EDITOR:-vi}"
+                        echo ""
+                        echo -e "  ${C_YELLOW}$(msg_stage_open_editor_output)${C_RESET}"
+                        "$editor_cmd" "$output_target"
+                        rm "$staged_file"
+                        echo -e "  ${C_GREEN}✓  merged — staged file removed${C_RESET}"
+                        ;;
+                esac
 
                 accepted=$(( accepted + 1 ))
                 idx=$(( idx + 1 ))

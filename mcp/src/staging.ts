@@ -25,12 +25,13 @@ export function slugify(text: string): string {
         .replace(/-+$/, "");
 }
 
-/** Generate the history entry filename from decision_date and summary. */
+/** Generate the staged candidate filename from decision_date and summary.
+ *  Prefixed with history-candidate_ so cairn stage review routes it correctly. */
 export function generateFilename(
     decisionDate: string,
     summary: string,
 ): string {
-    return `${decisionDate}_${slugify(summary)}.md`;
+    return `history-candidate_${decisionDate}_${slugify(summary)}.md`;
 }
 
 /**
@@ -77,18 +78,20 @@ export async function stageEntry(
     entry: HistoryEntryInput,
 ): Promise<{ filepath: string; content: string }> {
     const filename = generateFilename(entry.decision_date, entry.summary);
+    // Strip prefix to get canonical history filename for conflict detection
+    const historyFilename = filename.replace(/^history-candidate_/, "");
 
-    // Check for conflicts in history/ first
-    const historyPath = join(historyDir, filename);
+    // Check for conflicts in history/ (using stripped filename)
+    const historyPath = join(historyDir, historyFilename);
     if (existsSync(historyPath)) {
         throw new CairnError(
             CairnErrorCode.STAGING_CONFLICT,
-            `A history entry with this filename already exists: .cairn/history/${filename}\n` +
+            `A history entry with this filename already exists: .cairn/history/${historyFilename}\n` +
                 `Use a different summary or decision_date to avoid the conflict.`,
         );
     }
 
-    // Check for conflicts in staged/
+    // Check for conflicts in staged/ (using full prefixed filename)
     const stagedPath = join(stagedDir, filename);
     if (existsSync(stagedPath)) {
         throw new CairnError(

@@ -364,3 +364,149 @@ _bidir_exit=0
 (cd "$_doctor_bidir_dir" && bash "$_CAIRN_BIN" doctor 2>&1) > "$_bidir_output" || _bidir_exit=$?
 assert_exit_code "bidirectional drift exits 1" 1 "$_bidir_exit"
 assert_contains "output-only drift warning" "$_bidir_output" "extra-in-output"
+
+# =============================================================================
+# Stack drift: stack entry not found in dep files → warns
+# =============================================================================
+
+start_suite "cairn doctor — Stack Drift Warns When Tech Not in Dep File"
+
+_doctor_stack_dir="$_CAIRN_TMPDIR/doctor_stack_$$"
+mkdir -p "$_doctor_stack_dir/.cairn/history" "$_doctor_stack_dir/.cairn/domains" \
+    "$_doctor_stack_dir/.cairn/staged"
+
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo ""
+    echo "## no-go"; echo ""; echo "## hooks"; echo ""
+    echo "## stack"; echo ""
+    echo "api: express"
+    echo "db: PostgreSQL"
+    echo ""; echo "## debt"; echo ""
+} > "$_doctor_stack_dir/.cairn/output.md"
+
+# package.json that does NOT include "express"
+printf '{"dependencies":{"fastify":"^4.0.0","axios":"^1.0.0"}}' \
+    > "$_doctor_stack_dir/package.json"
+
+_stack_drift_output="$_CAIRN_TMPDIR/doctor_stack_out_$$.txt"
+_stack_drift_exit=0
+(cd "$_doctor_stack_dir" && bash "$_CAIRN_BIN" doctor 2>&1) > "$_stack_drift_output" \
+    || _stack_drift_exit=$?
+
+assert_exit_code "stack drift: doctor exits 1 (drift found)" 1 "$_stack_drift_exit"
+assert_contains "stack drift: express not found warning" "$_stack_drift_output" "express"
+
+# =============================================================================
+# Stack drift: all stack entries present in dep file → no warning
+# =============================================================================
+
+start_suite "cairn doctor — Stack Drift OK When Tech Found in Dep File"
+
+_doctor_stack_ok_dir="$_CAIRN_TMPDIR/doctor_stack_ok_$$"
+mkdir -p "$_doctor_stack_ok_dir/.cairn/history" "$_doctor_stack_ok_dir/.cairn/domains" \
+    "$_doctor_stack_ok_dir/.cairn/staged"
+
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo ""
+    echo "## no-go"; echo ""; echo "## hooks"; echo ""
+    echo "## stack"; echo ""
+    echo "api: fastify"
+    echo ""; echo "## debt"; echo ""
+} > "$_doctor_stack_ok_dir/.cairn/output.md"
+
+# package.json that DOES include "fastify"
+printf '{"dependencies":{"fastify":"^4.0.0","axios":"^1.0.0"}}' \
+    > "$_doctor_stack_ok_dir/package.json"
+
+_stack_ok_exit=0
+_stack_ok_output="$_CAIRN_TMPDIR/doctor_stack_ok_out_$$.txt"
+(cd "$_doctor_stack_ok_dir" && bash "$_CAIRN_BIN" doctor 2>&1) > "$_stack_ok_output" \
+    || _stack_ok_exit=$?
+
+assert_exit_code "stack ok: doctor exits 0" 0 "$_stack_ok_exit"
+assert_contains "stack ok: no drift warning" "$_stack_ok_output" "stack entries match"
+
+# =============================================================================
+# Audit check: transition without audit → warns
+# =============================================================================
+
+start_suite "cairn doctor — Transition History Without Audit Warns"
+
+_doctor_noaudit_dir="$_CAIRN_TMPDIR/doctor_noaudit_$$"
+mkdir -p "$_doctor_noaudit_dir/.cairn/history" "$_doctor_noaudit_dir/.cairn/domains" \
+    "$_doctor_noaudit_dir/.cairn/staged"
+
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo ""
+    echo "## no-go"; echo ""; echo "## hooks"; echo ""
+    echo "## stack"; echo ""; echo "## debt"; echo ""
+} > "$_doctor_noaudit_dir/.cairn/output.md"
+
+# Write a transition history entry with no corresponding audit
+{
+    echo "type: transition"
+    echo "domain: state-management"
+    echo "decision_date: 2024-05"
+    echo "recorded_date: 2024-05"
+    echo "summary: migrated from Redux to Zustand"
+    echo "rejected: Redux: boilerplate overhead"
+    echo "reason: Team alignment on simpler state model"
+    echo "revisit_when: never"
+} > "$_doctor_noaudit_dir/.cairn/history/2024-05_redux-to-zustand.md"
+
+_noaudit_output="$_CAIRN_TMPDIR/doctor_noaudit_out_$$.txt"
+_noaudit_exit=0
+(cd "$_doctor_noaudit_dir" && bash "$_CAIRN_BIN" doctor 2>&1) > "$_noaudit_output" \
+    || _noaudit_exit=$?
+
+assert_exit_code "missing audit: doctor exits 1" 1 "$_noaudit_exit"
+assert_contains "missing audit: warning shows domain" "$_noaudit_output" "state-management"
+
+# =============================================================================
+# Audit check: transition WITH matching audit → no warning
+# =============================================================================
+
+start_suite "cairn doctor — Transition With Matching Audit Is OK"
+
+_doctor_audit_ok_dir="$_CAIRN_TMPDIR/doctor_audit_ok_$$"
+mkdir -p "$_doctor_audit_ok_dir/.cairn/history" "$_doctor_audit_ok_dir/.cairn/domains" \
+    "$_doctor_audit_ok_dir/.cairn/staged" "$_doctor_audit_ok_dir/.cairn/audits"
+
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo ""
+    echo "## no-go"; echo ""; echo "## hooks"; echo ""
+    echo "## stack"; echo ""; echo "## debt"; echo ""
+} > "$_doctor_audit_ok_dir/.cairn/output.md"
+
+{
+    echo "type: transition"
+    echo "domain: state-management"
+    echo "decision_date: 2024-05"
+    echo "recorded_date: 2024-05"
+    echo "summary: migrated from Redux to Zustand"
+    echo "rejected: Redux"
+    echo "reason: Simpler model"
+    echo "revisit_when: never"
+} > "$_doctor_audit_ok_dir/.cairn/history/2024-05_redux-to-zustand.md"
+
+# Audit file for the same domain
+{
+    echo "# Audit: migrated from Redux to Zustand"
+    echo "date: 2024-05"
+    echo "domain: state-management"
+    echo "trigger: migrated from Redux to Zustand"
+    echo "status: complete"
+    echo ""
+    echo "## Expected removals"
+    echo "- redux package"
+    echo ""
+    echo "## Findings"
+    echo "- redux removed from package.json"
+    echo ""
+    echo "## Follow-up"
+    echo "- none"
+} > "$_doctor_audit_ok_dir/.cairn/audits/2024-05_state-management-migration.md"
+
+_audit_ok_exit=0
+(cd "$_doctor_audit_ok_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null) || _audit_ok_exit=$?
+assert_exit_code "audit ok: doctor exits 0" 0 "$_audit_ok_exit"

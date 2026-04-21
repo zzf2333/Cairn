@@ -13,6 +13,8 @@
 #   doctor    Run health checks on the .cairn/ structure (rules-only, no LLM)
 #   stage     Manage staged history entries (review / accept / skip)
 #   analyze   Analyze git history and generate staged candidates
+#   reflect   Scan recent commits and emit staged update candidates
+#   audit     Track migration residue (start / scan)
 #   version   Print version
 #   help      Print this help message
 #
@@ -33,7 +35,7 @@ done
 CAIRN_CLI_DIR="$(cd -P "$(dirname "$_cairn_src")" && pwd)"
 unset _cairn_src _cairn_dir
 
-CAIRN_VERSION="0.0.7"
+CAIRN_VERSION="0.0.8"
 
 # =============================================================================
 # Color support
@@ -253,6 +255,8 @@ show_help() {
     echo -e "  ${C_CYAN}doctor${C_RESET}   $(msg_help_cmd_doctor)"
     echo -e "  ${C_CYAN}stage${C_RESET}    $(msg_help_cmd_stage)"
     echo -e "  ${C_CYAN}analyze${C_RESET}  $(msg_help_cmd_analyze)"
+    echo -e "  ${C_CYAN}reflect${C_RESET}  $(msg_help_cmd_reflect)"
+    echo -e "  ${C_CYAN}audit${C_RESET}    $(msg_help_cmd_audit)"
     echo -e "  ${C_CYAN}version${C_RESET}  $(msg_help_cmd_version)"
     echo -e "  ${C_CYAN}help${C_RESET}     $(msg_help_cmd_help)"
     echo ""
@@ -304,6 +308,14 @@ case "$CMD" in
     analyze)
         source "$CAIRN_CLI_DIR/cmd/analyze.sh"
         cmd_analyze "$@"
+        ;;
+    reflect)
+        source "$CAIRN_CLI_DIR/cmd/reflect.sh"
+        cmd_reflect "$@"
+        ;;
+    audit)
+        source "$CAIRN_CLI_DIR/cmd/audit.sh"
+        cmd_audit "$@"
         ;;
     version|--version|-v)
         echo "cairn $CAIRN_VERSION"

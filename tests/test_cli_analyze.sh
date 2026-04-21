@@ -709,3 +709,106 @@ if [ -f "$_l2acc_history" ]; then
     assert_contains "layer2 accept: type preserved" \
         "$_l2acc_history" '^type: rejection$'
 fi
+
+# =============================================================================
+# v0.0.8: output-update-candidate_ emitted for stack drift
+# =============================================================================
+
+start_suite "cairn analyze — Stack Drift Emits output-update-candidate_"
+
+_an_stack_dir="$_CAIRN_TMPDIR/analyze_stack_drift_$$"
+_setup_analyze_fixture "$_an_stack_dir"
+cd "$_an_stack_dir"
+
+# output.md has a key: value stack entry not in package.json
+cat > .cairn/output.md << 'OUTMD'
+## stage
+
+phase: test (2024-01+)
+mode: stability > speed
+
+## no-go
+
+## hooks
+
+## stack
+
+api: express
+
+## debt
+
+OUTMD
+
+# package.json does NOT contain express
+printf '{"dependencies":{"fastify":"^4.0.0"}}' > package.json
+git add . && git commit -q -m "chore: add package.json"
+
+(bash "$_CAIRN_BIN" analyze --only layer3 2>/dev/null) || true
+
+_an_stack_count=0
+ls .cairn/staged/output-update-candidate_*.md >/dev/null 2>&1 && \
+    _an_stack_count="$(ls .cairn/staged/output-update-candidate_*.md | wc -l | tr -d '[:space:]')"
+assert_exit_code "stack drift: output-update-candidate_ written" \
+    "0" "$([ "$_an_stack_count" -ge 1 ] && echo 0 || echo 1)"
+
+_an_stack_file="$(ls .cairn/staged/output-update-candidate_*.md 2>/dev/null | head -1)"
+if [ -n "$_an_stack_file" ]; then
+    assert_contains "output-update-candidate_: kind meta present" \
+        "$_an_stack_file" "^# kind: output-update"
+    assert_contains "output-update-candidate_: mentions stale tech" \
+        "$_an_stack_file" "express"
+fi
+
+cd - >/dev/null
+
+# =============================================================================
+# v0.0.8: audit-candidate_ emitted for migration keyword commits
+# =============================================================================
+
+start_suite "cairn analyze — Migration Keyword Commit Emits audit-candidate_"
+
+_an_audit_dir="$_CAIRN_TMPDIR/analyze_audit_cand_$$"
+_setup_analyze_fixture "$_an_audit_dir"
+cd "$_an_audit_dir"
+
+# Commit with strong migration signal
+echo "// new state" >> index.js
+git add index.js
+git commit -q -m "refactor: migrated from redux to zustand"
+
+(bash "$_CAIRN_BIN" analyze --only layer3 2>/dev/null) || true
+
+_an_audit_count=0
+ls .cairn/staged/audit-candidate_*.md >/dev/null 2>&1 && \
+    _an_audit_count="$(ls .cairn/staged/audit-candidate_*.md | wc -l | tr -d '[:space:]')"
+assert_exit_code "migration commit: audit-candidate_ written" \
+    "0" "$([ "$_an_audit_count" -ge 1 ] && echo 0 || echo 1)"
+
+_an_audit_file="$(ls .cairn/staged/audit-candidate_*.md 2>/dev/null | head -1)"
+if [ -n "$_an_audit_file" ]; then
+    assert_contains "audit-candidate_: kind meta present" \
+        "$_an_audit_file" "^# kind: audit"
+    assert_contains "audit-candidate_: status: open" \
+        "$_an_audit_file" "^status: open"
+    assert_contains "audit-candidate_: trigger field present" \
+        "$_an_audit_file" "^trigger:"
+fi
+
+cd - >/dev/null
+
+# =============================================================================
+# v0.0.8: output.md.draft includes ## open questions section
+# =============================================================================
+
+start_suite "cairn analyze — Layer 1 Draft Includes ## open questions"
+
+_an_oq_dir="$_CAIRN_TMPDIR/analyze_open_q_$$"
+_setup_analyze_fixture "$_an_oq_dir"
+
+(cd "$_an_oq_dir" && bash "$_CAIRN_BIN" analyze --only layer1 2>/dev/null) || true
+
+assert_file_exists "layer1 draft created" "$_an_oq_dir/.cairn/output.md.draft"
+if [ -f "$_an_oq_dir/.cairn/output.md.draft" ]; then
+    assert_contains "draft has ## open questions" \
+        "$_an_oq_dir/.cairn/output.md.draft" "^## open questions$"
+fi

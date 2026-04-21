@@ -33,3 +33,8 @@ deploy: Railway
 
 AUTH-COUPLING: accepted | fix when team>4 or MAU>100k | no refactor now
 WS-CONCURRENCY: accepted | resolves on CDN migration | no polling fallback
+
+## open questions
+
+- Whether billing should stay in the monolith or split into a separate service before Series A
+- Whether WebSocket notifications should remain primary or fall back to polling after CDN migration

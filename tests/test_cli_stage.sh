@@ -350,3 +350,153 @@ if [ -f "$_plain_history" ]; then
     assert_contains "normal entry: type field intact" "$_plain_history" '^type: rejection$'
     assert_contains "normal entry: reason field intact" "$_plain_history" '^reason: License cost'
 fi
+
+# =============================================================================
+# history-candidate_ prefix: stripped on accept, moved to history/
+# =============================================================================
+
+start_suite "cairn stage review — history-candidate_ Prefix Stripped on Accept"
+
+_st_hist_prefix_dir="$_CAIRN_TMPDIR/stage_hist_prefix_$$"
+mkdir -p "$_st_hist_prefix_dir/.cairn/history" "$_st_hist_prefix_dir/.cairn/staged"
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"
+    echo ""; echo "## no-go"; echo ""; echo "## hooks"; echo ""; echo "## stack"; echo ""; echo "## debt"; echo ""
+} > "$_st_hist_prefix_dir/.cairn/output.md"
+
+cat > "$_st_hist_prefix_dir/.cairn/staged/history-candidate_2024-05_grpc-rejected.md" << 'STAGED'
+type: rejection
+domain: api-layer
+decision_date: 2024-05
+recorded_date: 2024-05
+summary: gRPC rejected due to latency
+rejected: gRPC internal traffic
+reason: Latency improvement below threshold
+revisit_when: When P99 > 200ms
+STAGED
+
+(cd "$_st_hist_prefix_dir" && printf "a\n" \
+    | bash "$_CAIRN_BIN" stage review 2>/dev/null) || true
+
+assert_file_not_exists "history-candidate_: staged file removed" \
+    "$_st_hist_prefix_dir/.cairn/staged/history-candidate_2024-05_grpc-rejected.md"
+assert_file_exists "history-candidate_: prefix stripped in history/" \
+    "$_st_hist_prefix_dir/.cairn/history/2024-05_grpc-rejected.md"
+assert_file_not_exists "history-candidate_: prefixed name not present in history/" \
+    "$_st_hist_prefix_dir/.cairn/history/history-candidate_2024-05_grpc-rejected.md"
+if [ -f "$_st_hist_prefix_dir/.cairn/history/2024-05_grpc-rejected.md" ]; then
+    assert_contains "history-candidate_: content preserved" \
+        "$_st_hist_prefix_dir/.cairn/history/2024-05_grpc-rejected.md" '^type: rejection$'
+fi
+
+# =============================================================================
+# audit-candidate_ prefix: prefix stripped, moved to audits/
+# =============================================================================
+
+start_suite "cairn stage review — audit-candidate_ Prefix Stripped, Moves to Audits"
+
+_st_audit_cand_dir="$_CAIRN_TMPDIR/stage_audit_cand_$$"
+mkdir -p "$_st_audit_cand_dir/.cairn/staged"
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"
+    echo ""; echo "## no-go"; echo ""; echo "## hooks"; echo ""; echo "## stack"; echo ""; echo "## debt"; echo ""
+} > "$_st_audit_cand_dir/.cairn/output.md"
+
+cat > "$_st_audit_cand_dir/.cairn/staged/audit-candidate_2024-05_state-management-migration.md" << 'STAGED'
+# cairn-reflect: v0.0.8
+# kind: audit
+# confidence: medium
+# source: commit abc1234
+# Audit: migrated from redux to zustand
+date: 2024-05
+domain: state-management
+trigger: migrated from redux to zustand
+status: open
+
+## Expected removals
+- [TODO]
+
+## Findings
+- [TODO]
+
+## Follow-up
+- [TODO]
+STAGED
+
+(cd "$_st_audit_cand_dir" && printf "a\ny\n" \
+    | bash "$_CAIRN_BIN" stage review 2>/dev/null) || true
+
+assert_file_not_exists "audit-candidate_: staged file removed" \
+    "$_st_audit_cand_dir/.cairn/staged/audit-candidate_2024-05_state-management-migration.md"
+assert_file_exists "audit-candidate_: audit file created in audits/" \
+    "$_st_audit_cand_dir/.cairn/audits/2024-05_state-management-migration.md"
+assert_file_not_exists "audit-candidate_: prefixed name not present in audits/" \
+    "$_st_audit_cand_dir/.cairn/audits/audit-candidate_2024-05_state-management-migration.md"
+
+if [ -f "$_st_audit_cand_dir/.cairn/audits/2024-05_state-management-migration.md" ]; then
+    assert_contains "audit-candidate_: status: open preserved" \
+        "$_st_audit_cand_dir/.cairn/audits/2024-05_state-management-migration.md" "^status: open"
+    assert_not_contains "audit-candidate_: cairn-reflect meta stripped" \
+        "$_st_audit_cand_dir/.cairn/audits/2024-05_state-management-migration.md" "^# cairn-reflect:"
+    assert_not_contains "audit-candidate_: kind meta stripped" \
+        "$_st_audit_cand_dir/.cairn/audits/2024-05_state-management-migration.md" "^# kind:"
+fi
+
+# =============================================================================
+# domain-update-candidate_ prefix: opens editor on target domain file
+# =============================================================================
+
+start_suite "cairn stage review — domain-update-candidate_ Opens Editor, Removes Staged File"
+
+_st_domain_upd_dir="$_CAIRN_TMPDIR/stage_domain_upd_$$"
+mkdir -p "$_st_domain_upd_dir/.cairn/staged" "$_st_domain_upd_dir/.cairn/domains"
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"
+    echo ""; echo "## no-go"; echo ""; echo "## hooks"; echo ""; echo "## stack"; echo ""; echo "## debt"; echo ""
+} > "$_st_domain_upd_dir/.cairn/output.md"
+echo "# api-layer" > "$_st_domain_upd_dir/.cairn/domains/api-layer.md"
+
+cat > "$_st_domain_upd_dir/.cairn/staged/domain-update-candidate_2024-05_api-layer-drift.md" << 'STAGED'
+# cairn-reflect: v0.0.8
+# kind: domain-update
+# target-domain: api-layer
+---
+domain: api-layer
+updated: 2024-05
+status: active
+---
+## current design
+REST API using Fastify (migrated from Express).
+STAGED
+
+(cd "$_st_domain_upd_dir" && export EDITOR=true && printf "a\n" \
+    | bash "$_CAIRN_BIN" stage review 2>/dev/null) || true
+
+assert_file_not_exists "domain-update-candidate_: staged file removed after editor" \
+    "$_st_domain_upd_dir/.cairn/staged/domain-update-candidate_2024-05_api-layer-drift.md"
+
+# =============================================================================
+# output-update-candidate_ prefix: opens editor on output.md
+# =============================================================================
+
+start_suite "cairn stage review — output-update-candidate_ Opens Editor, Removes Staged File"
+
+_st_output_upd_dir="$_CAIRN_TMPDIR/stage_output_upd_$$"
+mkdir -p "$_st_output_upd_dir/.cairn/staged"
+{
+    echo "## stage"; echo ""; echo "phase: test (2024-01+)"
+    echo ""; echo "## no-go"; echo ""; echo "## hooks"; echo ""; echo "## stack"; echo ""; echo "## debt"; echo ""
+} > "$_st_output_upd_dir/.cairn/output.md"
+
+cat > "$_st_output_upd_dir/.cairn/staged/output-update-candidate_2024-05_stack-drift.md" << 'STAGED'
+# cairn-reflect: v0.0.8
+# kind: output-update
+## Suggested output.md stack update
+stack entry "api: express" may be stale — Fastify detected in package.json.
+STAGED
+
+(cd "$_st_output_upd_dir" && export EDITOR=true && printf "a\n" \
+    | bash "$_CAIRN_BIN" stage review 2>/dev/null) || true
+
+assert_file_not_exists "output-update-candidate_: staged file removed after editor" \
+    "$_st_output_upd_dir/.cairn/staged/output-update-candidate_2024-05_stack-drift.md"

@@ -48,6 +48,10 @@ source "$TESTS_DIR/test_cli_doctor.sh"
 source "$TESTS_DIR/test_cli_stage.sh"
 # shellcheck source=test_cli_analyze.sh
 source "$TESTS_DIR/test_cli_analyze.sh"
+# shellcheck source=test_cli_reflect.sh
+source "$TESTS_DIR/test_cli_reflect.sh"
+# shellcheck source=test_cli_audit.sh
+source "$TESTS_DIR/test_cli_audit.sh"
 # shellcheck source=test_cli_symlink.sh
 source "$TESTS_DIR/test_cli_symlink.sh"
 

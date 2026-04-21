@@ -476,6 +476,8 @@ _analyze_write_output_draft() {
         echo ""
         echo "[TODO — run \`cairn stage review\` for Layer 3 candidates]"
         echo ""
+        echo "## open questions"
+        echo ""
         echo "# ── detection notes ──────────────────────────────────────────────────────────"
         echo "# dir structure : ${dir_summary}"
         echo "# infra         : ${infra_list}"
@@ -799,6 +801,142 @@ _analyze_emit_todo_candidates() {
     done <<< "$todo_data"
 }
 
+# ── Emit output-update-candidate for stack drift (v0.0.8) ────────────────────
+# Compares output.md ## stack key: value entries against current dep files.
+# Emits one output-update-candidate_ file if any entries are not found.
+_analyze_emit_stack_drift_candidate() {
+    local cairn_dir="$1" dry_run="$2" limit="$3" recorded_date="$4"
+    local output_md="$5"
+    shift 5
+    local dep_files=("$@")
+
+    [ -f "$output_md" ] || return 0
+    [ "$_ANALYZE_TOTAL" -ge "$limit" ] && return 0
+
+    local stack_lines
+    stack_lines="$(awk '/^## stack/{found=1; next} /^## [a-z]/{found=0} found && /^[a-zA-Z]/{print}' \
+        "$output_md" | grep -E '^[a-zA-Z].*:' || true)"
+    [ -z "$stack_lines" ] && return 0
+
+    # Collect all package names from dep files
+    local all_deps=""
+    for dep_file in "${dep_files[@]}"; do
+        [ -f "$dep_file" ] || continue
+        local pkgs=""
+        case "$dep_file" in
+            package.json)     pkgs="$(_analyze_parse_package_json     "$dep_file" 2>/dev/null || true)" ;;
+            go.mod)           pkgs="$(_analyze_parse_go_mod           "$dep_file" 2>/dev/null || true)" ;;
+            requirements.txt) pkgs="$(_analyze_parse_requirements_txt "$dep_file" 2>/dev/null || true)" ;;
+            pyproject.toml)   pkgs="$(_analyze_parse_pyproject_toml   "$dep_file" 2>/dev/null || true)" ;;
+            Cargo.toml)       pkgs="$(_analyze_parse_cargo_toml       "$dep_file" 2>/dev/null || true)" ;;
+            *) continue ;;
+        esac
+        all_deps="${all_deps}${pkgs}"$'\n'
+    done
+    [ -z "$all_deps" ] && return 0
+
+    local drift_lines=""
+    while IFS= read -r entry; do
+        [ -z "$entry" ] && continue
+        local layer tech tech_lower
+        layer="${entry%%:*}"
+        tech="${entry#*: }"
+        layer="$(echo "$layer" | tr -d '[:space:]')"
+        tech="$(echo "$tech" | tr -d '[:space:]')"
+        [ -z "$tech" ] && continue
+        tech_lower="$(echo "$tech" | tr '[:upper:]' '[:lower:]')"
+        if ! echo "$all_deps" | grep -qi "$tech_lower" 2>/dev/null; then
+            drift_lines="${drift_lines}${layer}: ${tech}"$'\n'
+        fi
+    done <<< "$stack_lines"
+
+    [ -z "$drift_lines" ] && return 0
+
+    local slug="analyze-stack-drift"
+    _analyze_slug_seen "$slug" && return 0
+    _analyze_mark_slug "$slug"
+
+    local fname="output-update-candidate_${recorded_date}_${slug}.md"
+
+    if [ "$dry_run" = "false" ]; then
+        mkdir -p "${cairn_dir}/staged"
+        {
+            echo "# cairn-analyze: v0.0.6"
+            echo "# confidence: low"
+            echo "# source: stack drift — output.md ## stack vs current dep files"
+            echo "# kind: output-update"
+            echo "## Suggested output.md ## stack update"
+            echo ""
+            echo "The following entries in output.md ## stack were not found in current"
+            echo "dependency files and may be stale:"
+            echo ""
+            while IFS= read -r drift_entry; do
+                [ -z "$drift_entry" ] && continue
+                echo "- ${drift_entry}"
+            done <<< "$drift_lines"
+            echo ""
+            echo "Review output.md ## stack and remove or update stale entries."
+        } > "${cairn_dir}/staged/${fname}"
+        echo -e "  $(msg_analyze_candidate_written "$fname" "low")"
+    fi
+
+    _ANALYZE_COUNT_LOW=$(( _ANALYZE_COUNT_LOW + 1 ))
+    _ANALYZE_TOTAL=$(( _ANALYZE_TOTAL + 1 ))
+    _ANALYZE_CANDIDATE_LINES="${_ANALYZE_CANDIDATE_LINES}${fname}|low"$'\n'
+}
+
+# ── Emit audit-candidate for migration keyword commits (v0.0.8) ───────────────
+# For each commit in keyword_data that contains strong migration signals,
+# emits one audit-candidate_ file to track cleanup obligations.
+_analyze_emit_audit_candidate() {
+    local cairn_dir="$1" dry_run="$2" limit="$3" recorded_date="$4"
+    local keyword_data="$5"  # newline-separated SHA|YYYY-MM|SUBJECT
+
+    while IFS='|' read -r sha yymm subject; do
+        [ -z "$sha" ] && continue
+        [ "$_ANALYZE_TOTAL" -ge "$limit" ] && break
+
+        # Only emit audit candidates for strong migration signals
+        echo "$subject" | grep -qiE '(migrat|replac)' || continue
+
+        local slug
+        slug="analyze-audit-$(_analyze_slugify "${subject}")"
+        _analyze_slug_seen "$slug" && continue
+        _analyze_mark_slug "$slug"
+
+        local fname="audit-candidate_${yymm}_${slug}.md"
+
+        if [ "$dry_run" = "false" ]; then
+            mkdir -p "${cairn_dir}/staged"
+            {
+                echo "# cairn-analyze: v0.0.6"
+                echo "# confidence: medium"
+                echo "# source: commit ${sha} — ${yymm} — ${subject}"
+                echo "# kind: audit"
+                echo "# Audit: ${subject}"
+                echo "date: ${yymm}"
+                echo "domain: [TODO]"
+                echo "trigger: ${subject}"
+                echo "status: open"
+                echo ""
+                echo "## Expected removals"
+                echo "- [TODO]"
+                echo ""
+                echo "## Findings"
+                echo "- [TODO — run cairn audit scan to populate]"
+                echo ""
+                echo "## Follow-up"
+                echo "- [TODO]"
+            } > "${cairn_dir}/staged/${fname}"
+            echo -e "  $(msg_analyze_candidate_written "$fname" "medium")"
+        fi
+
+        _ANALYZE_COUNT_MEDIUM=$(( _ANALYZE_COUNT_MEDIUM + 1 ))
+        _ANALYZE_TOTAL=$(( _ANALYZE_TOTAL + 1 ))
+        _ANALYZE_CANDIDATE_LINES="${_ANALYZE_CANDIDATE_LINES}${fname}|medium"$'\n'
+    done <<< "$keyword_data"
+}
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 _analyze_print_summary() {
     local dry_run="$1"
@@ -1114,11 +1252,21 @@ cmd_analyze() {
             _analyze_emit_keyword_candidates \
                 "$cairn_dir" "$dry_run" "$limit" "$recorded_date" \
                 "$keyword_data" "$dep_shas"
+            # Also emit audit candidates for migration-signal commits (v0.0.8)
+            _analyze_emit_audit_candidate \
+                "$cairn_dir" "$dry_run" "$limit" "$recorded_date" "$keyword_data"
         fi
 
         if [ "$do_todo" = "true" ] && [ -n "$todo_data" ]; then
             _analyze_emit_todo_candidates \
                 "$cairn_dir" "$dry_run" "$limit" "$recorded_date" "$todo_data"
+        fi
+
+        # Stack drift candidate: output.md ## stack vs dep files (v0.0.8)
+        if [ -f "${cairn_dir}/output.md" ] && [ ${#dep_files[@]} -gt 0 ]; then
+            _analyze_emit_stack_drift_candidate \
+                "$cairn_dir" "$dry_run" "$limit" "$recorded_date" \
+                "${cairn_dir}/output.md" "${dep_files[@]}"
         fi
     fi
 

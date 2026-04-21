@@ -77,18 +77,23 @@ export async function handleCairnPropose(args: {
         const filename = generateFilename(decision_date, summary);
         const relativePath = `.cairn/staged/${filename}`;
 
+        // Strip history-candidate_ prefix to get the canonical history filename
+        const historyFilename = filename.replace(/^history-candidate_/, "");
         const message = [
             `Proposed entry staged at ${relativePath}`,
             "",
-            "To approve (move to canonical history):",
-            `  mv ${relativePath} .cairn/history/${filename}`,
+            "To review and approve (cairn stage review strips prefix automatically):",
+            "  cairn stage review",
+            "",
+            "To approve manually (strip prefix, move to history):",
+            `  mv ${relativePath} .cairn/history/${historyFilename}`,
             "",
             "To discard:",
             `  rm ${relativePath}`,
             "",
             "To edit before approving:",
             `  $EDITOR ${relativePath}`,
-            `  mv ${relativePath} .cairn/history/${filename}`,
+            `  mv ${relativePath} .cairn/history/${historyFilename}`,
             "",
             "Entry content:",
             "---",

@@ -345,6 +345,9 @@ step2_create_output_md() {
                 echo "${item}"
             done
         fi
+        echo ""
+        echo "## open questions"
+        echo ""
     } > .cairn/output.md
 
     CREATED_FILES+=(".cairn/output.md")

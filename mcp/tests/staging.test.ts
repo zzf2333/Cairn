@@ -38,12 +38,12 @@ describe("slugify", () => {
 });
 
 describe("generateFilename", () => {
-    it("combines date and slug", () => {
+    it("combines date and slug with history-candidate_ prefix", () => {
         const filename = generateFilename(
             "2023-09",
             "Rejected tRPC after a trial",
         );
-        expect(filename).toBe("2023-09_rejected-trpc-after-a-trial.md");
+        expect(filename).toBe("history-candidate_2023-09_rejected-trpc-after-a-trial.md");
     });
 
     it("ends with .md", () => {
@@ -157,7 +157,7 @@ describe("stageEntry", () => {
         const { filepath } = await stageEntry(stagedDir, historyDir, entry);
         expect(existsSync(filepath)).toBe(true);
         expect(filepath).toContain("staged");
-        expect(filepath).toContain("2023-09_rejected-graphql.md");
+        expect(filepath).toContain("history-candidate_2023-09_rejected-graphql.md");
     });
 
     it("throws on conflict with existing history entry", async () => {

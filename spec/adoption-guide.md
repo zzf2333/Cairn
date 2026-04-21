@@ -490,3 +490,60 @@ the new file, save it to `.cairn/domains/<domain>.md` and run `cairn status` to
 confirm the domain is up to date.
 
 **Phase 3 note:** If you are using the Cairn MCP Server (`mcp/`), use `cairn_sync_domain("api-layer")` instead — it returns the same prompt context directly to the AI without a copy-paste step.
+
+---
+
+## Phase 3: After-Task Write-Back
+
+After a meaningful feature, refactor, or migration, Cairn needs to reflect on what changed.
+Without a write-back step, Cairn becomes stale and the next AI session reads outdated memory.
+
+### `cairn reflect`
+
+Analyzes recent commits and produces staged candidate updates across all four kinds.
+
+```bash
+# Reflect on the last 3 commits
+cairn reflect --since HEAD~3
+
+# Reflect on changes since a specific commit
+cairn reflect --from-commit <sha>
+
+# Preview candidates without writing (dry-run)
+cairn reflect --dry-run
+```
+
+After running, review the generated candidates:
+
+```bash
+cairn stage review
+```
+
+`cairn stage review` now routes each candidate based on its filename prefix:
+- `history-candidate_*` → moves to `.cairn/history/`
+- `domain-update-candidate_*` → opens your editor on the target domain file
+- `output-update-candidate_*` → opens your editor on `output.md`
+- `audit-candidate_*` → moves to `.cairn/audits/`
+
+### `cairn audit`
+
+For large migrations, explicitly track cleanup obligations.
+
+```bash
+# Create an audit file after a migration
+cairn audit start state-management --trigger "migrated from Redux to Zustand"
+
+# Scan for residue (leftover imports, removed deps still referenced)
+cairn audit scan
+cairn audit scan state-management   # scan one domain only
+```
+
+Check `.cairn/audits/<name>.md` to review findings and mark items resolved.
+
+### Recommended after-task workflow
+
+1. Finish coding
+2. `cairn reflect --since HEAD~3` → generates staged candidates
+3. `cairn stage review` → review and accept each candidate
+4. (After large migrations) `cairn audit start <domain> --trigger "<change>"` + `cairn audit scan`
+5. `cairn doctor` → confirm no drift or stale audits remain

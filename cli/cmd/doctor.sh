@@ -59,6 +59,76 @@ _doctor_domain_hooks() {
 }
 
 # -----------------------------------------------------------------------------
+# Compare output.md ## stack entries against dep files in the project root.
+# Called from _doctor_check_output; prints results inline.
+# -----------------------------------------------------------------------------
+_doctor_check_stack_drift() {
+    local output_md="$1"
+    local project_root="$2"
+
+    local stack_lines
+    stack_lines="$(awk '/^## stack/{found=1; next} /^## [a-z]/{found=0} found && /^[a-zA-Z]/{print}' \
+        "$output_md" | grep -E '^[a-zA-Z].*:' || true)"
+    [ -z "$stack_lines" ] && return 0
+
+    local all_deps=""
+    local found_dep_file=false
+    for dep_file in package.json go.mod requirements.txt pyproject.toml Cargo.toml; do
+        [ -f "$project_root/$dep_file" ] || continue
+        found_dep_file=true
+        case "$dep_file" in
+            package.json)
+                all_deps="${all_deps}
+$(grep -oE '"[a-zA-Z@][a-zA-Z0-9@/_.-]+"' "$project_root/$dep_file" 2>/dev/null \
+    | tr -d '"' | sort -u || true)"
+                ;;
+            go.mod)
+                all_deps="${all_deps}
+$(awk '/^require \(/{b=1;next}/^\)/{b=0} b&&/^\t/{print $1}
+       /^require [^ (]/{print $2}' "$project_root/$dep_file" 2>/dev/null || true)"
+                ;;
+            requirements.txt)
+                all_deps="${all_deps}
+$(grep -v '^#\|^-\|^$' "$project_root/$dep_file" 2>/dev/null \
+    | sed 's/[>=<!].*//' | sed 's/[[:space:]].*$//' | grep -E '^[a-zA-Z]' || true)"
+                ;;
+            Cargo.toml)
+                all_deps="${all_deps}
+$(awk '/^\[dependencies\]/{s=1;next}/^\[dev-dependencies\]/{s=1;next}
+   /^\[/{s=0} s&&/^[a-z]/{gsub(/[[:space:]]*=.*/,"");print}' \
+   "$project_root/$dep_file" 2>/dev/null || true)"
+                ;;
+        esac
+    done
+
+    if [ "$found_dep_file" = false ]; then
+        echo -e "  ${C_DIM}$(msg_doctor_stack_no_deps)${C_RESET}"
+        return 0
+    fi
+
+    local found_drift=false
+    while IFS= read -r entry; do
+        [ -z "$entry" ] && continue
+        local layer tech tech_lower
+        layer="${entry%%:*}"
+        tech="${entry#*: }"
+        layer="$(echo "$layer" | tr -d '[:space:]')"
+        tech="$(echo "$tech" | tr -d '[:space:]')"
+        [ -z "$tech" ] && continue
+        tech_lower="$(echo "$tech" | tr '[:upper:]' '[:lower:]')"
+        if ! echo "$all_deps" | grep -qi "$tech_lower" 2>/dev/null; then
+            echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_stack_drift "$layer" "$tech")"
+            _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+            found_drift=true
+        fi
+    done <<< "$stack_lines"
+
+    if [ "$found_drift" = false ]; then
+        echo -e "  ${C_GREEN}✓${C_RESET}  $(msg_doctor_stack_ok)"
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Check output.md section
 # -----------------------------------------------------------------------------
 _doctor_check_output() {
@@ -118,6 +188,11 @@ _doctor_check_output() {
             fi
         done <<< "$nogo_section"
     fi
+
+    # Stack drift: compare ## stack entries against project dep files
+    echo ""
+    echo -e "  ${C_DIM}$(msg_doctor_stack_section)${C_RESET}"
+    _doctor_check_stack_drift "$output_md" "$(dirname "$cairn_dir")"
 }
 
 # -----------------------------------------------------------------------------
@@ -311,6 +386,86 @@ _doctor_check_staged() {
 }
 
 # -----------------------------------------------------------------------------
+# Check audits/ directory: stale open/partial audits and transitions without audits.
+# -----------------------------------------------------------------------------
+_doctor_check_audits() {
+    local cairn_dir="$1"
+    local audits_dir="$cairn_dir/audits"
+    local history_dir="$cairn_dir/history"
+
+    echo ""
+    echo -e "${C_BOLD}$(msg_doctor_section_audits)${C_RESET}"
+
+    local now
+    now="$(date +%s)"
+    local sixty_days=$(( 60 * 86400 ))
+    local found_issue=false
+
+    # Stale audits: status open or partial, older than 60 days
+    if [ -d "$audits_dir" ]; then
+        while IFS= read -r audit_file; do
+            [ -z "$audit_file" ] && continue
+            local astatus
+            astatus="$(grep -m1 '^status:' "$audit_file" 2>/dev/null \
+                | sed 's/^status:[[:space:]]*//' | tr -d '[:space:]' || echo 'unknown')"
+            case "$astatus" in
+                open|partial)
+                    local mtime age age_days aname
+                    mtime="$(_doctor_mtime "$audit_file")"
+                    age=$(( now - mtime ))
+                    age_days=$(( age / 86400 ))
+                    if [ "$age" -gt "$sixty_days" ]; then
+                        aname="$(basename "$audit_file" .md)"
+                        echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_audit_stale "$aname" "$age_days")"
+                        _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                        found_issue=true
+                    fi
+                    ;;
+            esac
+        done < <(find "$audits_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | sort)
+    fi
+
+    # Missing audit: transition history entries with no corresponding audit domain
+    if [ -d "$history_dir" ]; then
+        while IFS= read -r hist_file; do
+            [ -z "$hist_file" ] && continue
+            local htype
+            htype="$(grep -m1 '^type:' "$hist_file" 2>/dev/null \
+                | sed 's/^type:[[:space:]]*//' | tr -d '[:space:]' || true)"
+            [ "$htype" = "transition" ] || continue
+
+            local hdomain hsummary
+            hdomain="$(grep -m1 '^domain:' "$hist_file" 2>/dev/null \
+                | sed 's/^domain:[[:space:]]*//' | tr -d '[:space:]' || true)"
+            hsummary="$(grep -m1 '^summary:' "$hist_file" 2>/dev/null \
+                | sed 's/^summary:[[:space:]]*//' || true)"
+            [ -z "$hdomain" ] && continue
+
+            local has_audit=false
+            if [ -d "$audits_dir" ]; then
+                while IFS= read -r af; do
+                    [ -z "$af" ] && continue
+                    if grep -q "^domain:[[:space:]]*${hdomain}" "$af" 2>/dev/null; then
+                        has_audit=true
+                        break
+                    fi
+                done < <(find "$audits_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null)
+            fi
+
+            if [ "$has_audit" = false ]; then
+                echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_audit_missing "$hdomain" "$hsummary")"
+                _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                found_issue=true
+            fi
+        done < <(find "$history_dir" -maxdepth 1 -name "*.md" -type f 2>/dev/null | sort)
+    fi
+
+    if [ "$found_issue" = false ]; then
+        echo -e "  ${C_GREEN}✓${C_RESET}  $(msg_doctor_audit_ok)"
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Main command
 # -----------------------------------------------------------------------------
 cmd_doctor() {
@@ -326,6 +481,7 @@ cmd_doctor() {
     _doctor_check_domains "$cairn_dir"
     _doctor_check_hooks "$cairn_dir"
     _doctor_check_staged "$cairn_dir"
+    _doctor_check_audits "$cairn_dir"
 
     echo ""
     if [ "$_DOCTOR_FAIL" -eq 0 ]; then

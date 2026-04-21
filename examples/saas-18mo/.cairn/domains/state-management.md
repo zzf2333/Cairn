@@ -46,3 +46,10 @@ split into 3 slices: auth, ui, data. Selector-based subscriptions throughout.
 
 - Whether to adopt React Query for server state (deferred 2024-02, not rejected)
 - Persistence strategy if offline support is added
+
+## residue checklist
+
+- [x] Old Context-based global state removed (completed 2023-03)
+- [x] Single-file god-store refactored into slices (completed 2024-03)
+- [ ] Legacy selector utilities still imported in 3 files (identified 2024-09)
+- [ ] Old store docs page still references previous Context approach

@@ -17,10 +17,17 @@ English | [中文](FORMAT.zh.md)
 │   ├── api-layer.md
 │   ├── auth.md
 │   └── state-management.md
-└── history/           # 第三层：原始决策事件，按需查询
-    ├── 2023-03_state-mgmt-transition.md
-    ├── 2023-09_trpc-experiment-rejection.md
-    └── 2024-01_auth-debt-accepted.md
+├── history/           # 第三层：原始决策事件，按需查询
+│   ├── 2023-03_state-mgmt-transition.md
+│   ├── 2023-09_trpc-experiment-rejection.md
+│   └── 2024-01_auth-debt-accepted.md
+├── staged/            # 候选收件箱：等待审阅的前缀文件
+│   ├── history-candidate_2026-04_trpc-rejection.md
+│   ├── domain-update-candidate_2026-04_auth-open-question.md
+│   ├── output-update-candidate_2026-04_stack-drift.md
+│   └── audit-candidate_2026-04_state-cleanup.md
+└── audits/            # 迁移清理追踪（由 cairn audit start 创建）
+    └── 2026-04_state-management-migration.md
 ```
 
 ---
@@ -45,7 +52,7 @@ English | [中文](FORMAT.zh.md)
 
 ### 必需章节
 
-`output.md` **必须**按此顺序包含以下五个章节：
+`output.md` **必须**按此顺序包含以下六个章节：
 
 ```markdown
 ## stage
@@ -53,6 +60,7 @@ English | [中文](FORMAT.zh.md)
 ## hooks
 ## stack
 ## debt
+## open questions
 ```
 
 #### `## stage`
@@ -142,6 +150,22 @@ AI **不得**尝试修复的已接受技术债。
 
 如果尚未正式接受任何技术债，可以为空。
 
+#### `## open questions`
+
+影响未来 AI 建议的全局未解决问题。
+
+```
+## open questions
+
+- <尚未决定的全局问题>
+```
+
+规则：
+- 仅用于**全局**未解决问题——不是域级问题（那些放在 `domains/` 中）
+- 不是 no-go，不是技术债清单，不是设计提案积压
+- 已解决的条目必须移除；解决后的记录属于 `history/`
+- 可以为空
+
 ### 编写规则
 
 1. **只写约束，不写解释。** 括号是提示。完整理由进入 `domains/` 和 `history/`。
@@ -187,6 +211,11 @@ deploy: Railway
 
 AUTH-COUPLING: accepted | fix when team>4 or MAU>100k | no refactor now
 WS-CONCURRENCY: accepted | CDN migration resolves | no polling fallback
+
+## open questions
+
+- Whether billing should remain in the monolith for the next 2 quarters
+- Whether auth session storage should be unified this cycle
 ```
 
 ---
@@ -299,6 +328,23 @@ AI 在该域工作时必须主动考虑的操作陷阱。
 ```
 
 可以为空。
+
+#### `## residue checklist`（残留清单，可选）
+
+该域的迁移清理义务。仅在重大迁移或架构变更后添加，需要明确的清理追踪。
+
+```
+## residue checklist
+
+- [ ] <清理项——需要删除或更新的内容>
+- [x] <已完成的项目>
+```
+
+规则：
+- 可选——仅在迁移产生明确清理债务时添加
+- 条目使用复选框；已完成的条目可以保留为 `[x]` 作为历史记录
+- 所有项目都勾选后，应从域文件中删除
+- 通过 `.cairn/audits/` 中对应的文件跨会话追踪
 
 ### 生命周期
 
@@ -501,3 +547,83 @@ revisit_when: Greenfield service with no existing REST consumers, or tRPC adds
 **known pitfalls** 表示："在这里工作时要小心。"
 
 同一个底层问题可以同时以多种形式出现。例如，一个被接受为技术债的 WebSocket 并发 bug（在 `output.md` debt 中），同时也可能在 `domains/api-layer.md` 中生成一条已知陷阱，警告未来的工作不要依赖 WebSocket 一致性保证。
+
+---
+
+## 支持目录
+
+`.cairn/staged/` 和 `.cairn/audits/` 是支持目录。它们不构成额外的协议层——它们的存在是为了维护官方三层系统。
+
+### `.cairn/staged/` — 候选收件箱
+
+暂存候选是等待人工审阅的前缀文件。文件名前缀决定 `cairn stage review` 在接受时如何路由文件。
+
+#### 候选类型
+
+| 前缀 | 接受时 | 生成来源 |
+|------|--------|---------|
+| `history-candidate_` | 移动到 `history/`（去除前缀） | `cairn reflect`、`cairn analyze`、`cairn log --quick` |
+| `domain-update-candidate_` | 在目标 `domains/<name>.md` 上打开 `$EDITOR` | `cairn reflect`、`cairn analyze` |
+| `output-update-candidate_` | 在 `output.md` 上打开 `$EDITOR` | `cairn reflect`、`cairn analyze` |
+| `audit-candidate_` | 移动到 `audits/`（去除前缀） | `cairn reflect`、`cairn analyze` |
+
+#### 文件命名
+
+```
+<kind>-candidate_YYYY-MM_<slug>.md
+```
+
+示例：
+- `history-candidate_2026-04_trpc-rejection.md`
+- `domain-update-candidate_2026-04_auth-open-question.md`
+- `output-update-candidate_2026-04_stack-drift.md`
+- `audit-candidate_2026-04_state-cleanup.md`
+
+#### 向后兼容
+
+没有已识别前缀的文件（例如 v0.0.8 之前工具产生的 `2024-03_foo.md`）在接受时被视为 `history-candidate` 并移动到 `history/`。不执行重命名。
+
+---
+
+### `.cairn/audits/` — 迁移清理追踪
+
+审计文件记录明确的迁移清理义务。由 `cairn audit start` 创建，由 `cairn audit scan` 更新。
+
+#### 文件命名
+
+```
+YYYY-MM_<domain>-<slug>.md
+```
+
+#### 格式
+
+```markdown
+# Audit: <description>
+date: YYYY-MM
+domain: <domain-key>
+trigger: <触发此审计的变更>
+status: open|partial|complete
+
+## Expected removals
+- <需要删除的旧依赖、目录或模式>
+
+## Findings
+- <发现结果：仍然存在 / 确认已删除>
+
+## Follow-up
+- <剩余行动项>
+```
+
+| 字段 | 是否必需 | 说明 |
+|------|---------|------|
+| `date` | 必须 | 审计创建时间 |
+| `domain` | 必须 | 项目域列表中的域键 |
+| `trigger` | 必须 | 需要清理的变更的一行描述 |
+| `status` | 必须 | `open`（未开始）、`partial`（进行中）、`complete`（完成） |
+
+#### 生命周期
+
+- **创建：** 重大迁移后运行 `cairn audit start <domain> --trigger "<change>"`
+- **扫描：** 运行 `cairn audit scan` 用残留检测结果填充 Findings
+- **更新：** 直接编辑文件标记已解决的项目；完成时更改 `status`
+- **归档：** 将 `status: complete` 的文件保留在 `audits/` 中作为历史记录；`cairn doctor` 不再标记它们
