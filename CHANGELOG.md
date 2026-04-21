@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.10] - 2026-04-21
+
+### Added
+
+- **Mandatory reflection gate** across all 8 AI tool skill files: AI must append a `cairn-reflection:` line to every final response, making compliance visible to the user and treating omission as a protocol violation
+- **`cairn install-global` command**: injects Cairn Memory Protocol into global AI config files (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/GEMINI.md`) as a second enforcement layer independent of project-level skill files
+
+### Fixed
+
+- Claude Code skill now installs to `.claude/CLAUDE.md` (always-loaded at session start) instead of `.claude/skills/cairn/SKILL.md` (on-demand only), fixing the root cause of the skill never triggering
+
 ## [0.0.9] - 2026-04-21
 
 ### Added

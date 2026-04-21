@@ -194,6 +194,9 @@ Copy the Cairn skill file for the AI tool(s) your team uses:
 | Windsurf | `skills/windsurf.md` | Append to `.windsurfrules` |
 | Cline / Roo Code | `skills/cline.md` | Append to `.clinerules` |
 | GitHub Copilot | `skills/copilot-instructions.md` | Append to `.github/copilot-instructions.md` |
+| Codex CLI | `skills/codex.md` | Append to `AGENTS.md` |
+| Gemini CLI | `skills/gemini-cli.md` | Append to `GEMINI.md` |
+| OpenCode | `skills/opencode.md` | Append to `AGENTS.md` |
 
 The skill file teaches the AI the three-layer protocol: always read `output.md`, read
 `domains/*.md` when planning, query `history/` for precise lookups. Without the skill
