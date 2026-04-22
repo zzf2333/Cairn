@@ -220,3 +220,61 @@ assert_file_exists "claude skill file created in skills-only mode" \
     "$_TC_SKILLS_DIR/.claude/CLAUDE.md"
 assert_contains    "claude skill has cairn:start marker" \
     "$_TC_SKILLS_DIR/.claude/CLAUDE.md" "cairn:start"
+
+# =============================================================================
+# Scenario G — --refresh-skills: refreshes SKILL.md + guide blocks, not output.md
+# =============================================================================
+
+_REFRESH_DIR="${_CAIRN_TMPDIR}/refresh_skills_$$"
+# Pre-populate a cairn project with existing output.md
+_REFRESH_DIR="$(_run_init "refresh_base" \
+    "2\ntest (2024-01+)\nspeed > quality\n\n\n\n\n\n1\n")"
+
+# Record the output.md content (should stay unchanged)
+_refresh_output_before="$(grep -c '.' "$_REFRESH_DIR/.cairn/output.md" 2>/dev/null || echo 0)"
+
+# Replace SKILL.md with stale content to verify it gets refreshed
+echo "# Stale SKILL" > "$_REFRESH_DIR/.cairn/SKILL.md"
+
+# Run --refresh-skills (no interactive input needed)
+(cd "$_REFRESH_DIR" && bash "$CAIRN_SCRIPT" --refresh-skills) >/dev/null 2>&1 || true
+
+start_suite "Init --refresh-skills"
+assert_file_exists "--refresh-skills: .cairn/SKILL.md created/refreshed" \
+    "$_REFRESH_DIR/.cairn/SKILL.md"
+assert_not_contains "--refresh-skills: SKILL.md no longer has stale content" \
+    "$_REFRESH_DIR/.cairn/SKILL.md" "Stale SKILL"
+assert_contains "--refresh-skills: SKILL.md has protocol content" \
+    "$_REFRESH_DIR/.cairn/SKILL.md" "ON TASK COMPLETION"
+assert_contains "--refresh-skills: CLAUDE.md still has guide block" \
+    "$_REFRESH_DIR/.claude/CLAUDE.md" "cairn:start"
+assert_contains "--refresh-skills: output.md unchanged (no output.md token content removed)" \
+    "$_REFRESH_DIR/.cairn/output.md" "^phase:"
+
+# =============================================================================
+# Scenario H — --upgrade: warns about v0.0.11 residue directories
+# =============================================================================
+
+_UPGRADE_DIR="${_CAIRN_TMPDIR}/upgrade_$$"
+# Pre-populate a cairn project
+_UPGRADE_DIR="$(_run_init "upgrade_base" \
+    "2\ntest (2024-01+)\nspeed > quality\n\n\n\n\n\n1\n")"
+
+# Add v0.0.11 residue directories
+mkdir -p "$_UPGRADE_DIR/.cairn/staged"
+mkdir -p "$_UPGRADE_DIR/.cairn/audits"
+mkdir -p "$_UPGRADE_DIR/.cairn/reflections"
+echo "candidate" > "$_UPGRADE_DIR/.cairn/staged/history-candidate_2024-01_foo.md"
+echo "audit" > "$_UPGRADE_DIR/.cairn/audits/2024-01_state-management.md"
+
+# Run --upgrade (captures output to check for warnings)
+_upgrade_out="$(_CAIRN_TMPDIR/upgrade_out.txt)"
+(cd "$_UPGRADE_DIR" && bash "$CAIRN_SCRIPT" --upgrade) >"${_CAIRN_TMPDIR}/upgrade_out.txt" 2>&1 || true
+
+start_suite "Init --upgrade"
+assert_file_exists "--upgrade: staged/ residue still present (not deleted)" \
+    "$_UPGRADE_DIR/.cairn/staged/history-candidate_2024-01_foo.md"
+assert_contains "--upgrade: output mentions staged residue warning" \
+    "${_CAIRN_TMPDIR}/upgrade_out.txt" "staged"
+assert_contains "--upgrade: SKILL.md refreshed" \
+    "$_UPGRADE_DIR/.cairn/SKILL.md" "ON TASK COMPLETION"

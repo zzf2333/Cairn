@@ -11,6 +11,7 @@
 #   helpers.sh              — shared assertion functions and counters
 #   test_init_script.sh     — cairn-init.sh behavior and output format tests
 #   test_skill_files.sh     — skill file best-practice quality tests
+#   test_skill_protocol.sh  — SKILL.md CLI-ceremony regression tests
 #   test_examples.sh        — example file FORMAT.md compliance tests
 #   test_cli_dispatch.sh    — CLI dispatcher routing tests
 #   test_cli_doctor.sh      — cairn doctor health check tests
@@ -33,6 +34,8 @@ source "$TESTS_DIR/helpers.sh"
 source "$TESTS_DIR/test_init_script.sh"
 # shellcheck source=test_skill_files.sh
 source "$TESTS_DIR/test_skill_files.sh"
+# shellcheck source=test_skill_protocol.sh
+source "$TESTS_DIR/test_skill_protocol.sh"
 # shellcheck source=test_examples.sh
 source "$TESTS_DIR/test_examples.sh"
 # shellcheck source=test_cli_dispatch.sh
