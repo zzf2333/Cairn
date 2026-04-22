@@ -407,206 +407,144 @@ does the compression; the human does the confirmation.
 
 ---
 
-## Using the CLI (Phase 2)
+## Using the CLI
 
-The Cairn CLI automates the most common workflow steps. All commands require a
-`.cairn/` directory to exist in the current project (created by `cairn init`).
+The Cairn CLI has four commands. All ongoing memory maintenance is done by the AI
+directly — no CLI ceremony required after `cairn init`.
 
 ### `cairn init`
 
-Runs the interactive initialization wizard. Creates `.cairn/output.md`,
-`.cairn/history/`, `.cairn/domains/`, and installs the Skill adapter file for your
-AI tool. Equivalent to running `scripts/cairn-init.sh` directly.
+Bootstrap command. Creates the `.cairn/` directory skeleton, copies
+`skills/claude-code/SKILL.md` to `.cairn/SKILL.md`, and installs 12-line guide
+blocks into AI tool config files (`.claude/CLAUDE.md`, `.cursor/rules/cairn.mdc`,
+etc.) that point the AI to `.cairn/SKILL.md`.
 
 ```bash
+# Full bootstrap (interactive)
 cairn init
+
+# Refresh guide blocks and .cairn/SKILL.md without touching output.md or history/
+cairn init --refresh-skills
+
+# Also install guide blocks in global AI config files (~/.claude/CLAUDE.md etc.)
+cairn init --global
+
+# Check for v0.0.11 residue (staged/, audits/, reflections/) and refresh SKILL.md
+cairn init --upgrade
 ```
 
-### `cairn status`
+### `cairn doctor`
 
-Prints a three-layer summary of the current project state. Detects stale domain
-files by comparing each domain's `updated:` frontmatter field against the
-`recorded_date` of its history entries.
+Read-only health check. Verifies `output.md` structure, domain frontmatter,
+stale domain detection, guide block format, `.cairn/SKILL.md` consistency,
+and v0.0.11 residue.
 
 ```bash
-cairn status
+cairn doctor
 
-# Output:
-# stage:   early-growth (2024-09+)
-# domains: 3 active, 1 not created
-#
-# ⚠  api-layer   last updated 2024-03 · 2 new history entries since
-#                run: cairn sync api-layer
-# ✓  auth        up to date (2024-06)
+# Machine-readable output (for AI self-check)
+cairn doctor --json
 ```
 
-Use `cairn status` at the start of a work session to check if any domain files
-need updating before asking the AI for planning help.
-
-### `cairn log`
-
-Records a history entry. Supports interactive mode (guided prompts) and flag mode
-(for scripting or quick entries from the command line).
-
-```bash
-# Interactive mode
-cairn log
-
-# Flag mode
-cairn log \
-    --type rejection \
-    --domain api-layer \
-    --summary "Rejected GraphQL after evaluation" \
-    --rejected "GraphQL: data complexity doesn't justify it" \
-    --reason "Current team size makes GraphQL overhead unwarranted" \
-    --revisit-when "Frontend needs regular cross-resource aggregation"
-```
-
-Use `cairn log` after any of the five reactive trigger events (A–E). In flag mode,
-all required fields must be provided: `--type`, `--domain`, `--summary`,
-`--rejected`, `--reason`. The `--revisit-when` field is optional.
-
-After creating an entry, run `cairn status` to check if the domain file needs sync.
-
-### `cairn sync`
-
-Generates an AI prompt containing the current domain file and all related history
-entries. Paste the prompt into your AI tool to generate an updated domain file.
-
-```bash
-# Generate prompt for a specific domain (prints to stdout)
-cairn sync api-layer
-
-# Generate prompts for all stale domains
-cairn sync --stale
-
-# Preview what would be included (no prompt output)
-cairn sync api-layer --dry-run
-
-# Copy prompt directly to clipboard
-cairn sync api-layer --copy
-```
-
-The generated prompt instructs the AI to overwrite the domain file following the
-Cairn format, with all rejected paths from history included. After the AI generates
-the new file, save it to `.cairn/domains/<domain>.md` and run `cairn status` to
-confirm the domain is up to date.
-
-**Phase 3 note:** If you are using the Cairn MCP Server (`mcp/`), use `cairn_sync_domain("api-layer")` instead — it returns the same prompt context directly to the AI without a copy-paste step.
+Use `cairn doctor` after `cairn init`, when onboarding a new team member, or
+when something seems off. The AI can call `cairn doctor --json` at session start
+to self-verify before beginning work.
 
 ---
 
-## Phase 3: After-Task Write-Back
+## After-Task Write-Back
 
-After a meaningful feature, refactor, or migration, Cairn needs to reflect on what changed.
-Without a write-back step, Cairn becomes stale and the next AI session reads outdated memory.
+After completing a meaningful task, the AI decides whether a recordable event occurred
+and, if so, writes directly to `.cairn/` using its native file tools. No CLI ceremony,
+no staging gate, no human relay step.
 
-**Core rule: a task is not truly complete until `cairn reflect` has run.**
+**The AI is responsible for this judgment.** The protocol is described in `.cairn/SKILL.md`.
 
-### `cairn reflect`
+### What the AI does
 
-Analyzes recent commits and produces staged candidate updates across all four kinds.
-Always emits an explicit reflection result.
+At task completion the AI evaluates the event type and writes the appropriate file(s):
 
-```bash
-# Reflect on the last 3 commits
-cairn reflect --since HEAD~3
+| Event | AI action |
+|-------|-----------|
+| Significant technical decision | Write `.cairn/history/YYYY-MM_<slug>.md` (type: decision) |
+| Approach tried and abandoned | Write `.cairn/history/YYYY-MM_<slug>.md` (type: experiment) |
+| Direction explicitly rejected | Write history entry + add `## no-go` entry to `output.md` |
+| Deficiency accepted as debt | Write history entry + `## debt` entry in `output.md` + `## known pitfalls` in domain |
+| Migration / phase transition | Write history entry + overwrite affected domain file |
+| Routine bug fix / docs / refactor | No action — not a recordable event |
 
-# Reflect on changes since a specific commit
-cairn reflect --from-commit <sha>
+### What you see
 
-# Reflect on an explicit commit range
-cairn reflect --from-range abc123..def456
+The AI ends its response with one of:
 
-# Reflect on currently staged/unstaged changes
-cairn reflect --from-diff
-
-# Preview candidates without writing (dry-run)
-cairn reflect --dry-run
+```
+cairn: recorded 1 event: history/2026-04-22_added-dep-X.md
+cairn: no event recorded
 ```
 
-#### Reflection results
+This is a verification handshake — not a CLI command. `git diff .cairn/` shows exactly
+what was written. If the event was wrong or incomplete, edit the file directly.
 
-Every `cairn reflect` run emits one of three explicit outcomes:
+### What to do if the AI missed an event
 
-| Result | Meaning | Next step |
-|--------|---------|-----------|
-| `no-op` | No signals detected; Cairn does not need updating | Nothing required; record written |
-| `candidates-created` | Staged candidates written | Run `cairn stage review` |
-| `audit-required` | Migration pattern detected | Run `cairn stage review` then `cairn audit start` |
+Write the history entry yourself:
 
-A `no-op` is a valid and expected outcome for small changes. The reflection record is still
-written to `.cairn/reflections/` so `cairn doctor` can verify that reflection ran.
-
-After `candidates-created` or `audit-required`, review the generated candidates:
-
-```bash
-cairn stage review
+```markdown
+type: decision
+domain: api-layer
+decision_date: 2026-04
+recorded_date: 2026-04
+summary: Switched from REST to tRPC for internal services
+rejected: REST: too much boilerplate for internal services without consumers
+reason: tRPC removes manual API layer for full-stack TypeScript services
+revisit_when: If external consumers need a REST interface
 ```
 
-`cairn stage review` routes each candidate based on its filename prefix:
-- `history-candidate_*` → moves to `.cairn/history/`
-- `domain-update-candidate_*` → opens your editor on the target domain file
-- `output-update-candidate_*` → opens your editor on `output.md`
-- `audit-candidate_*` → moves to `.cairn/audits/`
-
-### `cairn audit`
-
-For large migrations, explicitly track cleanup obligations.
-
-```bash
-# Create an audit file after a migration
-cairn audit start state-management --trigger "migrated from Redux to Zustand"
-
-# Scan for residue (leftover imports, removed deps still referenced)
-cairn audit scan
-cairn audit scan state-management   # scan one domain only
-```
-
-Check `.cairn/audits/<name>.md` to review findings and mark items resolved.
-
-### Recommended after-task workflow
-
-1. Finish coding
-2. `cairn reflect --since HEAD~3` → always emits explicit result
-3. If `candidates-created` or `audit-required`: `cairn stage review`
-4. If `audit-required`: `cairn audit start <domain> --trigger "<change>"` + `cairn audit scan`
-5. `cairn doctor` → confirm no drift, stale audits, or missing reflections remain
+Save to `.cairn/history/2026-04_trpc-adoption.md`. Then update the domain file if the
+current design changed.
 
 ---
 
-## Upgrading from v0.0.9 or earlier
+## Upgrading to v0.0.12
 
-In v0.0.9 and earlier, `cairn init` installed the Claude Code skill to `.claude/skills/cairn/SKILL.md` (loaded on-demand). From v0.0.10 onward, the correct location is `.claude/CLAUDE.md` (always-loaded at session start).
+### From v0.0.11
 
-**If you initialized with v0.0.9 or earlier**, the skill is in the wrong place and the constraint protocol will not trigger. Use either path to fix this without touching your data layer:
-
-**Path A — New command (recommended)**
-
-```bash
-cd <your-project>
-cairn install-skill claude-code
-# When prompted "Remove old skill files? [y/N]" → enter y to clean up
-```
-
-**Path B — Via `cairn init` three-choice menu**
+v0.0.12 replaces the staging/reflect/audit CLI workflow with AI-direct file operations.
+Your `.cairn/output.md`, `domains/`, and `history/` are fully compatible — no data migration needed.
 
 ```bash
 cd <your-project>
-cairn init
-# When prompted about existing .cairn/:
-#   [2] Keep data, reinstall skill files only
-# Then select your tools as usual
+cairn init --upgrade
 ```
 
-After either path, verify with `cairn doctor` — the Skill files section should show ✓.
+`--upgrade` will:
+- Create or refresh `.cairn/SKILL.md` from the latest protocol
+- Refresh guide blocks in AI tool config files to the v0.0.12 12-line format
+- Warn if `.cairn/staged/`, `.cairn/audits/`, or `.cairn/reflections/` exist
 
-**Enabling the global protocol**
+The upgrade does **not** delete old directories. Review their contents manually:
+- `.cairn/staged/`: move useful candidates to `history/` (strip `history-candidate_` prefix first) or delete
+- `.cairn/audits/`: merge useful pitfalls into domain `## known pitfalls` sections, then delete
+- `.cairn/reflections/`: safe to delete (replaced by the `cairn: recorded …` verification line)
 
-Both paths install the skill at project level. To also cover projects where the skill file is not loaded, run:
+### From v0.0.9 or earlier
+
+In v0.0.9 and earlier, the skill was at `.claude/skills/cairn/SKILL.md` (loaded on-demand).
+From v0.0.10 onward the guide block goes to `.claude/CLAUDE.md` (always loaded at session start),
+and from v0.0.12 the full protocol is at `.cairn/SKILL.md`.
 
 ```bash
-cairn install-global
+cd <your-project>
+cairn init --upgrade
 ```
 
-This writes a short Cairn Memory Protocol block to `~/.claude/CLAUDE.md` (Claude Code), `~/.codex/AGENTS.md` (Codex CLI), or `~/GEMINI.md` (Gemini CLI).
+Verify with `cairn doctor` — the Skill Guide and SKILL.md sections should show ✓.
+
+### Enabling global scope
+
+To install the guide block in global AI config files (`~/.claude/CLAUDE.md` etc.) so
+Cairn activates in any project that has a `.cairn/` directory:
+
+```bash
+cairn init --global
+```
