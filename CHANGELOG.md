@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.13] - 2026-04-22
+
+### Added
+
+- **`spec/TASK-COMPLETION-PROTOCOL.md`** (+ `.zh.md`): New authoritative spec document for task-completion behavior. Defines what counts as task completion, the three reflection result values (`no-op`, `memory-updated`, `audit-required`), the required end-of-task `Cairn reflection` block format, the verification line contract, and the three machine-detectable protocol violations.
+- **Structured `Cairn reflection` block**: `skills/claude-code/SKILL.md` Step 3 now requires a full `Task completion summary` + `Cairn reflection` block at the end of every non-trivial task, with explicit `Result:` field, per-layer write-back fields, and the verification line. Replaces the bare single-line handshake.
+- **Hard rule in SKILL.md**: Added a `Rule` statement to the `## ON TASK COMPLETION` section: "No task is complete until you have produced an explicit `Cairn reflection` block and a verification line."
+- **`REFLECTION RESULTS` quick-reference** appended to `skills/claude-code/SKILL.md`.
+- **`cairn doctor --json` `write_back` section**: New `write_back` object in the JSON output with `status` (`ok`/`warn`/`skipped`), `reason` (`ok`/`no_git`/`signals_found`), and `signals` array. Three advisory signals: `missing-write-back`, `missing-output-follow-up`, `missing-audit-flag`. Signals are warnings only — doctor exit code unchanged.
+- **`_doctor_check_write_back`** function in `cli/cmd/doctor.sh`: Scans recent git history (14-day window) for write-back drift. Skips gracefully when `.git/` is absent.
+- **Localization**: `cli/lang/en.sh` and `cli/lang/zh.sh` updated with `msg_doctor_write_back_*` messages.
+- New bash test file `tests/test_task_completion_protocol.sh` (protocol conformance gate).
+- `README.md` and `README.zh.md`: Added `#### Task completion protocol` subsection to Daily Usage.
+
+### Changed
+
+- **`skills/claude-code/SKILL.md`** Step 3 rewritten from a single verification line to a full structured completion block.
+- **Adapter guide block** (`scripts/cairn-init.sh` `_SKILL_GUIDE_BLOCK`): Item 3 updated to reference `Cairn reflection` block and `.cairn/SKILL.md` Step 3 template.
+- **`cairn doctor --json`** JSON schema: `cairn_version` bumped to `"0.0.13"`, new `write_back` object added.
+- **`README.zh.md`**: Full sync to v0.0.12+v0.0.13 — removed stale `cairn status/log/sync` commands, updated MCP tools table (removed `cairn_propose`/`cairn_sync_domain`, added `cairn_write_history`/`cairn_doctor`), added `.cairn/SKILL.md` protocol-layer description, added task completion protocol subsection.
+- **Orphan lang keys** `msg_doctor_reflect_*` (v0.0.9 residue, uncalled) replaced with `msg_doctor_write_back_*`.
+
+### Non-breaking note
+
+Verification line format (`cairn: recorded <N> event(s): …` / `cairn: no event recorded`),
+MCP tool schemas, and CLI command surface are unchanged. `cairn doctor` exit code is unchanged
+(write-back signals do not increment `_DOCTOR_FAIL`). Existing projects can run
+`cairn init --refresh-skills` to get the updated `SKILL.md` with the new Step 3 format.
+
 ## [0.0.12] - 2026-04-22
 
 ### Breaking Changes

@@ -23,6 +23,9 @@ type ToolResult = { content: TextContent[]; isError?: true };
  *   skill_guide: string     — "ok" | "missing" | "old-format"
  *   skill_md: string        — "ok" | "missing" | "stale"
  *   v0011_residue: string[] — directories found: "staged" | "audits" | "reflections"
+ *   write_back.status: string  — "ok" | "warn" | "skipped"
+ *   write_back.reason: string  — "ok" | "no_git" | "signals_found"
+ *   write_back.signals: string[] — detected drift signals (advisory, non-blocking)
  */
 export function handleCairnDoctor(): ToolResult {
     const root = findCairnRoot();

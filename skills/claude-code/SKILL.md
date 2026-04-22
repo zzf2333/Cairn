@@ -82,6 +82,10 @@ When writing new `history/*.md` entries or updating `domains/*.md` content:
 This is a judgment step you perform yourself at the end of every non-trivial task.
 **There are no commands to run. You write the files directly.**
 
+**Rule**: No task is complete until you have produced an explicit `Cairn reflection`
+block and a verification line. Reflection is a write-out, not a thought — if you
+only said it in prose, it didn't happen.
+
 ### Step 1 — Was there a recordable event?
 
 | Event | Entry type | Also update |
@@ -159,15 +163,48 @@ status: <active | stable>
 the entry to `.cairn/output.md` under the appropriate section (`## no-go` or `## debt`).
 Keep `output.md` under 500 tokens; move detailed rationale to `domains/` and `history/`.
 
-### Step 3 — Append the verification line
+### Step 3 — Emit the completion block
 
-End your response with exactly one of:
+End your response with this exact structure:
+
+    Task completion summary
+    - Completed work: <one-line description>
+    - Changed files / domains: <comma-separated, or ->
+    - Risk level: <low | medium | high>
+
+    Cairn reflection
+    - Result: <no-op | memory-updated | audit-required>
+    - Impacted domains: <domain keys, or ->
+    - History recorded: <filename(s), or ->
+    - Output updated: <yes | no>
+    - Domains updated: <domain key(s), or ->
+    - Audit required: <yes | no>
+    - Next action: <one-line, or none>
 
     cairn: recorded <N> event(s): <comma-separated filenames>
+
+For a no-op task, use:
+
+    Task completion summary
+    - Completed work: <one-line description>
+    - Changed files / domains: -
+    - Risk level: low
+
+    Cairn reflection
+    - Result: no-op
+    - Impacted domains: -
+    - History recorded: -
+    - Output updated: no
+    - Domains updated: -
+    - Audit required: no
+    - Next action: none
+
     cairn: no event recorded
 
-The user reads this line to verify the gate ran and to git-review what you wrote.
-This is a verification handshake, not a command invocation.
+`Result` must be one of: `no-op`, `memory-updated`, `audit-required`.
+`memory-updated` or `audit-required` → `cairn: recorded …`.
+`no-op` → `cairn: no event recorded`.
+The user git-reviews `.cairn/` from this block. `cairn doctor --json` surfaces drift.
 
 ---
 
@@ -182,3 +219,18 @@ This is a verification handshake, not a command invocation.
 5. Do not invent domain keys — use only the domain keys declared in `## hooks`
    in `output.md`. If a task touches multiple domains, pick the closest match.
 6. Keep slugs short and descriptive: `2024-03_trpc-rejection`, `2024-09_auth-jwt`.
+
+---
+
+## REFLECTION RESULTS
+
+Quick reference — match your result to the correct enum value:
+
+| Result | When to use |
+|--------|-------------|
+| `no-op` | Task produced no recordable event (routine fix, docs, formatting, read-only work) |
+| `memory-updated` | Task produced ≥1 write-back: history entry created, domain updated, or `output.md` changed |
+| `audit-required` | Task involved migration, replacement, or clean-up risk with potential residue |
+
+`audit-required` does not mean the work was incomplete — it means follow-up residue
+checks are needed. Full definitions: `spec/TASK-COMPLETION-PROTOCOL.md`.

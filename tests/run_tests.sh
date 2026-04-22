@@ -8,14 +8,15 @@
 # Exit code: 0 if all tests pass, 1 if any test fails.
 #
 # Test files sourced in order:
-#   helpers.sh              — shared assertion functions and counters
-#   test_init_script.sh     — cairn-init.sh behavior and output format tests
-#   test_skill_files.sh     — skill file best-practice quality tests
-#   test_skill_protocol.sh  — SKILL.md CLI-ceremony regression tests
-#   test_examples.sh        — example file FORMAT.md compliance tests
-#   test_cli_dispatch.sh    — CLI dispatcher routing tests
-#   test_cli_doctor.sh      — cairn doctor health check tests
-#   test_cli_symlink.sh     — symlink resolution tests
+#   helpers.sh                          — shared assertion functions and counters
+#   test_init_script.sh                 — cairn-init.sh behavior and output format tests
+#   test_skill_files.sh                 — skill file best-practice quality tests
+#   test_skill_protocol.sh              — SKILL.md CLI-ceremony regression tests
+#   test_task_completion_protocol.sh    — task completion protocol conformance tests
+#   test_examples.sh                    — example file FORMAT.md compliance tests
+#   test_cli_dispatch.sh                — CLI dispatcher routing tests
+#   test_cli_doctor.sh                  — cairn doctor health check tests
+#   test_cli_symlink.sh                 — symlink resolution tests
 
 TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$TESTS_DIR/.." && pwd)"
@@ -36,6 +37,8 @@ source "$TESTS_DIR/test_init_script.sh"
 source "$TESTS_DIR/test_skill_files.sh"
 # shellcheck source=test_skill_protocol.sh
 source "$TESTS_DIR/test_skill_protocol.sh"
+# shellcheck source=test_task_completion_protocol.sh
+source "$TESTS_DIR/test_task_completion_protocol.sh"
 # shellcheck source=test_examples.sh
 source "$TESTS_DIR/test_examples.sh"
 # shellcheck source=test_cli_dispatch.sh

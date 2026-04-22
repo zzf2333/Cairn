@@ -530,11 +530,146 @@ _doctor_check_v0011_residue() {
 }
 
 # -----------------------------------------------------------------------------
+# Check for write-back drift signals using recent git history.
+# Skips gracefully when .git/ is absent or git commands fail.
+# Signals are advisory — they do NOT increment _DOCTOR_FAIL.
+# -----------------------------------------------------------------------------
+_doctor_check_write_back() {
+    local root="$1"
+    local cairn_dir="$2"
+
+    if [ "$_DOCTOR_JSON" = false ]; then
+        echo ""
+        echo -e "${C_BOLD}$(msg_doctor_section_write_back)${C_RESET}"
+    fi
+
+    _DOCTOR_JSON_WRITE_BACK_STATUS="ok"
+    _DOCTOR_JSON_WRITE_BACK_REASON="ok"
+    _DOCTOR_JSON_WRITE_BACK_SIGNALS=""
+
+    # Skip if no .git/ directory or git unavailable
+    if [ ! -d "${root}/.git" ] || ! git -C "$root" rev-parse HEAD >/dev/null 2>&1; then
+        _DOCTOR_JSON_WRITE_BACK_STATUS="skipped"
+        _DOCTOR_JSON_WRITE_BACK_REASON="no_git"
+        if [ "$_DOCTOR_JSON" = false ]; then
+            echo -e "  ${C_DIM}·  $(msg_doctor_write_back_skipped)${C_RESET}"
+        fi
+        return 0
+    fi
+
+    local since="14 days ago"
+
+    # Signal 1: missing-write-back
+    local code_lines=0
+    code_lines="$(git -C "$root" log --since="$since" --numstat --format="" 2>/dev/null \
+        | grep -v "\.cairn/" \
+        | grep -v "\.md$" \
+        | awk 'NF>=2 && $1~/^[0-9]+$/ && $2~/^[0-9]+$/ {s+=$1+$2} END {print s+0}' \
+        || echo 0)"
+    code_lines="${code_lines:-0}"
+
+    if [ "${code_lines}" -ge 100 ]; then
+        local ref_ts=""
+        ref_ts="$(git -C "$root" log --since="$since" --format="%at" 2>/dev/null | tail -1 || echo "")"
+        local has_new_history=false
+        if [ -d "${cairn_dir}/history" ] && [ -n "$ref_ts" ]; then
+            while IFS= read -r hist_file; do
+                local file_ts
+                file_ts="$(_doctor_mtime "$hist_file" 2>/dev/null || echo 0)"
+                if [ "${file_ts:-0}" -ge "${ref_ts:-0}" ]; then
+                    has_new_history=true
+                    break
+                fi
+            done < <(find "${cairn_dir}/history" -maxdepth 1 -name "*.md" -type f 2>/dev/null)
+        fi
+        if [ "$has_new_history" = false ]; then
+            _DOCTOR_JSON_WRITE_BACK_SIGNALS="${_DOCTOR_JSON_WRITE_BACK_SIGNALS}missing-write-back,"
+            if [ "$_DOCTOR_JSON" = false ]; then
+                echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_write_back_signal_missing_write_back "${code_lines}")"
+            fi
+        fi
+    fi
+
+    # Signal 2: missing-output-follow-up
+    local dep_files="package.json go.mod requirements.txt pyproject.toml Cargo.toml"
+    local dep_changed=false
+    for dep in $dep_files; do
+        if git -C "$root" log --since="$since" --oneline -- "$dep" 2>/dev/null | grep -q .; then
+            dep_changed=true
+            break
+        fi
+    done
+    if [ "$dep_changed" = true ]; then
+        local dep_latest_ts=0
+        for dep in $dep_files; do
+            if [ -f "${root}/${dep}" ]; then
+                local ts
+                ts="$(_doctor_mtime "${root}/${dep}" 2>/dev/null || echo 0)"
+                [ "${ts:-0}" -gt "$dep_latest_ts" ] && dep_latest_ts="${ts:-0}"
+            fi
+        done
+        local output_ts=0
+        if [ -f "${cairn_dir}/output.md" ]; then
+            output_ts="$(_doctor_mtime "${cairn_dir}/output.md" 2>/dev/null || echo 0)"
+        fi
+        if [ "${output_ts:-0}" -lt "$dep_latest_ts" ]; then
+            _DOCTOR_JSON_WRITE_BACK_SIGNALS="${_DOCTOR_JSON_WRITE_BACK_SIGNALS}missing-output-follow-up,"
+            if [ "$_DOCTOR_JSON" = false ]; then
+                echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_write_back_signal_missing_output_follow_up)"
+            fi
+        fi
+    fi
+
+    # Signal 3: missing-audit-flag
+    local migration_subjects=""
+    migration_subjects="$(git -C "$root" log --since="$since" --format="%s" 2>/dev/null \
+        | grep -iE 'migrat|renam|replac|deprecat|remov|delet' \
+        | head -5 \
+        || true)"
+    if [ -n "$migration_subjects" ]; then
+        local has_transition=false
+        local ref_ts=""
+        ref_ts="$(git -C "$root" log --since="$since" --format="%at" 2>/dev/null | tail -1 || echo "")"
+        if [ -d "${cairn_dir}/history" ] && [ -n "$ref_ts" ]; then
+            while IFS= read -r hist_file; do
+                local file_ts
+                file_ts="$(_doctor_mtime "$hist_file" 2>/dev/null || echo 0)"
+                if [ "${file_ts:-0}" -ge "${ref_ts:-0}" ]; then
+                    has_transition=true
+                    break
+                fi
+            done < <(grep -rl "^type: transition" "${cairn_dir}/history/" 2>/dev/null || true)
+        fi
+        if [ "$has_transition" = false ]; then
+            _DOCTOR_JSON_WRITE_BACK_SIGNALS="${_DOCTOR_JSON_WRITE_BACK_SIGNALS}missing-audit-flag,"
+            if [ "$_DOCTOR_JSON" = false ]; then
+                echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_write_back_signal_missing_audit_flag)"
+            fi
+        fi
+    fi
+
+    _DOCTOR_JSON_WRITE_BACK_SIGNALS="${_DOCTOR_JSON_WRITE_BACK_SIGNALS%,}"
+
+    if [ -n "$_DOCTOR_JSON_WRITE_BACK_SIGNALS" ]; then
+        _DOCTOR_JSON_WRITE_BACK_STATUS="warn"
+        _DOCTOR_JSON_WRITE_BACK_REASON="signals_found"
+        if [ "$_DOCTOR_JSON" = false ]; then
+            echo -e "  ${C_DIM}→  $(msg_doctor_write_back_suggest)${C_RESET}"
+        fi
+    else
+        if [ "$_DOCTOR_JSON" = false ]; then
+            echo -e "  ${C_GREEN}✓${C_RESET}  $(msg_doctor_write_back_ok)"
+        fi
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Emit JSON result to stdout.
 # -----------------------------------------------------------------------------
 _doctor_emit_json() {
     local stale="${_DOCTOR_JSON_STALE_DOMAINS:-}"
     local v0011="${_DOCTOR_JSON_V0011_RESIDUE:-}"
+    local wb="${_DOCTOR_JSON_WRITE_BACK_SIGNALS:-}"
 
     # Convert comma-separated lists to JSON arrays
     local stale_arr="[]"
@@ -545,10 +680,14 @@ _doctor_emit_json() {
     if [ -n "$v0011" ]; then
         v0011_arr='["'"$(echo "$v0011" | sed 's/,/","/g')"'"]'
     fi
+    local wb_arr="[]"
+    if [ -n "$wb" ]; then
+        wb_arr='["'"$(echo "$wb" | sed 's/,/","/g')"'"]'
+    fi
 
     cat <<JSON
 {
-  "cairn_version": "0.0.12",
+  "cairn_version": "0.0.13",
   "issues": ${_DOCTOR_FAIL},
   "output": {
     "status": "${_DOCTOR_JSON_OUTPUT_STATUS:-ok}",
@@ -557,7 +696,12 @@ _doctor_emit_json() {
   "domains_stale": ${stale_arr},
   "skill_guide": "${_DOCTOR_JSON_SKILL_GUIDE:-ok}",
   "skill_md": "${_DOCTOR_JSON_SKILL_MD:-ok}",
-  "v0011_residue": ${v0011_arr}
+  "v0011_residue": ${v0011_arr},
+  "write_back": {
+    "status": "${_DOCTOR_JSON_WRITE_BACK_STATUS:-skipped}",
+    "reason": "${_DOCTOR_JSON_WRITE_BACK_REASON:-no_git}",
+    "signals": ${wb_arr}
+  }
 }
 JSON
 }
@@ -586,6 +730,9 @@ cmd_doctor() {
     _DOCTOR_JSON_SKILL_GUIDE="ok"
     _DOCTOR_JSON_SKILL_MD="ok"
     _DOCTOR_JSON_V0011_RESIDUE=""
+    _DOCTOR_JSON_WRITE_BACK_STATUS="skipped"
+    _DOCTOR_JSON_WRITE_BACK_REASON="no_git"
+    _DOCTOR_JSON_WRITE_BACK_SIGNALS=""
 
     _doctor_check_output "$cairn_dir"
     _doctor_check_domains "$cairn_dir"
@@ -594,6 +741,7 @@ cmd_doctor() {
     _doctor_check_skill_guide "$root"
     _doctor_check_skill_md "$cairn_dir"
     _doctor_check_v0011_residue "$cairn_dir"
+    _doctor_check_write_back "$root" "$cairn_dir"
 
     if [ "$_DOCTOR_JSON" = true ]; then
         _doctor_emit_json

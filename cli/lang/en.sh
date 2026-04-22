@@ -577,13 +577,14 @@ msg_doctor_stack_ok()           { echo "stack entries match current dependency f
 msg_doctor_stack_drift()        { echo "stack entry '${1}: ${2}' not found in current dependency files — may be stale"; }
 msg_doctor_stack_no_deps()      { echo "(no dependency files found — skipping stack drift check)"; }
 
-# ── doctor reflection checks (v0.0.9) ─────────────────────────────────────────
-msg_doctor_section_reflections()    { echo "── Reflections"; }
-msg_doctor_reflect_ok()             { echo "reflection records present for recent changes"; }
-msg_doctor_reflect_none_yet()       { echo "(no reflections/ directory found — run cairn reflect after significant tasks)"; }
-msg_doctor_reflect_missing_large()  { echo "large recent change (${1} files in last commit) but no reflection record in last 7 days"; }
-msg_doctor_reflect_missing_migration() { echo "migration-like commit detected ('${1}') but no reflection record found"; }
-msg_doctor_reflect_suggest()        { echo "  Suggested action: run cairn reflect --since HEAD~${1}"; }
+# ── doctor write-back signals (v0.0.13) ───────────────────────────────────────
+msg_doctor_section_write_back()     { echo "── Write-back signals"; }
+msg_doctor_write_back_ok()          { echo "no write-back drift detected"; }
+msg_doctor_write_back_skipped()     { echo "(no .git/ directory — skipping write-back signal scan)"; }
+msg_doctor_write_back_signal_missing_write_back()  { echo "large code change (~${1} lines in 14 days) but no new .cairn/history/ entries — emit a Cairn reflection block"; }
+msg_doctor_write_back_signal_missing_output_follow_up() { echo "dependency file(s) changed recently but .cairn/output.md not updated — review ## stack section"; }
+msg_doctor_write_back_signal_missing_audit_flag()  { echo "migration-like commit(s) detected but no type:transition history entry found — consider audit-required reflection"; }
+msg_doctor_write_back_suggest()     { echo "run your AI and end the task with a Cairn reflection block (see .cairn/SKILL.md Step 3)"; }
 
 # ── doctor skill guide checks (v0.0.12) ───────────────────────────────────────
 msg_doctor_section_skill_drift()    { echo "── Skill files"; }

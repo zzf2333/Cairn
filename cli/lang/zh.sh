@@ -578,13 +578,14 @@ msg_doctor_stack_ok()           { echo "stack 条目与当前依赖文件匹配"
 msg_doctor_stack_drift()        { echo "stack 条目 '${1}: ${2}' 在当前依赖文件中未找到 — 可能已过期"; }
 msg_doctor_stack_no_deps()      { echo "（未找到依赖文件 — 跳过 stack 漂移检查）"; }
 
-# ── doctor 反思检查（v0.0.9）──────────────────────────────────────────────────
-msg_doctor_section_reflections()    { echo "── 反思记录"; }
-msg_doctor_reflect_ok()             { echo "近期变更存在反思记录"; }
-msg_doctor_reflect_none_yet()       { echo "（未找到 reflections/ 目录 — 请在重大任务后运行 cairn reflect）"; }
-msg_doctor_reflect_missing_large()  { echo "最近提交变更较大（${1} 个文件）但 7 天内无反思记录"; }
-msg_doctor_reflect_missing_migration() { echo "检测到迁移类提交（'${1}'）但未找到反思记录"; }
-msg_doctor_reflect_suggest()        { echo "  建议操作：运行 cairn reflect --since HEAD~${1}"; }
+# ── doctor 写回信号检查（v0.0.13）────────────────────────────────────────────
+msg_doctor_section_write_back()     { echo "── 写回信号"; }
+msg_doctor_write_back_ok()          { echo "未检测到写回漂移"; }
+msg_doctor_write_back_skipped()     { echo "（无 .git/ 目录 — 跳过写回信号扫描）"; }
+msg_doctor_write_back_signal_missing_write_back()  { echo "14 天内代码改动较大（约 ${1} 行）但 .cairn/history/ 无新增条目 — 请输出 Cairn reflection block"; }
+msg_doctor_write_back_signal_missing_output_follow_up() { echo "依赖文件近期有变动但 .cairn/output.md 未更新 — 请检查 ## stack 章节"; }
+msg_doctor_write_back_signal_missing_audit_flag()  { echo "检测到迁移类提交但无 type:transition history 条目 — 请考虑输出 audit-required reflection"; }
+msg_doctor_write_back_suggest()     { echo "请让 AI 完成任务并输出 Cairn reflection block（参见 .cairn/SKILL.md Step 3）"; }
 
 # ── doctor skill 漂移检查（v0.0.11）──────────────────────────────────────────
 msg_doctor_section_skill_drift()    { echo "── Skill 文件"; }

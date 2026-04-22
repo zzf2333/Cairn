@@ -61,3 +61,12 @@ assert_contains "SKILL.md: instructs Write tool usage" \
 
 assert_contains "SKILL.md: instructs Edit tool usage" \
     "$_SKILL_FILE" "Edit"
+
+assert_contains "SKILL.md: has Cairn reflection block template" \
+    "$_SKILL_FILE" "Cairn reflection"
+
+assert_contains "SKILL.md: has audit-required enum value" \
+    "$_SKILL_FILE" "audit-required"
+
+assert_contains "SKILL.md: has memory-updated enum value" \
+    "$_SKILL_FILE" "memory-updated"

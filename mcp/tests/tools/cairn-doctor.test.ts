@@ -58,7 +58,11 @@ describe("handleCairnDoctor", () => {
         expect(json).toHaveProperty("skill_guide");
         expect(json).toHaveProperty("skill_md");
         expect(json).toHaveProperty("v0011_residue");
+        expect(json).toHaveProperty("write_back");
         expect(Array.isArray(json.domains_stale)).toBe(true);
         expect(Array.isArray(json.v0011_residue)).toBe(true);
+        expect(json.write_back).toHaveProperty("status");
+        expect(json.write_back.status).toMatch(/^(ok|warn|skipped)$/);
+        expect(Array.isArray(json.write_back.signals)).toBe(true);
     });
 });

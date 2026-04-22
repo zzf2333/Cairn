@@ -149,8 +149,8 @@ content language.
 Every tool, script, and example must conform to it. When in doubt, the spec wins.
 
 **Test coverage:**
-- Shell test suite: **569 assertions** across 7 test files (CLI, init script, format validation)
-- MCP Server test suite: **114 assertions** across 15 Vitest test files (parsers, all 6 tools)
+- Shell test suite: **600+ assertions** across 8 test files (CLI, init script, format validation, protocol conformance)
+- MCP Server test suite: **270+ assertions** across 15 Vitest test files (parsers, all 6 tools)
 
 ---
 
@@ -216,11 +216,31 @@ cairn init --refresh-skills
 cairn init --global
 ```
 
-**After task completion**, the AI ends its response with:
+#### Task completion protocol
+
+After every non-trivial task, the AI produces a structured `Cairn reflection` block:
 
 ```
-cairn: recorded 1 event: history/2026-04_api-layer-trpc-rejection.md
+Task completion summary
+- Completed work: switched internal services from REST to tRPC
+- Changed files / domains: src/api/, api-layer
+- Risk level: medium
+
+Cairn reflection
+- Result: memory-updated
+- Impacted domains: api-layer
+- History recorded: history/2026-04_trpc-adoption.md
+- Output updated: no
+- Domains updated: api-layer
+- Audit required: no
+- Next action: none
+
+cairn: recorded 1 event: history/2026-04_trpc-adoption.md
 ```
+
+`Result` is one of `no-op` (nothing written), `memory-updated` (write-back occurred), or
+`audit-required` (migration risk — follow-up needed). See
+[spec/TASK-COMPLETION-PROTOCOL.md](spec/TASK-COMPLETION-PROTOCOL.md) for the normative definition.
 
 Review with `git diff .cairn/`. Edit the file directly if anything needs adjusting.
 
@@ -374,6 +394,7 @@ The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repos
 | Document | Contents |
 |----------|----------|
 | [`spec/FORMAT.md`](spec/FORMAT.md) | Complete format reference for all three layers (authoritative) |
+| [`spec/TASK-COMPLETION-PROTOCOL.md`](spec/TASK-COMPLETION-PROTOCOL.md) | Task completion protocol: reflection block format and doctor signals |
 | [`spec/DESIGN.md`](spec/DESIGN.md) | Why Cairn is designed the way it is |
 | [`spec/vs-adr.md`](spec/vs-adr.md) | How Cairn relates to Architecture Decision Records |
 | [`spec/adoption-guide.md`](spec/adoption-guide.md) | Step-by-step Init and Reactive adoption guide |

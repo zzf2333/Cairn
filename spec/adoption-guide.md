@@ -485,6 +485,9 @@ cairn: no event recorded
 This is a verification handshake — not a CLI command. `git diff .cairn/` shows exactly
 what was written. If the event was wrong or incomplete, edit the file directly.
 
+For the normative definition of reflection results and the required end-of-task format,
+see [spec/TASK-COMPLETION-PROTOCOL.md](TASK-COMPLETION-PROTOCOL.md).
+
 ### What to do if the AI missed an event
 
 Write the history entry yourself:

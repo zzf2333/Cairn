@@ -465,6 +465,7 @@ echo "$_json_out" > "$_json_tmp"
 assert_contains "json output starts with {" "$_json_tmp" "^\{"
 assert_contains "json output has issues field" "$_json_tmp" '"issues"'
 assert_contains "json output has cairn_version field" "$_json_tmp" '"cairn_version"'
+assert_contains "json output has write_back field" "$_json_tmp" '"write_back"'
 
 # =============================================================================
 # v0.0.11: doctor warns on old skill location (old only, no new)
@@ -528,3 +529,54 @@ _clean_skill_out="$(cd "$_doctor_clean_skill_dir" && bash "$_CAIRN_BIN" doctor 2
 # With no .claude/skills/cairn/ old dir, should not warn about skill drift
 assert_exit_code "skill drift: no old-location warning" \
     "0" "$(echo "$_clean_skill_out" | grep -qi "skills/cairn" && echo 1 || echo 0)"
+
+# =============================================================================
+# v0.0.13: write_back — no .git/ → status skipped
+# =============================================================================
+
+start_suite "cairn doctor — Write-back: no git → skipped"
+
+_doctor_wb_nogit_dir="${_CAIRN_TMPDIR}/doctor_wb_nogit_$$"
+mkdir -p "$_doctor_wb_nogit_dir"
+_create_doctor_clean_fixture "$_doctor_wb_nogit_dir"
+# Deliberately no .git/ directory
+
+_wb_nogit_json="$(cd "$_doctor_wb_nogit_dir" && bash "$_CAIRN_BIN" doctor --json 2>/dev/null || true)"
+_wb_nogit_tmp="${_CAIRN_TMPDIR}/doctor_wb_nogit_json.txt"
+echo "$_wb_nogit_json" > "$_wb_nogit_tmp"
+
+assert_contains "write_back: json has write_back field"     "$_wb_nogit_tmp" '"write_back"'
+assert_contains "write_back: status is skipped (no git)"    "$_wb_nogit_tmp" '"skipped"'
+assert_contains "write_back: reason is no_git"              "$_wb_nogit_tmp" '"no_git"'
+
+# =============================================================================
+# v0.0.13: write_back — git repo with large change + no history → missing-write-back
+# =============================================================================
+
+start_suite "cairn doctor — Write-back: large change, no history"
+
+_doctor_wb_large_dir="${_CAIRN_TMPDIR}/doctor_wb_large_$$"
+mkdir -p "$_doctor_wb_large_dir"
+_create_doctor_clean_fixture "$_doctor_wb_large_dir"
+
+# Initialise a git repo so the write-back check runs
+(cd "$_doctor_wb_large_dir" && git init -q && git config user.email "test@cairn" && git config user.name "Test")
+
+# Write 110+ code lines and commit — enough to cross the 100-line threshold
+mkdir -p "$_doctor_wb_large_dir/src"
+python3 -c "
+lines = ['# auto-generated test line ' + str(i) for i in range(115)]
+print('\n'.join(lines))
+" > "$_doctor_wb_large_dir/src/generated.py"
+(cd "$_doctor_wb_large_dir" && git add src/generated.py && git commit -q -m "feat: add generated module")
+
+# Remove the history entry so the "new history" check fails
+rm -f "$_doctor_wb_large_dir/.cairn/history/2024-01_graphql-spike-rejected.md"
+
+_wb_large_json="$(cd "$_doctor_wb_large_dir" && bash "$_CAIRN_BIN" doctor --json 2>/dev/null || true)"
+_wb_large_tmp="${_CAIRN_TMPDIR}/doctor_wb_large_json.txt"
+echo "$_wb_large_json" > "$_wb_large_tmp"
+
+assert_contains "write_back large: json has write_back field"     "$_wb_large_tmp" '"write_back"'
+assert_contains "write_back large: status is warn"                "$_wb_large_tmp" '"warn"'
+assert_contains "write_back large: signals has missing-write-back" "$_wb_large_tmp" "missing-write-back"

@@ -424,8 +424,9 @@ If this project contains `.cairn/`:
    domains, when to read history, and when to write history/domain/output
    updates yourself using your file tools.
 3. There is no CLI ceremony. You maintain the memory directly with
-   Write/Edit. End your response with `cairn: recorded <N> event(s): ...`
-   or `cairn: no event recorded` so the user can verify and git-review.
+   Write/Edit. End every non-trivial task with a `Cairn reflection` block
+   and `cairn: recorded <N> event(s): ...` or `cairn: no event recorded`.
+   See `.cairn/SKILL.md` Step 3 for the full template.
 GUIDE_EOF
 )
 
