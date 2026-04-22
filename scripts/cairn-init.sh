@@ -4,10 +4,11 @@
 #
 # Usage:
 #   chmod +x cairn-init.sh
-#   ./cairn-init.sh
+#   ./cairn-init.sh [--refresh-skills] [--global] [--upgrade]
 #
 # Creates the .cairn/ three-layer structure in the current directory,
-# and installs AI tool Skill adapter files.
+# copies .cairn/SKILL.md (the operating protocol), and installs AI tool
+# guide blocks.
 # =============================================================================
 
 set -euo pipefail
@@ -50,6 +51,17 @@ case "$_CAIRN_LANG_RAW" in
     *)   source "$_CAIRN_LANG_DIR/en.sh" ;;
 esac
 
+# ── cairn root & shared lib ────────────────────────────────────────────────────
+_CAIRN_ROOT="$(cd "$_INIT_SCRIPT_DIR/.." && pwd)"
+_CAIRN_LIB_DIR="$_CAIRN_ROOT/cli/lib"
+
+if [ -f "$_CAIRN_LIB_DIR/skill-block.sh" ]; then
+    source "$_CAIRN_LIB_DIR/skill-block.sh"
+else
+    echo "error: required lib not found: $_CAIRN_LIB_DIR/skill-block.sh" >&2
+    exit 1
+fi
+
 # ---- utility functions ----
 
 print_header() {
@@ -80,7 +92,6 @@ print_error() {
 }
 
 prompt() {
-    # usage: prompt "prompt text" [default]
     local msg="$1"
     local default="${2:-}"
     if [ -n "$default" ]; then
@@ -94,11 +105,10 @@ prompt() {
 SELECTED_DOMAINS=()
 CREATED_FILES=()
 _INIT_SKILLS_ONLY=false
-_INSTALL_TIP_TOKENS=()
+AGENTS_MD_WRITTEN=0
 
 # ---- preset domain keyword mapping ----
 
-# returns keyword string for a domain (/ separated)
 get_domain_keywords() {
     local domain="$1"
     case "$domain" in
@@ -113,7 +123,7 @@ get_domain_keywords() {
         architecture)       echo "architecture / pattern / module / service / layer" ;;
         performance)        echo "performance / latency / cache / optimize / bundle" ;;
         security)           echo "security / XSS / CSRF / injection / vulnerability" ;;
-        *)                  echo "$domain" ;;  # custom domain: use domain name itself as keyword
+        *)                  echo "$domain" ;;
     esac
 }
 
@@ -144,9 +154,8 @@ step1_select_domains() {
     msg_init_domains_prompt
     read -r domain_input
 
-    # standard domain names array (indexed from 1)
     local std_domains=(
-        ""  # placeholder so numbering starts at 1
+        ""
         "state-management"
         "api-layer"
         "database"
@@ -162,7 +171,6 @@ step1_select_domains() {
 
     SELECTED_DOMAINS=()
 
-    # replace commas with spaces, then split by space
     local normalized
     normalized=$(echo "$domain_input" | tr ',' ' ')
 
@@ -170,7 +178,6 @@ step1_select_domains() {
         token=$(echo "$token" | tr -d '[:space:]')
         [ -z "$token" ] && continue
 
-        # check if purely numeric
         if echo "$token" | grep -qE '^[0-9]+$'; then
             local idx="$token"
             if [ "$idx" -ge 1 ] && [ "$idx" -le 11 ]; then
@@ -179,7 +186,6 @@ step1_select_domains() {
                 print_warn "$(msg_init_domain_out_of_range "$idx")"
             fi
         else
-            # custom domain name: validate format
             if echo "$token" | grep -qE '^[a-z][a-z0-9-]*$'; then
                 SELECTED_DOMAINS+=("$token")
             else
@@ -188,7 +194,6 @@ step1_select_domains() {
         fi
     done
 
-    # deduplicate (POSIX-compatible, no bash 4 associative arrays needed)
     local unique_domains=()
     for d in "${SELECTED_DOMAINS[@]}"; do
         local found=0
@@ -221,7 +226,6 @@ step1_select_domains() {
 step2_create_output_md() {
     print_step "2" "$(msg_init_step_output)"
 
-    # ---- stage section ----
     echo ""
     echo -e "  ${C_BOLD}── stage ──${C_RESET}"
     print_info "$(msg_init_stage_intro)"
@@ -249,7 +253,6 @@ step2_create_output_md() {
     msg_init_reject_if_prompt
     read -r stage_reject_if
 
-    # ---- no-go section ----
     echo ""
     echo -e "  ${C_BOLD}── no-go ──${C_RESET}"
     print_info "$(msg_init_nogo_intro)"
@@ -264,10 +267,6 @@ step2_create_output_md() {
         nogo_lines+=("$nogo_item")
     done
 
-    # ---- hooks section (auto-generated) ----
-    # no user input needed — generated from SELECTED_DOMAINS
-
-    # ---- stack section ----
     echo ""
     echo -e "  ${C_BOLD}── stack ──${C_RESET}"
     print_info "$(msg_init_stack_intro)"
@@ -282,7 +281,6 @@ step2_create_output_md() {
         stack_lines+=("$stack_item")
     done
 
-    # ---- debt section ----
     echo ""
     echo -e "  ${C_BOLD}── debt ──${C_RESET}"
     print_info "$(msg_init_debt_intro)"
@@ -299,7 +297,6 @@ step2_create_output_md() {
         debt_lines+=("$debt_item")
     done
 
-    # ---- generate output.md ----
     mkdir -p .cairn
 
     {
@@ -373,6 +370,30 @@ step3_init_history() {
 }
 
 # ============================================================================
+# Step 3.5: Copy SKILL.md (operating protocol) into .cairn/
+# ============================================================================
+
+step3_5_init_skill() {
+    local skill_src="$_CAIRN_ROOT/skills/claude-code/SKILL.md"
+    local skill_dst=".cairn/SKILL.md"
+
+    if [ ! -f "$skill_src" ]; then
+        print_warn "Skill source not found: $skill_src — .cairn/SKILL.md not created"
+        return 0
+    fi
+
+    mkdir -p ".cairn"
+
+    if [ -f "$skill_dst" ] && cmp -s "$skill_src" "$skill_dst"; then
+        print_info "$(msg_init_skill_unchanged "$skill_dst")"
+    else
+        cp "$skill_src" "$skill_dst"
+        CREATED_FILES+=("$skill_dst")
+        print_ok "$(msg_init_written "$skill_dst")"
+    fi
+}
+
+# ============================================================================
 # Step 4: Initialize domains/
 # ============================================================================
 
@@ -385,370 +406,37 @@ step4_init_domains() {
     print_info "$(msg_init_domains_dir_hint1)"
     print_info "$(msg_init_domains_dir_hint2)"
     print_info "$(msg_init_domains_dir_hint3)"
-    print_info "$(msg_init_domains_dir_hint4)"
-    print_info "$(msg_init_domains_dir_hint5)"
 }
 
 # ============================================================================
-# Step 5: Install Skill adapter files
+# Step 5: Install AI tool guide blocks
 # ============================================================================
 
-# ---- Skill content heredocs ----
+# 12-line guide block injected into AI tool config files.
+# Points the AI to .cairn/SKILL.md for the full operating protocol.
+_SKILL_GUIDE_BLOCK=$(cat << 'GUIDE_EOF'
+## Cairn (path-dependent constraint memory)
 
-SKILL_CLAUDE_CODE=$(cat << 'SKILL_EOF'
-Read `.cairn/output.md` at session start, then read domain files on planning tasks, and draft history entries when decisions are made.
+If this project contains `.cairn/`:
 
----
-
-## ON SESSION START
-
-Read `.cairn/output.md` before responding to any request. Use it to establish the constraint framework for the entire session:
-
-- `## stage` — current project phase and decision-making mode
-- `## no-go` — directions you MUST NOT suggest
-- `## hooks` — keyword-to-domain mappings for when to load deeper context
-- `## stack` — active technology choices
-- `## debt` — accepted debts you MUST NOT attempt to fix
-
----
-
-## ON PLANNING / DESIGN / ARCHITECTURE TASKS
-
-When the user's request involves planning, technology selection, module architecture, or migration evaluation, check `output.md`'s `## hooks` section for matching keywords and read the corresponding `domains/*.md` file before responding.
-
-**Example:** if the user asks about API design and `output.md` has `api / endpoint → domains/api-layer.md`, read `.cairn/domains/api-layer.md` before answering.
-
----
-
-## ON PRECISE HISTORICAL QUERIES
-
-When the user asks about the full reasoning behind a specific past decision, read the corresponding file in `.cairn/history/`. File names follow the pattern `YYYY-MM_<short-slug>.md`.
-
----
-
-## CONSTRAINT PROCESSING
-
-**`no-go` entries** — Do not suggest these directions. If asked directly, explain why it was excluded before offering alternatives.
-
-**`debt` entries** — Do not attempt to fix accepted debts. Work within the constraint. Only reopen when the `revisit_when` condition is met.
-
-**`known pitfalls` in `domains/*.md`** — Actively avoid triggering the conditions listed.
-
----
-
-## REACTIVE EVOLUTION
-
-After completing a task, evaluate whether a recordable event occurred (decision, rejection, transition, debt, experiment). If yes:
-
-1. Draft a `history/` entry with fields: `type`, `domain`, `decision_date`, `recorded_date`, `summary`, `rejected`, `reason`, `revisit_when`.
-2. Propose it to the user for confirmation before writing.
-3. Once confirmed, write to `.cairn/history/YYYY-MM_<short-slug>.md`.
-4. Propose updating the corresponding `domains/*.md` if needed (full overwrite, not append).
-
----
-
-## ON TASK COMPLETION — MANDATORY GATE
-
-This gate runs before every final response. It is not optional.
-Omitting it means the task is incomplete, regardless of code correctness.
-
-### Step 1 — Classify (answer internally before writing your response)
-
-Did this task involve any of the following?
-
-- Added or removed a dependency or package
-- Changed module structure, domain boundaries, or architecture
-- Performed a migration or technology switch
-- Accepted a deficiency as debt, or explicitly rejected a direction
-- Large refactor touching multiple files in one domain
-
-**If yes to any:** run `cairn reflect` now and report its result below.
-**If no to all:** the result is `no-op`; skip running the command.
-
-### Step 2 — Append this line to your final response (verbatim)
-
-Choose exactly one and include it at the end of your response:
-
-    cairn-reflection: no-op
-    cairn-reflection: candidates-created — run `cairn stage review`
-    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
-
-The user relies on seeing this line to verify the gate ran.
-Omitting it is a protocol violation.
-SKILL_EOF
+1. Read `.cairn/output.md` at session start to load the constraint frame.
+2. Read `.cairn/SKILL.md` for the full operating protocol — when to load
+   domains, when to read history, and when to write history/domain/output
+   updates yourself using your file tools.
+3. There is no CLI ceremony. You maintain the memory directly with
+   Write/Edit. End your response with `cairn: recorded <N> event(s): ...`
+   or `cairn: no event recorded` so the user can verify and git-review.
+GUIDE_EOF
 )
 
-SKILL_CURSOR=$(cat << 'SKILL_EOF'
----
-description: Cairn path-dependency constraint system — read .cairn/ files to respect project decisions
-globs:
-alwaysApply: true
----
-
-## ON SESSION START
-
-Read `.cairn/output.md` before responding to any request. Use it to establish the constraint framework for the entire session:
-
-- `## stage` — current project phase and decision-making mode
-- `## no-go` — directions you MUST NOT suggest
-- `## hooks` — keyword-to-domain mappings for when to load deeper context
-- `## stack` — active technology choices
-- `## debt` — accepted debts you MUST NOT attempt to fix
-
----
-
-## ON PLANNING / DESIGN / ARCHITECTURE TASKS
-
-When the user's request involves planning, technology selection, module architecture, or migration evaluation, check `output.md`'s `## hooks` section for matching keywords and read the corresponding `domains/*.md` file before responding.
-
-**Example:** if the user asks about API design and `output.md` has `api / endpoint → domains/api-layer.md`, read `.cairn/domains/api-layer.md` before answering.
-
----
-
-## ON PRECISE HISTORICAL QUERIES
-
-When the user asks about the full reasoning behind a specific past decision, read the corresponding file in `.cairn/history/`. File names follow the pattern `YYYY-MM_<short-slug>.md`.
-
----
-
-## CONSTRAINT PROCESSING
-
-**`no-go` entries** — Do not suggest these directions. If asked directly, explain why it was excluded before offering alternatives.
-
-**`debt` entries** — Do not attempt to fix accepted debts. Work within the constraint. Only reopen when the `revisit_when` condition is met.
-
-**`known pitfalls` in `domains/*.md`** — Actively avoid triggering the conditions listed.
-
----
-
-## REACTIVE EVOLUTION
-
-After completing a task, evaluate whether a recordable event occurred (decision, rejection, transition, debt, experiment). If yes:
-
-1. Draft a `history/` entry with fields: `type`, `domain`, `decision_date`, `recorded_date`, `summary`, `rejected`, `reason`, `revisit_when`.
-2. Propose it to the user for confirmation before writing.
-3. Once confirmed, write to `.cairn/history/YYYY-MM_<short-slug>.md`.
-4. Propose updating the corresponding `domains/*.md` if needed (full overwrite, not append).
-
----
-
-## ON TASK COMPLETION — MANDATORY GATE
-
-This gate runs before every final response. It is not optional.
-Omitting it means the task is incomplete, regardless of code correctness.
-
-### Step 1 — Classify (answer internally before writing your response)
-
-Did this task involve any of the following?
-
-- Added or removed a dependency or package
-- Changed module structure, domain boundaries, or architecture
-- Performed a migration or technology switch
-- Accepted a deficiency as debt, or explicitly rejected a direction
-- Large refactor touching multiple files in one domain
-
-**If yes to any:** run `cairn reflect` now and report its result below.
-**If no to all:** the result is `no-op`; skip running the command.
-
-### Step 2 — Append this line to your final response (verbatim)
-
-Choose exactly one and include it at the end of your response:
-
-    cairn-reflection: no-op
-    cairn-reflection: candidates-created — run `cairn stage review`
-    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
-
-The user relies on seeing this line to verify the gate ran.
-Omitting it is a protocol violation.
-SKILL_EOF
-)
-
-SKILL_GENERIC=$(cat << 'SKILL_EOF'
-
-# Cairn — AI Path-Dependency Constraint System
-
-## SESSION START
-
-Read `.cairn/output.md` before any response. It defines:
-- `## stage` — project phase and decision mode
-- `## no-go` — directions you MUST NOT suggest
-- `## hooks` — keywords that trigger domain file reads
-- `## stack` — active technology choices
-- `## debt` — accepted debts you MUST NOT fix
-
-## PLANNING / DESIGN TASKS
-
-Match user request keywords against `## hooks` in `output.md`. If matched, read the corresponding `domains/*.md` file before responding.
-
-## HISTORICAL QUERIES
-
-For past decision details, read `.cairn/history/YYYY-MM_<short-slug>.md`.
-
-## CONSTRAINTS
-
-- `no-go`: never suggest; explain exclusion if asked directly
-- `debt`: never fix; work within the constraint
-- `known pitfalls` in domains/: actively avoid trigger conditions
-
-## REACTIVE EVOLUTION
-
-After tasks, assess if a history entry is warranted (decision / rejection / transition / debt / experiment). If yes, draft it with fields: `type`, `domain`, `decision_date`, `recorded_date`, `summary`, `rejected`, `reason`, `revisit_when`. Propose to user before writing.
-
-## ON TASK COMPLETION — MANDATORY GATE
-
-Before every final response, classify the task. Did it involve: new/removed dependencies, architecture changes, migrations, accepted debt, or large refactors across a domain?
-
-**If yes:** run `cairn reflect` and report its result. **If no:** the result is `no-op`.
-
-End your response with exactly one of:
-
-    cairn-reflection: no-op
-    cairn-reflection: candidates-created — run `cairn stage review`
-    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
-
-Omitting this line is a protocol violation.
-SKILL_EOF
-)
-
-# AGENTS.md content (shared by Codex CLI and OpenCode, written to AGENTS.md)
-SKILL_AGENTS=$(cat << 'SKILL_EOF'
-
-# Cairn — AI Path-Dependency Constraint System
-
-## ON SESSION START
-
-Read `.cairn/output.md` before responding to any request. Use it to establish the constraint framework for the entire session:
-
-- `## stage` — current project phase and decision-making mode
-- `## no-go` — directions you MUST NOT suggest
-- `## hooks` — keyword-to-domain mappings for when to load deeper context
-- `## stack` — active technology choices
-- `## debt` — accepted debts you MUST NOT attempt to fix
-
-## ON PLANNING / DESIGN / ARCHITECTURE TASKS
-
-Match user request keywords against `## hooks` in `output.md`. If matched, read the corresponding `domains/*.md` file before responding.
-
-## ON PRECISE HISTORICAL QUERIES
-
-For past decision details, read `.cairn/history/YYYY-MM_<short-slug>.md`.
-
-## CONSTRAINT PROCESSING
-
-- `no-go`: never suggest; explain exclusion if asked directly
-- `debt`: never fix; work within the constraint
-- `known pitfalls` in domains/: actively avoid trigger conditions
-
-## REACTIVE EVOLUTION
-
-After tasks, assess if a history entry is warranted (decision / rejection / transition / debt / experiment). If yes, draft it with fields: `type`, `domain`, `decision_date`, `recorded_date`, `summary`, `rejected`, `reason`, `revisit_when`. Propose to user before writing.
-
-## ON TASK COMPLETION — MANDATORY GATE
-
-Before every final response, classify the task. Did it involve: new/removed dependencies, architecture changes, migrations, accepted debt, or large refactors across a domain?
-
-**If yes:** run `cairn reflect` and report its result. **If no:** the result is `no-op`.
-
-End your response with exactly one of:
-
-    cairn-reflection: no-op
-    cairn-reflection: candidates-created — run `cairn stage review`
-    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
-
-Omitting this line is a protocol violation.
-SKILL_EOF
-)
-
-# GEMINI.md content (Gemini CLI)
-SKILL_GEMINI=$(cat << 'SKILL_EOF'
-
-# Cairn — AI Path-Dependency Constraint System
-
-## ON SESSION START
-
-Read `.cairn/output.md` before responding to any request. Use it to establish the constraint framework for the entire session:
-
-- `## stage` — current project phase and decision-making mode
-- `## no-go` — directions you MUST NOT suggest
-- `## hooks` — keyword-to-domain mappings for when to load deeper context
-- `## stack` — active technology choices
-- `## debt` — accepted debts you MUST NOT attempt to fix
-
-## ON PLANNING / DESIGN / ARCHITECTURE TASKS
-
-Match user request keywords against `## hooks` in `output.md`. If matched, read the corresponding `domains/*.md` file before responding.
-
-## ON PRECISE HISTORICAL QUERIES
-
-For past decision details, read `.cairn/history/YYYY-MM_<short-slug>.md`.
-
-## CONSTRAINT PROCESSING
-
-- `no-go`: never suggest; explain exclusion if asked directly
-- `debt`: never fix; work within the constraint
-- `known pitfalls` in domains/: actively avoid trigger conditions
-
-## REACTIVE EVOLUTION
-
-After tasks, assess if a history entry is warranted (decision / rejection / transition / debt / experiment). If yes, draft it with fields: `type`, `domain`, `decision_date`, `recorded_date`, `summary`, `rejected`, `reason`, `revisit_when`. Propose to user before writing.
-
-## ON TASK COMPLETION — MANDATORY GATE
-
-Before every final response, classify the task. Did it involve: new/removed dependencies, architecture changes, migrations, accepted debt, or large refactors across a domain?
-
-**If yes:** run `cairn reflect` and report its result. **If no:** the result is `no-op`.
-
-End your response with exactly one of:
-
-    cairn-reflection: no-op
-    cairn-reflection: candidates-created — run `cairn stage review`
-    cairn-reflection: audit-required — run `cairn stage review` then `cairn audit start`
-
-Omitting this line is a protocol violation.
-SKILL_EOF
-)
-
-# flag to track whether AGENTS.md has been written (avoid duplicate writes when both Codex and OpenCode are selected)
-AGENTS_MD_WRITTEN=0
-
-# ============================================================================
-# Shared skill installation primitives
-# (used by both cairn-init.sh and cli/cmd/install-skill.sh)
-# ============================================================================
-
-# Returns 0 if the cairn global-protocol marker is present in the given file.
-_global_marker_present() {
-    local file="$1"
-    [ -f "$file" ] && grep -qF "<!-- cairn:global-protocol:start -->" "$file" 2>/dev/null
-}
-
-# Print a tip to run cairn install-global when global config files lack the marker.
-# Usage: _maybe_print_global_tip <token> [token...]
-# Tokens: 1=claude-code, 6=codex, 7=gemini
-_maybe_print_global_tip() {
-    local show_tip=false
-    for tok in "$@"; do
-        case "$tok" in
-            1) _global_marker_present "$HOME/.claude/CLAUDE.md" || show_tip=true ;;
-            6) _global_marker_present "$HOME/.codex/AGENTS.md"  || show_tip=true ;;
-            7) _global_marker_present "$HOME/GEMINI.md"         || show_tip=true ;;
-        esac
-    done
-    if [ "$show_tip" = true ]; then
-        echo ""
-        echo -e "  ${C_DIM}$(msg_init_global_tip)${C_RESET}"
-    fi
-}
-
-# Install the skill file for a single tool token (1–8).
-# Appends to CREATED_FILES and respects AGENTS_MD_WRITTEN.
-# For token 1 (Claude Code): detects and optionally removes old v0.0.9 skill path.
+# Install or refresh the guide block for a single tool token (1–8).
+# Uses managed-block upsert: appended | refreshed | unchanged.
 install_one_skill() {
     local token="$1"
     case "$token" in
         1)
             local target_file=".claude/CLAUDE.md"
-            # Detect old skill location from ≤v0.0.9
+            # Detect old v0.0.9 skill location and offer removal
             if [ -d ".claude/skills/cairn" ]; then
                 echo ""
                 print_warn "$(msg_install_skill_old_detected)"
@@ -765,75 +453,92 @@ install_one_skill() {
                         ;;
                 esac
             fi
-            if grep -qF "<!-- cairn:start -->" "$target_file" 2>/dev/null; then
-                print_info "Cairn already installed in $target_file"
-            else
-                mkdir -p ".claude"
-                printf '\n' >> "$target_file"
-                {
-                    echo "<!-- cairn:start -->"
-                    echo "$SKILL_CLAUDE_CODE"
-                    echo "<!-- cairn:end -->"
-                } >> "$target_file"
-                CREATED_FILES+=("$target_file")
-                print_ok "$(msg_init_appended "$target_file")"
-            fi
-            _INSTALL_TIP_TOKENS+=("1")
+            local result
+            result="$(_skill_block_upsert "$target_file" "<!-- cairn:start -->" "<!-- cairn:end -->" "$_SKILL_GUIDE_BLOCK")"
+            case "$result" in
+                appended)  CREATED_FILES+=("$target_file"); print_ok "$(msg_init_appended "$target_file")" ;;
+                refreshed) CREATED_FILES+=("$target_file"); print_ok "$(msg_init_skill_refreshed "$target_file")" ;;
+                unchanged) print_info "$(msg_init_skill_unchanged "$target_file")" ;;
+            esac
             ;;
         2)
             local target_dir=".cursor/rules"
             local target_file="${target_dir}/cairn.mdc"
             mkdir -p "$target_dir"
-            echo "$SKILL_CURSOR" > "$target_file"
+            {
+                echo "---"
+                echo "description: Cairn path-dependency constraint system"
+                echo "globs:"
+                echo "alwaysApply: true"
+                echo "---"
+                echo ""
+                echo "$_SKILL_GUIDE_BLOCK"
+            } > "$target_file"
             CREATED_FILES+=("$target_file")
             print_ok "$(msg_init_written "$target_file")"
             ;;
         3)
             local target_file=".clinerules"
-            echo "$SKILL_GENERIC" >> "$target_file"
-            CREATED_FILES+=("$target_file")
-            print_ok "$(msg_init_appended "$target_file")"
+            local result
+            result="$(_skill_block_upsert "$target_file" "<!-- cairn:start -->" "<!-- cairn:end -->" "$_SKILL_GUIDE_BLOCK")"
+            case "$result" in
+                appended|refreshed) CREATED_FILES+=("$target_file"); print_ok "$(msg_init_appended "$target_file")" ;;
+                unchanged) print_info "$(msg_init_skill_unchanged "$target_file")" ;;
+            esac
             ;;
         4)
             local target_file=".windsurfrules"
-            echo "$SKILL_GENERIC" >> "$target_file"
-            CREATED_FILES+=("$target_file")
-            print_ok "$(msg_init_appended "$target_file")"
+            local result
+            result="$(_skill_block_upsert "$target_file" "<!-- cairn:start -->" "<!-- cairn:end -->" "$_SKILL_GUIDE_BLOCK")"
+            case "$result" in
+                appended|refreshed) CREATED_FILES+=("$target_file"); print_ok "$(msg_init_appended "$target_file")" ;;
+                unchanged) print_info "$(msg_init_skill_unchanged "$target_file")" ;;
+            esac
             ;;
         5)
             local target_dir=".github"
             local target_file="${target_dir}/copilot-instructions.md"
             mkdir -p "$target_dir"
-            echo "$SKILL_GENERIC" >> "$target_file"
-            CREATED_FILES+=("$target_file")
-            print_ok "$(msg_init_appended "$target_file")"
+            local result
+            result="$(_skill_block_upsert "$target_file" "<!-- cairn:start -->" "<!-- cairn:end -->" "$_SKILL_GUIDE_BLOCK")"
+            case "$result" in
+                appended|refreshed) CREATED_FILES+=("$target_file"); print_ok "$(msg_init_appended "$target_file")" ;;
+                unchanged) print_info "$(msg_init_skill_unchanged "$target_file")" ;;
+            esac
             ;;
         6)
             local target_file="AGENTS.md"
             if [ "$AGENTS_MD_WRITTEN" -eq 0 ]; then
-                echo "$SKILL_AGENTS" >> "$target_file"
+                local result
+                result="$(_skill_block_upsert "$target_file" "<!-- cairn:start -->" "<!-- cairn:end -->" "$_SKILL_GUIDE_BLOCK")"
+                case "$result" in
+                    appended|refreshed) CREATED_FILES+=("$target_file"); print_ok "$(msg_init_appended "$target_file")" ;;
+                    unchanged) print_info "$(msg_init_skill_unchanged "$target_file")" ;;
+                esac
                 AGENTS_MD_WRITTEN=1
-                CREATED_FILES+=("$target_file")
-                print_ok "$(msg_init_appended "$target_file")"
             else
                 print_info "$(msg_init_agents_skipped)"
             fi
-            _INSTALL_TIP_TOKENS+=("6")
             ;;
         7)
             local target_file="GEMINI.md"
-            echo "$SKILL_GEMINI" >> "$target_file"
-            CREATED_FILES+=("$target_file")
-            print_ok "$(msg_init_appended "$target_file")"
-            _INSTALL_TIP_TOKENS+=("7")
+            local result
+            result="$(_skill_block_upsert "$target_file" "<!-- cairn:start -->" "<!-- cairn:end -->" "$_SKILL_GUIDE_BLOCK")"
+            case "$result" in
+                appended|refreshed) CREATED_FILES+=("$target_file"); print_ok "$(msg_init_appended "$target_file")" ;;
+                unchanged) print_info "$(msg_init_skill_unchanged "$target_file")" ;;
+            esac
             ;;
         8)
             local target_file="AGENTS.md"
             if [ "$AGENTS_MD_WRITTEN" -eq 0 ]; then
-                echo "$SKILL_AGENTS" >> "$target_file"
+                local result
+                result="$(_skill_block_upsert "$target_file" "<!-- cairn:start -->" "<!-- cairn:end -->" "$_SKILL_GUIDE_BLOCK")"
+                case "$result" in
+                    appended|refreshed) CREATED_FILES+=("$target_file"); print_ok "$(msg_init_appended "$target_file")" ;;
+                    unchanged) print_info "$(msg_init_skill_unchanged "$target_file")" ;;
+                esac
                 AGENTS_MD_WRITTEN=1
-                CREATED_FILES+=("$target_file")
-                print_ok "$(msg_init_appended "$target_file")"
             else
                 print_info "$(msg_init_agents_skipped)"
             fi
@@ -844,20 +549,43 @@ install_one_skill() {
     esac
 }
 
+# Inject guide block into global AI config files (~/.claude/CLAUDE.md, etc.)
+install_global_skills() {
+    echo ""
+    print_step "G" "$(msg_init_step_global)"
+    echo ""
+
+    local files=(
+        "$HOME/.claude/CLAUDE.md"
+        "$HOME/.codex/AGENTS.md"
+        "$HOME/GEMINI.md"
+    )
+
+    for target in "${files[@]}"; do
+        local result
+        result="$(_skill_block_upsert "$target" "<!-- cairn:global-start -->" "<!-- cairn:global-end -->" "$_SKILL_GUIDE_BLOCK")"
+        case "$result" in
+            appended)  print_ok "$(msg_init_appended "$target")" ;;
+            refreshed) print_ok "$(msg_init_skill_refreshed "$target")" ;;
+            unchanged) print_info "$(msg_init_skill_unchanged "$target")" ;;
+        esac
+    done
+}
+
 step5_install_skills() {
     print_step "5" "$(msg_init_step_skills)"
 
     echo ""
     echo -e "  $(msg_init_skills_intro)"
     echo ""
-    echo -e "    ${C_DIM}1)${C_RESET} ${C_BOLD}Claude Code${C_RESET}     (.claude/CLAUDE.md, append)"
+    echo -e "    ${C_DIM}1)${C_RESET} ${C_BOLD}Claude Code${C_RESET}     (.claude/CLAUDE.md, managed block)"
     echo -e "    ${C_DIM}2)${C_RESET} ${C_BOLD}Cursor${C_RESET}          (.cursor/rules/cairn.mdc)"
-    echo -e "    ${C_DIM}3)${C_RESET} ${C_BOLD}Cline/Roo Code${C_RESET}  (.clinerules, append)"
-    echo -e "    ${C_DIM}4)${C_RESET} ${C_BOLD}Windsurf${C_RESET}        (.windsurfrules, append)"
-    echo -e "    ${C_DIM}5)${C_RESET} ${C_BOLD}GitHub Copilot${C_RESET}  (.github/copilot-instructions.md, append)"
-    echo -e "    ${C_DIM}6)${C_RESET} ${C_BOLD}Codex CLI${C_RESET}       (AGENTS.md, append)"
-    echo -e "    ${C_DIM}7)${C_RESET} ${C_BOLD}Gemini CLI${C_RESET}      (GEMINI.md, append)"
-    echo -e "    ${C_DIM}8)${C_RESET} ${C_BOLD}OpenCode${C_RESET}        (AGENTS.md, append, shared with Codex)"
+    echo -e "    ${C_DIM}3)${C_RESET} ${C_BOLD}Cline/Roo Code${C_RESET}  (.clinerules, managed block)"
+    echo -e "    ${C_DIM}4)${C_RESET} ${C_BOLD}Windsurf${C_RESET}        (.windsurfrules, managed block)"
+    echo -e "    ${C_DIM}5)${C_RESET} ${C_BOLD}GitHub Copilot${C_RESET}  (.github/copilot-instructions.md, managed block)"
+    echo -e "    ${C_DIM}6)${C_RESET} ${C_BOLD}Codex CLI${C_RESET}       (AGENTS.md, managed block)"
+    echo -e "    ${C_DIM}7)${C_RESET} ${C_BOLD}Gemini CLI${C_RESET}      (GEMINI.md, managed block)"
+    echo -e "    ${C_DIM}8)${C_RESET} ${C_BOLD}OpenCode${C_RESET}        (AGENTS.md, managed block, shared with Codex)"
     echo ""
     msg_init_skills_skip
     read -r tool_input
@@ -870,7 +598,7 @@ step5_install_skills() {
     local normalized
     normalized=$(echo "$tool_input" | tr ',' ' ')
 
-    _INSTALL_TIP_TOKENS=()
+    AGENTS_MD_WRITTEN=0
     for token in $normalized; do
         token=$(echo "$token" | tr -d '[:space:]')
         [ -z "$token" ] && continue
@@ -879,56 +607,50 @@ step5_install_skills() {
 }
 
 # ============================================================================
-# Step 0: Offer git analysis (optional, runs after .cairn/ is created)
+# v0.0.11 Residue Check (--upgrade mode)
 # ============================================================================
 
-# Stored preference from the pre-init prompt
-_INIT_RUN_ANALYZE=false
-
-step0_offer_git_analysis() {
-    print_step "0" "$(msg_init_step_analyze)"
+step_check_v0011_residue() {
+    echo ""
+    print_step "U" "$(msg_init_step_upgrade)"
     echo ""
 
-    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        print_info "$(msg_init_analyze_no_git)"
-        return 0
+    local cairn_dir=".cairn"
+    local found_any=false
+
+    if [ -d "$cairn_dir/staged" ]; then
+        local count
+        count="$(find "$cairn_dir/staged" -name "*.md" -type f 2>/dev/null | wc -l | tr -d '[:space:]')"
+        if [ "$count" -gt 0 ]; then
+            found_any=true
+            print_warn "v0.0.11 residue: $cairn_dir/staged/ has $count candidate(s)"
+            print_info "Review, then: git mv .cairn/staged/*.md .cairn/history/ (or delete them)"
+        fi
     fi
 
-    local commit_count first_date
-    commit_count="$(git rev-list --count HEAD 2>/dev/null || echo "0")"
-    first_date="$(git log --format='%ai' --reverse 2>/dev/null | head -1 | cut -c1-7)"
-
-    if [ "$commit_count" -eq 0 ]; then
-        print_info "$(msg_init_analyze_no_git)"
-        return 0
+    if [ -d "$cairn_dir/audits" ]; then
+        local count
+        count="$(find "$cairn_dir/audits" -name "*.md" -type f 2>/dev/null | wc -l | tr -d '[:space:]')"
+        if [ "$count" -gt 0 ]; then
+            found_any=true
+            print_warn "v0.0.11 residue: $cairn_dir/audits/ has $count file(s)"
+            print_info "Consider merging audit findings into domains/*.md known pitfalls, then delete"
+        fi
     fi
 
-    print_info "$(msg_init_analyze_detected "$commit_count" "${first_date:-unknown}")"
-    echo ""
-    msg_init_analyze_offer
-    local ans
-    read -r ans
-    case "${ans:-Y}" in
-        [Nn]*) print_info "$(msg_init_analyze_skipped)" ;;
-        *)     _INIT_RUN_ANALYZE=true ;;
-    esac
-}
-
-# Called after .cairn/ directories are created (step3+).
-step0_run_analysis_if_requested() {
-    [ "$_INIT_RUN_ANALYZE" != "true" ] && return 0
-
-    echo ""
-    print_info "$(msg_init_analyze_running)"
-
-    local cairn_bin="$_INIT_SCRIPT_DIR/../cli/cairn"
-    if [ -f "$cairn_bin" ]; then
-        # Run analyze with stdout visible to user; ignore exit code (non-fatal)
-        bash "$cairn_bin" analyze 2>&1 || true
+    if [ -d "$cairn_dir/reflections" ]; then
+        local count
+        count="$(find "$cairn_dir/reflections" -name "*.md" -type f 2>/dev/null | wc -l | tr -d '[:space:]')"
+        if [ "$count" -gt 0 ]; then
+            found_any=true
+            print_warn "v0.0.11 residue: $cairn_dir/reflections/ has $count file(s)"
+            print_info "These are v0.0.11 reflect logs; safe to keep or delete"
+        fi
     fi
 
-    echo ""
-    print_ok "$(msg_init_analyze_done)"
+    if [ "$found_any" = false ]; then
+        print_ok "No v0.0.11 residue detected"
+    fi
 }
 
 # ============================================================================
@@ -956,6 +678,7 @@ print_summary() {
         echo -e "$(msg_init_layer1_desc)"
         echo -e "$(msg_init_layer2_desc)"
         echo -e "$(msg_init_layer3_desc)"
+        echo -e "    ${C_DIM}.cairn/SKILL.md  — AI operating protocol (read by AI, not humans)${C_RESET}"
 
         echo ""
         echo -e "  ${C_BOLD}$(msg_init_next_steps)${C_RESET}"
@@ -964,12 +687,10 @@ print_summary() {
         echo -e "$(msg_init_next2)"
         echo -e "$(msg_init_next3)"
         echo -e "$(msg_init_next4)"
-        if [ "$_INIT_RUN_ANALYZE" = "true" ]; then
-            echo -e "  5. Run 'cairn stage review' to review the git-analysis candidates"
-        fi
     fi
 
-    _maybe_print_global_tip "${_INSTALL_TIP_TOKENS[@]+"${_INSTALL_TIP_TOKENS[@]}"}"
+    echo ""
+    echo -e "  ${C_DIM}$(msg_init_global_tip)${C_RESET}"
     echo ""
 }
 
@@ -978,12 +699,68 @@ print_summary() {
 # ============================================================================
 
 main() {
+    local _REFRESH_SKILLS=false
+    local _GLOBAL=false
+    local _UPGRADE=false
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --refresh-skills) _REFRESH_SKILLS=true; shift ;;
+            --global)         _GLOBAL=true; _REFRESH_SKILLS=true; shift ;;
+            --upgrade)        _UPGRADE=true; _REFRESH_SKILLS=true; shift ;;
+            --help|-h)
+                echo ""
+                echo "Usage: cairn init [--refresh-skills] [--global] [--upgrade]"
+                echo ""
+                echo "  --refresh-skills   Refresh .cairn/SKILL.md and AI tool guide blocks only"
+                echo "                     (does not modify output.md / domains/ / history/)"
+                echo "  --global           Also install guide block in global AI config files"
+                echo "                     (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/GEMINI.md)"
+                echo "  --upgrade          Check for v0.0.11 residue (staged/audits/reflections)"
+                echo "                     and refresh skills; implies --refresh-skills"
+                echo ""
+                return 0
+                ;;
+            *)
+                print_error "$(msg_err_unknown_flag "$1")"
+                exit 1
+                ;;
+        esac
+    done
+
+    # ── Refresh / Upgrade mode (non-interactive, requires existing .cairn/) ───
+    if [ "$_REFRESH_SKILLS" = "true" ] || [ "$_UPGRADE" = "true" ]; then
+        if [ ! -d ".cairn" ]; then
+            print_error "$(msg_err_no_cairn)"
+            echo -e "$(msg_err_run_init)" >&2
+            exit 1
+        fi
+
+        print_header "$(msg_init_title)"
+
+        if [ "$_UPGRADE" = "true" ]; then
+            step_check_v0011_residue
+        fi
+
+        step3_5_init_skill
+
+        _INIT_SKILLS_ONLY=true
+        step5_install_skills
+
+        if [ "$_GLOBAL" = "true" ]; then
+            install_global_skills
+        fi
+
+        print_summary
+        return 0
+    fi
+
+    # ── Full interactive init ─────────────────────────────────────────────────
     print_header "$(msg_init_title)"
     echo ""
     echo -e "  ${C_DIM}$(msg_init_subtitle)${C_RESET}"
     echo -e "  ${C_DIM}$(msg_init_current_dir "$(pwd)")${C_RESET}"
 
-    # check if .cairn/ already exists
     if [ -d ".cairn" ]; then
         echo ""
         print_warn "$(msg_init_exists_warning)"
@@ -1001,7 +778,7 @@ main() {
                 ;;
             2)
                 _INIT_SKILLS_ONLY=true
-                _INSTALL_TIP_TOKENS=()
+                step3_5_init_skill
                 step5_install_skills
                 print_summary
                 return 0
@@ -1014,13 +791,17 @@ main() {
         esac
     fi
 
-    step0_offer_git_analysis
     step1_select_domains
     step2_create_output_md
     step3_init_history
+    step3_5_init_skill
     step4_init_domains
-    step0_run_analysis_if_requested
     step5_install_skills
+
+    if [ "$_GLOBAL" = "true" ]; then
+        install_global_skills
+    fi
+
     print_summary
 }
 

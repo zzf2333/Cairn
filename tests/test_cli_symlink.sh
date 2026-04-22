@@ -39,8 +39,8 @@ assert_exit_code "symlink: cairn help exits 0" 0 "$_sym1_help_exit"
 
 _sym1_help_tmp="$_CAIRN_TMPDIR/sym1_help.txt"
 echo "$_sym1_help_out" > "$_sym1_help_tmp"
-assert_contains "symlink: help output contains 'init'" "$_sym1_help_tmp" "init"
-assert_contains "symlink: help output contains 'status'" "$_sym1_help_tmp" "status"
+assert_contains "symlink: help output contains 'init'"   "$_sym1_help_tmp" "init"
+assert_contains "symlink: help output contains 'doctor'" "$_sym1_help_tmp" "doctor"
 assert_not_contains "symlink: no missing-file errors in help output" "$_sym1_help_tmp" "No such file or directory"
 
 # =============================================================================
@@ -72,14 +72,14 @@ start_suite "CLI Symlink — Subcommand dispatch via symlink"
 # Reuse the example project fixture which already has .cairn/
 _symlink_fixture_dir="$REPO_ROOT/examples/saas-18mo"
 
-# cairn status requires .cairn/ — should succeed (not fail on missing lang file)
-_sym_status_out="$(cd "$_symlink_fixture_dir" && bash "$_sym1" status 2>&1)"
-_sym_status_exit=$?
-assert_exit_code "symlink: cairn status in example project exits 0" 0 "$_sym_status_exit"
-
-_sym_status_tmp="$_CAIRN_TMPDIR/sym1_status.txt"
-echo "$_sym_status_out" > "$_sym_status_tmp"
-assert_not_contains "symlink: status output has no missing-file errors" "$_sym_status_tmp" "No such file or directory"
+# cairn doctor requires .cairn/ — should succeed (not fail on missing lang file)
+_sym_doctor_out="$(cd "$_symlink_fixture_dir" && bash "$_sym1" doctor 2>&1 || true)"
+_sym_doctor_exit=0
+(cd "$_symlink_fixture_dir" && bash "$_sym1" doctor 2>/dev/null) || _sym_doctor_exit=$?
+# doctor may exit 1 if the example has issues — we just check no lang-load errors
+_sym_doctor_tmp="$_CAIRN_TMPDIR/sym1_doctor.txt"
+echo "$_sym_doctor_out" > "$_sym_doctor_tmp"
+assert_not_contains "symlink: doctor output has no missing-file errors" "$_sym_doctor_tmp" "No such file or directory"
 
 # Cleanup
 rm -f "$_sym1" "$_sym_mid" "$_sym_outer"

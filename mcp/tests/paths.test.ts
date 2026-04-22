@@ -74,7 +74,6 @@ describe("resolvePaths", () => {
         expect(paths.outputMd).toBe(join(tmpDir, ".cairn", "output.md"));
         expect(paths.domainsDir).toBe(join(tmpDir, ".cairn", "domains"));
         expect(paths.historyDir).toBe(join(tmpDir, ".cairn", "history"));
-        expect(paths.stagedDir).toBe(join(tmpDir, ".cairn", "staged"));
     });
 
     it("throws when .cairn/ does not exist", () => {

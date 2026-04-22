@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.12] - 2026-04-22
+
+### Breaking Changes
+
+- **CLI surface reduced to 4 commands**: `cairn init`, `cairn doctor`, `cairn version`, `cairn help`. The following commands are removed: `install-skill`, `install-global`, `log`, `stage`, `reflect`, `audit`, `analyze`, `sync`, `status`. Ongoing memory maintenance is now done by the AI directly using its native file tools (Read/Write/Edit).
+- **`.cairn/SKILL.md` required**: `cairn init` now copies `skills/claude-code/SKILL.md` to `.cairn/SKILL.md`. AI tool configs get a 12-line guide block pointing to this file, not the full 100-line skill protocol. Run `cairn init --refresh-skills` to upgrade existing projects.
+- **MCP tools changed**: `cairn_propose` and `cairn_sync_domain` removed. Added `cairn_write_history` (direct history write, no staging) and `cairn_doctor` (JSON health checks).
+
+### Added
+
+- **`.cairn/SKILL.md`**: The full Cairn operating protocol. Copied from `skills/claude-code/SKILL.md` at `cairn init` time. Tells the AI when and how to read each layer, how to interpret constraints, and when to write back to `.cairn/` directly. AI reads this once per session.
+- **`cairn init --refresh-skills`**: Refreshes `.cairn/SKILL.md` and AI tool guide blocks without touching `output.md`, `domains/`, or `history/`. Replaces `cairn install-skill`.
+- **`cairn init --global`**: Installs guide blocks in global AI config files (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/GEMINI.md`). Replaces `cairn install-global`.
+- **`cairn init --upgrade`**: Detects v0.0.11 residue (`.cairn/staged/`, `.cairn/audits/`, `.cairn/reflections/`), prints migration guidance, refreshes `SKILL.md` and guide blocks.
+- **`cairn doctor --json`**: Machine-readable health check output. Returns a JSON object with `cairn_version`, `issues` count, `output.status`, `domains_stale[]`, `skill_guide`, `skill_md`, `v0011_residue[]`. For AI self-check at session start.
+- **Guide block quality check in `cairn doctor`**: Detects whether `.claude/CLAUDE.md` (and other AI configs) have the old 100-line skill format (v0.0.11) or the new 12-line guide block (v0.0.12). Suggests `cairn init --refresh-skills` if outdated.
+- **`cairn_write_history` MCP tool**: Write a history entry directly to `.cairn/history/` (no staging). For pure-MCP clients that cannot use file tools.
+- **`cairn_doctor` MCP tool**: Shells out to `cairn doctor --json` and returns the structured result. For AI self-check via MCP.
+- **`cli/lib/skill-block.sh`**: Shared managed-block upsert primitive (`_skill_block_upsert`). Three-state return: `appended | refreshed | unchanged`. Used by init for all guide block operations.
+
+### Changed
+
+- **Skill protocol**: `skills/claude-code/SKILL.md` rewritten. Removes all `cairn reflect` / `cairn stage` / `cairn audit` instructions. Replaces with `ON TASK COMPLETION` decision table (AI judges and writes directly), inline FORMAT REFERENCE, and explicit "There is no CLI ceremony" statement.
+- **Adapter skill files**: `cursor.mdc`, `cline.md`, `windsurf.md`, `copilot-instructions.md`, `codex.md`, `gemini-cli.md`, `opencode.md` simplified to 12-line guide blocks pointing to `.cairn/SKILL.md`. Full protocol lives only in `skills/claude-code/SKILL.md`.
+
+### Migration from v0.0.11
+
+```bash
+cd <your-project>
+cairn init --upgrade
+# Review warnings about .cairn/staged/, .cairn/audits/, .cairn/reflections/
+# Manually move useful staged candidates to history/ (strip history-candidate_ prefix)
+# Then delete the deprecated directories
+```
+
 ## [0.0.11] - 2026-04-22
 
 ### Added
