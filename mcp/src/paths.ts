@@ -7,7 +7,6 @@ export interface CairnPaths {
     outputMd: string;
     domainsDir: string;
     historyDir: string;
-    stagedDir: string;
 }
 
 /**
@@ -63,6 +62,5 @@ export function resolvePaths(startDir?: string): CairnPaths {
         outputMd: join(cairnDir, "output.md"),
         domainsDir: join(cairnDir, "domains"),
         historyDir: join(cairnDir, "history"),
-        stagedDir: join(cairnDir, "staged"),
     };
 }

@@ -5,8 +5,8 @@ import { z } from "zod";
 import { handleCairnOutput } from "./tools/cairn-output.js";
 import { handleCairnDomain } from "./tools/cairn-domain.js";
 import { handleCairnQuery } from "./tools/cairn-query.js";
-import { handleCairnPropose } from "./tools/cairn-propose.js";
-import { handleCairnSyncDomain } from "./tools/cairn-sync-domain.js";
+import { handleCairnWriteHistory } from "./tools/cairn-write-history.js";
+import { handleCairnDoctor } from "./tools/cairn-doctor.js";
 import { handleCairnMatch } from "./tools/cairn-match.js";
 import { resolvePaths, findCairnRoot } from "./paths.js";
 
@@ -24,12 +24,12 @@ const VALID_ENTRY_TYPES = [
  * Registers 6 tools + 2 resources:
  *
  * Tools:
- *   cairn_output        — Read Layer 1 global constraints (output.md)
- *   cairn_domain        — Read a Layer 2 domain design context file
- *   cairn_query         — Search Layer 3 history entries
- *   cairn_propose       — Draft a history entry to staging for human review
- *   cairn_sync_domain   — Generate context to regenerate a domain file
- *   cairn_match         — Match keywords against domain hooks (precise intent detection)
+ *   cairn_output         — Read Layer 1 global constraints (output.md)
+ *   cairn_domain         — Read a Layer 2 domain design context file
+ *   cairn_query          — Search Layer 3 history entries
+ *   cairn_write_history  — Write a history entry directly to .cairn/history/
+ *   cairn_doctor         — Run health checks, return JSON results
+ *   cairn_match          — Match keywords against domain hooks (precise intent detection)
  *
  * Resources:
  *   cairn://output               — Static read of output.md
@@ -38,7 +38,7 @@ const VALID_ENTRY_TYPES = [
 export function createCairnServer(): McpServer {
     const server = new McpServer({
         name: "cairn",
-        version: "0.0.11",
+        version: "0.0.12",
     });
 
     // =========================================================================
@@ -103,14 +103,15 @@ export function createCairnServer(): McpServer {
     );
 
     server.registerTool(
-        "cairn_propose",
+        "cairn_write_history",
         {
-            title: "Propose a New Cairn History Entry",
+            title: "Write a Cairn History Entry",
             description:
-                "Draft a new history entry to .cairn/staged/ for human review. " +
-                "The entry must be manually moved to .cairn/history/ by a human before " +
-                "it becomes canonical. The 'rejected' field is the most critical — " +
-                "it records what alternatives were considered and not chosen.",
+                "Write a new history entry directly to .cairn/history/ — no staging, no gate. " +
+                "Use this after completing a task that produced a recordable event: " +
+                "significant decision, rejected direction, accepted debt, or tried-and-abandoned approach. " +
+                "The 'rejected' field is the most critical — it records what alternatives were considered " +
+                "and not chosen, preventing AI from re-proposing already-evaluated paths.",
             inputSchema: {
                 type: z
                     .enum(VALID_ENTRY_TYPES)
@@ -136,24 +137,20 @@ export function createCairnServer(): McpServer {
                     .describe("Condition under which this decision should be reconsidered"),
             },
         },
-        (args) => handleCairnPropose(args),
+        (args) => handleCairnWriteHistory(args),
     );
 
     server.registerTool(
-        "cairn_sync_domain",
+        "cairn_doctor",
         {
-            title: "Generate Domain File Sync Context",
+            title: "Run Cairn Health Checks",
             description:
-                "Generate context to regenerate a .cairn/domains/<name>.md file from history. " +
-                "Returns the current domain file + all matching history entries + the format template. " +
-                "Use the returned context to write an updated domain file, then confirm with the human.",
-            inputSchema: {
-                name: z
-                    .string()
-                    .describe("Domain name to sync (e.g., 'api-layer', 'auth')"),
-            },
+                "Run 'cairn doctor --json' and return structured health check results. " +
+                "Use at session start or after writing history/domain files to verify .cairn/ is healthy. " +
+                "Returns JSON with: issues (count), output.status, output.tokens, " +
+                "domains_stale[], skill_guide, skill_md, v0011_residue[].",
         },
-        (args) => handleCairnSyncDomain(args),
+        () => handleCairnDoctor(),
     );
 
     server.registerTool(
