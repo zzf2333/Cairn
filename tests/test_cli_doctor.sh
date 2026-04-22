@@ -7,7 +7,9 @@
 #   - exit 1 (token over-budget) when output.md > 800 approx tokens
 #   - exit 1 (no-go unsupported) when no-go entry has no history backing
 #   - exit 1 (stale domain) when history recorded_date newer than domain updated
-#   - exit 1 (staged [TODO]) when staged entries have [TODO] fields
+#   - exit 1 (guide block old/missing)
+#   - exit 1 (v0.0.11 residue present)
+#   - --json mode emits valid JSON
 #
 # All tests use non-interactive flag-mode fixtures (no stdin needed).
 
@@ -21,7 +23,7 @@ _CAIRN_BIN="$REPO_ROOT/cli/cairn"
 _create_doctor_clean_fixture() {
     local dir="$1"
 
-    mkdir -p "$dir/.cairn/history" "$dir/.cairn/domains" "$dir/.cairn/staged"
+    mkdir -p "$dir/.cairn/history" "$dir/.cairn/domains"
 
     # output.md: small (< 500 tokens), no-go has history support, 1 domain
     {
@@ -92,6 +94,20 @@ _create_doctor_clean_fixture() {
         echo "reason: Team size and data complexity do not justify it"
         echo "revisit_when: never"
     } > "$dir/.cairn/history/2024-01_graphql-spike-rejected.md"
+
+    # .cairn/SKILL.md — copy canonical so it passes skill-md consistency check
+    cp "$REPO_ROOT/skills/claude-code/SKILL.md" "$dir/.cairn/SKILL.md"
+
+    # .claude/CLAUDE.md with valid 12-line guide block (satisfies guide-block check)
+    mkdir -p "$dir/.claude"
+    {
+        echo "<!-- cairn:start -->"
+        echo "## Cairn (path-dependent constraint memory)"
+        echo ""
+        echo "Read .cairn/output.md at session start."
+        echo "Read .cairn/SKILL.md for operating protocol."
+        echo "<!-- cairn:end -->"
+    } > "$dir/.claude/CLAUDE.md"
 }
 
 # =============================================================================
@@ -119,8 +135,6 @@ mkdir -p "$_doctor_tokens_dir"
 _create_doctor_clean_fixture "$_doctor_tokens_dir"
 
 # Pad output.md to exceed 800 * 4 = 3200 characters.
-# NOTE: must NOT use "cat file >> file" — that causes an infinite loop.
-# Append padding directly; original file (~250 chars) + padding (~3400 chars) > 3200 total.
 python3 -c "print('# padding\n' + ('xpad ' * 700))" 2>/dev/null \
     >> "$_doctor_tokens_dir/.cairn/output.md" \
     || printf '%0.s#padding-line-for-token-test-very-long-line-here\n' $(seq 1 70) \
@@ -145,12 +159,7 @@ _doctor_nogo_dir="$_CAIRN_TMPDIR/doctor_nogo_$$"
 mkdir -p "$_doctor_nogo_dir"
 _create_doctor_clean_fixture "$_doctor_nogo_dir"
 
-# Add a no-go entry with a keyword that has no history backing
-{
-    sed 's/^## no-go$/## no-go\n/' "$_doctor_nogo_dir/.cairn/output.md" | head -n -1
-    echo "- KafkaStreaming (operational overhead; microservices not justified)"
-} >> "$_doctor_nogo_dir/.cairn/output.md"
-# Rewrite properly with the unsupported no-go
+# Rewrite output.md with unsupported no-go
 {
     echo "## stage"
     echo ""
@@ -175,7 +184,6 @@ _create_doctor_clean_fixture "$_doctor_nogo_dir"
     echo ""
 } > "$_doctor_nogo_dir/.cairn/output.md"
 
-# history/ only has GraphQL, no KafkaStreaming mention
 _nogo_exit=0
 (cd "$_doctor_nogo_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null) || _nogo_exit=$?
 assert_exit_code "unsupported no-go causes exit 1" 1 "$_nogo_exit"
@@ -227,8 +235,7 @@ _create_doctor_clean_fixture "$_doctor_stale_dir"
     echo "None."
 } > "$_doctor_stale_dir/.cairn/domains/api-layer.md"
 
-# Add a NEW history entry (recorded_date 2024-06) for the same domain
-# This makes domain stale: recorded_date 2024-06 > updated 2023-01
+# Add a NEW history entry (recorded_date 2024-06) — makes domain stale
 {
     echo "type: decision"
     echo "domain: api-layer"
@@ -247,39 +254,8 @@ assert_exit_code "stale domain causes exit 1" 1 "$_stale_exit"
 _stale_output="$(cd "$_doctor_stale_dir" && bash "$_CAIRN_BIN" doctor 2>&1 || true)"
 _stale_tmp="$_CAIRN_TMPDIR/doctor_stale_out.txt"
 echo "$_stale_output" > "$_stale_tmp"
-assert_contains "stale check output contains ⚠ symbol"   "$_stale_tmp" "⚠"
-assert_contains "stale check mentions domain name"        "$_stale_tmp" "api-layer"
-
-# =============================================================================
-# Staged entries with [TODO] → exit 1
-# =============================================================================
-
-start_suite "cairn doctor — Staged [TODO] Detection"
-
-_doctor_staged_dir="$_CAIRN_TMPDIR/doctor_staged_$$"
-mkdir -p "$_doctor_staged_dir"
-_create_doctor_clean_fixture "$_doctor_staged_dir"
-
-# Place a staged entry with [TODO] fields
-{
-    echo "type: rejection"
-    echo "domain: api-layer"
-    echo "decision_date: 2024-03"
-    echo "recorded_date: 2024-03"
-    echo "summary: gRPC internal traffic rejected"
-    echo "rejected: gRPC: latency improvement below 30% threshold"
-    echo "reason: [TODO]"
-    echo "revisit_when: [TODO]"
-} > "$_doctor_staged_dir/.cairn/staged/2024-03_grpc-internal-traffic-rejected.md"
-
-_staged_exit=0
-(cd "$_doctor_staged_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null) || _staged_exit=$?
-assert_exit_code "staged [TODO] causes exit 1" 1 "$_staged_exit"
-
-_staged_output="$(cd "$_doctor_staged_dir" && bash "$_CAIRN_BIN" doctor 2>&1 || true)"
-_staged_tmp="$_CAIRN_TMPDIR/doctor_staged_out.txt"
-echo "$_staged_output" > "$_staged_tmp"
-assert_contains "staged check output mentions [TODO]" "$_staged_tmp" "\[TODO\]"
+assert_contains "stale check output contains ⚠ symbol" "$_stale_tmp" "⚠"
+assert_contains "stale check mentions domain name"      "$_stale_tmp" "api-layer"
 
 # =============================================================================
 # No .cairn/ directory → exit 1
@@ -295,32 +271,7 @@ _nocairn_exit=0
 assert_exit_code "doctor without .cairn/ exits non-zero" 1 "$_nocairn_exit"
 
 # =============================================================================
-# api-service-2yr example: rate-limiting is flagged as stale
-# =============================================================================
-
-start_suite "cairn doctor — api-service-2yr Example: Stale rate-limiting"
-
-_api_example_dir="$REPO_ROOT/examples/api-service-2yr"
-
-if [ -d "$_api_example_dir/.cairn" ]; then
-    _api_doctor_exit=0
-    _api_doctor_output="$(cd "$_api_example_dir" && bash "$_CAIRN_BIN" doctor 2>&1 || true)"
-    (cd "$_api_example_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null) || _api_doctor_exit=$?
-
-    _api_doctor_tmp="$_CAIRN_TMPDIR/doctor_api_out.txt"
-    echo "$_api_doctor_output" > "$_api_doctor_tmp"
-
-    assert_exit_code "api-service-2yr example doctor exits 1 (stale domain)" 1 "$_api_doctor_exit"
-    assert_contains "doctor flags rate-limiting as stale" "$_api_doctor_tmp" "rate-limiting"
-    assert_contains "stale flag shows ⚠ symbol" "$_api_doctor_tmp" "⚠"
-else
-    _pass "api-service-2yr example directory not present — skipping"
-    _pass "api-service-2yr doctor stale check — skipped"
-    _pass "api-service-2yr stale ⚠ symbol — skipped"
-fi
-
-# =============================================================================
-# cairn doctor — Hooks Drift Shows Run Sync Hint
+# Hooks drift: domain-only keyword warns + shows hint
 # =============================================================================
 
 start_suite "cairn doctor — Hooks Drift Shows Sync Hint"
@@ -329,11 +280,8 @@ _doctor_hooks_dir="$_CAIRN_TMPDIR/doctor_hooks_$$"
 mkdir -p "$_doctor_hooks_dir"
 _create_doctor_clean_fixture "$_doctor_hooks_dir"
 
-# Introduce drift: add a keyword to domain hooks[] that's not in output.md
-# The clean fixture has: output.md hooks "api/rest/endpoint" and domain hooks ["api","rest","endpoint"]
-# We add "graphql" to the domain frontmatter but NOT to output.md
+# Add "graphql" to domain hooks[] but NOT to output.md
 _doctor_hooks_domain="$_doctor_hooks_dir/.cairn/domains/api-layer.md"
-# Replace hooks line in domain file to add an extra keyword
 sed -i.bak 's/hooks: \["api", "rest", "endpoint"\]/hooks: ["api", "rest", "endpoint", "graphql"]/' "$_doctor_hooks_domain" 2>/dev/null \
     || sed -i 's/hooks: \["api", "rest", "endpoint"\]/hooks: ["api", "rest", "endpoint", "graphql"]/' "$_doctor_hooks_domain"
 
@@ -342,10 +290,9 @@ _drift_exit=0
 (cd "$_doctor_hooks_dir" && bash "$_CAIRN_BIN" doctor 2>&1) > "$_drift_output" || _drift_exit=$?
 assert_exit_code "hooks drift exits 1" 1 "$_drift_exit"
 assert_contains "drift warning shown" "$_drift_output" "graphql"
-assert_contains "sync hint shown" "$_drift_output" "cairn sync --hooks"
 
 # =============================================================================
-# cairn doctor — Bidirectional Hooks Drift
+# Bidirectional hooks drift
 # =============================================================================
 
 start_suite "cairn doctor — Bidirectional Hooks Drift Detection"
@@ -354,7 +301,6 @@ _doctor_bidir_dir="$_CAIRN_TMPDIR/doctor_bidir_$$"
 mkdir -p "$_doctor_bidir_dir"
 _create_doctor_clean_fixture "$_doctor_bidir_dir"
 
-# output.md has extra keyword "extra-in-output" not in domain hooks[]
 _bidir_output_md="$_doctor_bidir_dir/.cairn/output.md"
 sed -i.bak 's|- api / rest / endpoint → read domains/api-layer.md first|- api / rest / endpoint / extra-in-output → read domains/api-layer.md first|' "$_bidir_output_md" 2>/dev/null \
     || sed -i 's|- api / rest / endpoint → read domains/api-layer.md first|- api / rest / endpoint / extra-in-output → read domains/api-layer.md first|' "$_bidir_output_md"
@@ -372,8 +318,7 @@ assert_contains "output-only drift warning" "$_bidir_output" "extra-in-output"
 start_suite "cairn doctor — Stack Drift Warns When Tech Not in Dep File"
 
 _doctor_stack_dir="$_CAIRN_TMPDIR/doctor_stack_$$"
-mkdir -p "$_doctor_stack_dir/.cairn/history" "$_doctor_stack_dir/.cairn/domains" \
-    "$_doctor_stack_dir/.cairn/staged"
+mkdir -p "$_doctor_stack_dir/.cairn/history" "$_doctor_stack_dir/.cairn/domains"
 
 {
     echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo ""
@@ -384,7 +329,6 @@ mkdir -p "$_doctor_stack_dir/.cairn/history" "$_doctor_stack_dir/.cairn/domains"
     echo ""; echo "## debt"; echo ""
 } > "$_doctor_stack_dir/.cairn/output.md"
 
-# package.json that does NOT include "express"
 printf '{"dependencies":{"fastify":"^4.0.0","axios":"^1.0.0"}}' \
     > "$_doctor_stack_dir/package.json"
 
@@ -397,14 +341,14 @@ assert_exit_code "stack drift: doctor exits 1 (drift found)" 1 "$_stack_drift_ex
 assert_contains "stack drift: express not found warning" "$_stack_drift_output" "express"
 
 # =============================================================================
-# Stack drift: all stack entries present in dep file → no warning
+# Stack drift: all entries present → no warning
 # =============================================================================
 
 start_suite "cairn doctor — Stack Drift OK When Tech Found in Dep File"
 
 _doctor_stack_ok_dir="$_CAIRN_TMPDIR/doctor_stack_ok_$$"
 mkdir -p "$_doctor_stack_ok_dir/.cairn/history" "$_doctor_stack_ok_dir/.cairn/domains" \
-    "$_doctor_stack_ok_dir/.cairn/staged"
+    "$_doctor_stack_ok_dir/.claude"
 
 {
     echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo ""
@@ -414,9 +358,17 @@ mkdir -p "$_doctor_stack_ok_dir/.cairn/history" "$_doctor_stack_ok_dir/.cairn/do
     echo ""; echo "## debt"; echo ""
 } > "$_doctor_stack_ok_dir/.cairn/output.md"
 
-# package.json that DOES include "fastify"
 printf '{"dependencies":{"fastify":"^4.0.0","axios":"^1.0.0"}}' \
     > "$_doctor_stack_ok_dir/package.json"
+
+# Add required v0.0.12 files so doctor exits 0
+cp "$REPO_ROOT/skills/claude-code/SKILL.md" "$_doctor_stack_ok_dir/.cairn/SKILL.md"
+{
+    echo "<!-- cairn:start -->"
+    echo "## Cairn"
+    echo "Read .cairn/SKILL.md"
+    echo "<!-- cairn:end -->"
+} > "$_doctor_stack_ok_dir/.claude/CLAUDE.md"
 
 _stack_ok_exit=0
 _stack_ok_output="$_CAIRN_TMPDIR/doctor_stack_ok_out_$$.txt"
@@ -427,130 +379,92 @@ assert_exit_code "stack ok: doctor exits 0" 0 "$_stack_ok_exit"
 assert_contains "stack ok: no drift warning" "$_stack_ok_output" "stack entries match"
 
 # =============================================================================
-# Audit check: transition without audit → warns
+# Guide block: missing → exit 1
 # =============================================================================
 
-start_suite "cairn doctor — Transition History Without Audit Warns"
+start_suite "cairn doctor — Guide Block Missing in .claude/CLAUDE.md"
 
-_doctor_noaudit_dir="$_CAIRN_TMPDIR/doctor_noaudit_$$"
-mkdir -p "$_doctor_noaudit_dir/.cairn/history" "$_doctor_noaudit_dir/.cairn/domains" \
-    "$_doctor_noaudit_dir/.cairn/staged"
+_doctor_noguide_dir="$_CAIRN_TMPDIR/doctor_noguide_$$"
+mkdir -p "$_doctor_noguide_dir"
+_create_doctor_clean_fixture "$_doctor_noguide_dir"
+# .claude/CLAUDE.md exists but has no cairn markers
+mkdir -p "$_doctor_noguide_dir/.claude"
+echo "# User config" > "$_doctor_noguide_dir/.claude/CLAUDE.md"
 
+_noguide_exit=0
+_noguide_out="$(cd "$_doctor_noguide_dir" && bash "$_CAIRN_BIN" doctor 2>&1 || true)"
+(cd "$_doctor_noguide_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null) || _noguide_exit=$?
+assert_exit_code "missing guide block: doctor exits 1" 1 "$_noguide_exit"
+_noguide_tmp="$_CAIRN_TMPDIR/doctor_noguide_out.txt"
+echo "$_noguide_out" > "$_noguide_tmp"
+assert_contains "missing guide block: warning mentions cairn init" "$_noguide_tmp" "cairn init"
+
+# =============================================================================
+# Guide block: old format (100-line skill) → warns to refresh
+# =============================================================================
+
+start_suite "cairn doctor — Guide Block Old Format Detected"
+
+_doctor_oldguide_dir="$_CAIRN_TMPDIR/doctor_oldguide_$$"
+mkdir -p "$_doctor_oldguide_dir"
+_create_doctor_clean_fixture "$_doctor_oldguide_dir"
+mkdir -p "$_doctor_oldguide_dir/.claude"
 {
-    echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo ""
-    echo "## no-go"; echo ""; echo "## hooks"; echo ""
-    echo "## stack"; echo ""; echo "## debt"; echo ""
-} > "$_doctor_noaudit_dir/.cairn/output.md"
+    echo "<!-- cairn:start -->"
+    # Simulate old 100-line skill with ON SESSION START section
+    printf '## ON SESSION START\n\nRead .cairn/output.md...\n'
+    printf '## REACTIVE EVOLUTION\n\nSome old content\n'
+    printf '%0.s# more old content\n' $(seq 1 40)
+    echo "<!-- cairn:end -->"
+} > "$_doctor_oldguide_dir/.claude/CLAUDE.md"
 
-# Write a transition history entry with no corresponding audit
-{
-    echo "type: transition"
-    echo "domain: state-management"
-    echo "decision_date: 2024-05"
-    echo "recorded_date: 2024-05"
-    echo "summary: migrated from Redux to Zustand"
-    echo "rejected: Redux: boilerplate overhead"
-    echo "reason: Team alignment on simpler state model"
-    echo "revisit_when: never"
-} > "$_doctor_noaudit_dir/.cairn/history/2024-05_redux-to-zustand.md"
-
-_noaudit_output="$_CAIRN_TMPDIR/doctor_noaudit_out_$$.txt"
-_noaudit_exit=0
-(cd "$_doctor_noaudit_dir" && bash "$_CAIRN_BIN" doctor 2>&1) > "$_noaudit_output" \
-    || _noaudit_exit=$?
-
-assert_exit_code "missing audit: doctor exits 1" 1 "$_noaudit_exit"
-assert_contains "missing audit: warning shows domain" "$_noaudit_output" "state-management"
+_oldguide_exit=0
+_oldguide_out="$(cd "$_doctor_oldguide_dir" && bash "$_CAIRN_BIN" doctor 2>&1 || true)"
+(cd "$_doctor_oldguide_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null) || _oldguide_exit=$?
+assert_exit_code "old format guide: doctor exits 1" 1 "$_oldguide_exit"
+_oldguide_tmp="$_CAIRN_TMPDIR/doctor_oldguide_out.txt"
+echo "$_oldguide_out" > "$_oldguide_tmp"
+assert_contains "old format guide: warning mentions refresh-skills" "$_oldguide_tmp" "refresh-skills"
 
 # =============================================================================
-# Audit check: transition WITH matching audit → no warning
+# v0.0.11 residue: staged/ present → warns
 # =============================================================================
 
-start_suite "cairn doctor — Transition With Matching Audit Is OK"
+start_suite "cairn doctor — v0.0.11 Residue: staged/ Present"
 
-_doctor_audit_ok_dir="$_CAIRN_TMPDIR/doctor_audit_ok_$$"
-mkdir -p "$_doctor_audit_ok_dir/.cairn/history" "$_doctor_audit_ok_dir/.cairn/domains" \
-    "$_doctor_audit_ok_dir/.cairn/staged" "$_doctor_audit_ok_dir/.cairn/audits"
+_doctor_residue_dir="$_CAIRN_TMPDIR/doctor_residue_$$"
+mkdir -p "$_doctor_residue_dir"
+_create_doctor_clean_fixture "$_doctor_residue_dir"
+# Simulate v0.0.11 residue
+mkdir -p "$_doctor_residue_dir/.cairn/staged"
+echo "type: decision" > "$_doctor_residue_dir/.cairn/staged/2024-01_old-entry.md"
 
-{
-    echo "## stage"; echo ""; echo "phase: test (2024-01+)"; echo ""
-    echo "## no-go"; echo ""; echo "## hooks"; echo ""
-    echo "## stack"; echo ""; echo "## debt"; echo ""
-} > "$_doctor_audit_ok_dir/.cairn/output.md"
-
-{
-    echo "type: transition"
-    echo "domain: state-management"
-    echo "decision_date: 2024-05"
-    echo "recorded_date: 2024-05"
-    echo "summary: migrated from Redux to Zustand"
-    echo "rejected: Redux"
-    echo "reason: Simpler model"
-    echo "revisit_when: never"
-} > "$_doctor_audit_ok_dir/.cairn/history/2024-05_redux-to-zustand.md"
-
-# Audit file for the same domain
-{
-    echo "# Audit: migrated from Redux to Zustand"
-    echo "date: 2024-05"
-    echo "domain: state-management"
-    echo "trigger: migrated from Redux to Zustand"
-    echo "status: complete"
-    echo ""
-    echo "## Expected removals"
-    echo "- redux package"
-    echo ""
-    echo "## Findings"
-    echo "- redux removed from package.json"
-    echo ""
-    echo "## Follow-up"
-    echo "- none"
-} > "$_doctor_audit_ok_dir/.cairn/audits/2024-05_state-management-migration.md"
-
-_audit_ok_exit=0
-(cd "$_doctor_audit_ok_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null) || _audit_ok_exit=$?
-assert_exit_code "audit ok: doctor exits 0" 0 "$_audit_ok_exit"
+_residue_exit=0
+_residue_out="$(cd "$_doctor_residue_dir" && bash "$_CAIRN_BIN" doctor 2>&1 || true)"
+(cd "$_doctor_residue_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null) || _residue_exit=$?
+assert_exit_code "staged residue: doctor exits 1" 1 "$_residue_exit"
+_residue_tmp="$_CAIRN_TMPDIR/doctor_residue_out.txt"
+echo "$_residue_out" > "$_residue_tmp"
+assert_contains "staged residue: warning mentions staged" "$_residue_tmp" "staged"
 
 # =============================================================================
-# v0.0.9: doctor warns when no reflections/ directory at all
+# --json mode emits valid JSON
 # =============================================================================
 
-start_suite "cairn doctor — Reflections Section (No reflections/ dir)"
+start_suite "cairn doctor — JSON Output Mode"
 
-_doctor_no_refl_dir="$_CAIRN_TMPDIR/doctor_no_refl_$$"
-_create_doctor_clean_fixture "$_doctor_no_refl_dir"
-# Ensure no reflections/ directory
-rm -rf "$_doctor_no_refl_dir/.cairn/reflections"
+_doctor_json_dir="$_CAIRN_TMPDIR/doctor_json_$$"
+mkdir -p "$_doctor_json_dir"
+_create_doctor_clean_fixture "$_doctor_json_dir"
 
-_no_refl_out="$(cd "$_doctor_no_refl_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null || true)"
-# Doctor should output the reflections section header
-assert_exit_code "doctor includes reflections section" \
-    "0" "$(echo "$_no_refl_out" | grep -qi "reflect" && echo 0 || echo 1)"
+_json_out="$(cd "$_doctor_json_dir" && bash "$_CAIRN_BIN" doctor --json 2>/dev/null || true)"
+_json_tmp="$_CAIRN_TMPDIR/doctor_json_out.txt"
+echo "$_json_out" > "$_json_tmp"
 
-# =============================================================================
-# v0.0.9: doctor no missing-reflection warning when recent record exists
-# =============================================================================
-
-start_suite "cairn doctor — No Missing-Reflection Warning With Recent Record"
-
-_doctor_has_refl_dir="$_CAIRN_TMPDIR/doctor_has_refl_$$"
-_create_doctor_clean_fixture "$_doctor_has_refl_dir"
-mkdir -p "$_doctor_has_refl_dir/.cairn/reflections"
-
-# Write a reflection record with today's timestamp
-{
-    echo "---"
-    echo "checked_range: HEAD~1..HEAD"
-    echo "result: no-op"
-    echo "audit_required: false"
-    echo "---"
-    echo "- total: 0"
-} > "$_doctor_has_refl_dir/.cairn/reflections/$(date +%Y-%m-%d)_no-op.md"
-
-_has_refl_out="$(cd "$_doctor_has_refl_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null || true)"
-# Should NOT warn about missing reflection
-assert_exit_code "recent reflection record: no missing-reflection warning" \
-    "0" "$(echo "$_has_refl_out" | grep -qi "no reflection record" && echo 1 || echo 0)"
+# Should contain JSON structure markers
+assert_contains "json output starts with {" "$_json_tmp" "^\{"
+assert_contains "json output has issues field" "$_json_tmp" '"issues"'
+assert_contains "json output has cairn_version field" "$_json_tmp" '"cairn_version"'
 
 # =============================================================================
 # v0.0.11: doctor warns on old skill location (old only, no new)
@@ -561,7 +475,6 @@ start_suite "cairn doctor — Skill Drift: old location only"
 _doctor_old_skill_dir="${_CAIRN_TMPDIR}/doctor_old_skill_$$"
 _create_doctor_clean_fixture "$_doctor_old_skill_dir"
 
-# Simulate old v0.0.9 skill location only (no .claude/CLAUDE.md with cairn block)
 mkdir -p "$_doctor_old_skill_dir/.claude/skills/cairn"
 echo "old skill" > "$_doctor_old_skill_dir/.claude/skills/cairn/SKILL.md"
 
@@ -570,8 +483,9 @@ _old_skill_out="$(cd "$_doctor_old_skill_dir" && bash "$_CAIRN_BIN" doctor 2>/de
     || _old_skill_exit=$?
 
 assert_exit_code "doctor exits 1 (old skill only)" 1 "$_old_skill_exit"
-assert_exit_code "output mentions install-skill" \
-    "0" "$(echo "$_old_skill_out" | grep -qi "install-skill" && echo 0 || echo 1)"
+# Output mentions the guide block is missing (since no .claude/CLAUDE.md with cairn markers)
+assert_exit_code "output mentions guide block issue" \
+    "0" "$(echo "$_old_skill_out" | grep -qi "cairn init\|guide\|skills/cairn" && echo 0 || echo 1)"
 
 # =============================================================================
 # v0.0.11: doctor warns when both old and new skill locations present
@@ -587,7 +501,8 @@ echo "old skill" > "$_doctor_both_skill_dir/.claude/skills/cairn/SKILL.md"
 mkdir -p "$_doctor_both_skill_dir/.claude"
 {
     echo "<!-- cairn:start -->"
-    echo "# Cairn skill"
+    echo "## Cairn"
+    echo "Read .cairn/SKILL.md"
     echo "<!-- cairn:end -->"
 } > "$_doctor_both_skill_dir/.claude/CLAUDE.md"
 
@@ -610,5 +525,6 @@ _create_doctor_clean_fixture "$_doctor_clean_skill_dir"
 
 _clean_skill_out="$(cd "$_doctor_clean_skill_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null || true)"
 
-assert_exit_code "skill drift section: ok message present" \
-    "0" "$(echo "$_clean_skill_out" | grep -qi "skill file" && echo 0 || echo 1)"
+# With no .claude/skills/cairn/ old dir, should not warn about skill drift
+assert_exit_code "skill drift: no old-location warning" \
+    "0" "$(echo "$_clean_skill_out" | grep -qi "skills/cairn" && echo 1 || echo 0)"

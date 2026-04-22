@@ -96,12 +96,12 @@ assert_contains "field: revisit_when"  "$_FULL/.cairn/history/_TEMPLATE.md" "^re
 start_suite "Skill Installation — Claude Code"
 assert_file_exists ".claude/CLAUDE.md created (Claude Code installs here)" \
     "$_FULL/.claude/CLAUDE.md"
-assert_contains "CLAUDE.md references .cairn/output.md" \
-    "$_FULL/.claude/CLAUDE.md" "\.cairn/output\.md"
-assert_contains "CLAUDE.md has ON SESSION START section" \
-    "$_FULL/.claude/CLAUDE.md" "ON SESSION START"
-assert_contains "CLAUDE.md has REACTIVE EVOLUTION section" \
-    "$_FULL/.claude/CLAUDE.md" "REACTIVE EVOLUTION"
+assert_contains "CLAUDE.md has cairn start marker" \
+    "$_FULL/.claude/CLAUDE.md" "<!-- cairn:start -->"
+assert_contains "CLAUDE.md has cairn end marker" \
+    "$_FULL/.claude/CLAUDE.md" "<!-- cairn:end -->"
+assert_contains "CLAUDE.md mentions .cairn/SKILL.md" \
+    "$_FULL/.claude/CLAUDE.md" "SKILL\.md"
 
 # =============================================================================
 # Scenario A2 — Cursor skill installation
