@@ -76,32 +76,37 @@ check_skill() {
 }
 
 # =============================================================================
-# Canonical skill files in skills/
+# Canonical skill file: skills/claude-code/SKILL.md
+# This is the only file that carries the full protocol. Other skill files in
+# skills/ are 12-line guide blocks that point to .cairn/SKILL.md (the copy
+# installed by cairn init). Full quality checks apply only to the canonical.
 # =============================================================================
 
 check_skill "claude-code/SKILL.md" \
     "$REPO_ROOT/skills/claude-code/SKILL.md"
 
-check_skill "cursor.mdc" \
-    "$REPO_ROOT/skills/cursor.mdc"
+# =============================================================================
+# Adapter guide blocks (cursor/cline/windsurf/copilot/codex/gemini/opencode)
+# These files contain only the 12-line guide block pointing to .cairn/SKILL.md.
+# Checks: file exists, has cairn markers, references SKILL.md.
+# =============================================================================
 
-check_skill "cline.md" \
-    "$REPO_ROOT/skills/cline.md"
+_check_guide_block() {
+    local label="$1" file="$2"
+    start_suite "Adapter: $label"
+    assert_file_exists "$label — file exists" "$file"
+    assert_contains "$label — has cairn:start marker" "$file" "<!-- cairn:start -->"
+    assert_contains "$label — has cairn:end marker"   "$file" "<!-- cairn:end -->"
+    assert_contains "$label — references SKILL.md"    "$file" "SKILL\.md"
+}
 
-check_skill "windsurf.md" \
-    "$REPO_ROOT/skills/windsurf.md"
-
-check_skill "copilot-instructions.md" \
-    "$REPO_ROOT/skills/copilot-instructions.md"
-
-check_skill "codex.md" \
-    "$REPO_ROOT/skills/codex.md"
-
-check_skill "gemini-cli.md" \
-    "$REPO_ROOT/skills/gemini-cli.md"
-
-check_skill "opencode.md" \
-    "$REPO_ROOT/skills/opencode.md"
+_check_guide_block "cursor.mdc"              "$REPO_ROOT/skills/cursor.mdc"
+_check_guide_block "cline.md"               "$REPO_ROOT/skills/cline.md"
+_check_guide_block "windsurf.md"            "$REPO_ROOT/skills/windsurf.md"
+_check_guide_block "copilot-instructions.md" "$REPO_ROOT/skills/copilot-instructions.md"
+_check_guide_block "codex.md"               "$REPO_ROOT/skills/codex.md"
+_check_guide_block "gemini-cli.md"          "$REPO_ROOT/skills/gemini-cli.md"
+_check_guide_block "opencode.md"            "$REPO_ROOT/skills/opencode.md"
 
 # =============================================================================
 # Cursor-specific: YAML frontmatter requirements
