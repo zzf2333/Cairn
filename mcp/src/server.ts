@@ -38,7 +38,7 @@ const VALID_ENTRY_TYPES = [
 export function createCairnServer(): McpServer {
     const server = new McpServer({
         name: "cairn",
-        version: "0.0.10",
+        version: "0.0.11",
     });
 
     // =========================================================================

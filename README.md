@@ -271,8 +271,8 @@ cd mcp && npm install && npm run build
 # Running server picks up the new build automatically on next restart
 ```
 
-**Skill adapters:** Re-run `cairn-init.sh` and choose to reinstall adapters,
-or manually copy the updated file from `skills/` to your AI tool's location.
+**Skill adapters:** Run `cairn install-skill` to reinstall or migrate skill files
+without touching the `.cairn/` data layer. See the [upgrade guide](spec/adoption-guide.md#upgrading-from-v009-or-earlier) for details.
 
 ---
 
