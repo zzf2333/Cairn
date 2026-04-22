@@ -538,6 +538,35 @@ _doctor_check_reflections() {
 }
 
 # -----------------------------------------------------------------------------
+# Check for skill file drift: old v0.0.9 location vs new v0.0.10+ location.
+# Only checks Claude Code, the only tool that changed install paths.
+# -----------------------------------------------------------------------------
+_doctor_check_skill_drift() {
+    local project_root="$1"
+
+    echo ""
+    echo -e "${C_BOLD}$(msg_doctor_section_skill_drift)${C_RESET}"
+
+    local old_dir="${project_root}/.claude/skills/cairn"
+    local new_file="${project_root}/.claude/CLAUDE.md"
+    local has_old=false
+    local has_new=false
+
+    [ -d "$old_dir" ] && has_old=true
+    grep -qF "<!-- cairn:start -->" "$new_file" 2>/dev/null && has_new=true
+
+    if [ "$has_old" = true ] && [ "$has_new" = false ]; then
+        echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_skill_drift_old_only)"
+        _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+    elif [ "$has_old" = true ] && [ "$has_new" = true ]; then
+        echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_skill_drift_both)"
+        _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+    else
+        echo -e "  ${C_GREEN}✓${C_RESET}  $(msg_doctor_skill_drift_ok)"
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Main command
 # -----------------------------------------------------------------------------
 cmd_doctor() {
@@ -555,6 +584,7 @@ cmd_doctor() {
     _doctor_check_staged "$cairn_dir"
     _doctor_check_audits "$cairn_dir"
     _doctor_check_reflections "$cairn_dir"
+    _doctor_check_skill_drift "$root"
 
     echo ""
     if [ "$_DOCTOR_FAIL" -eq 0 ]; then

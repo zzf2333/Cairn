@@ -472,3 +472,41 @@ cairn audit scan state-management   # 只扫描某个域
 3. 若为 `candidates-created` 或 `audit-required`：`cairn stage review`
 4. 若为 `audit-required`：`cairn audit start <domain> --trigger "<变更>"` + `cairn audit scan`
 5. `cairn doctor` → 确认无漂移、过期审计或缺失反思记录
+
+---
+
+## 从 v0.0.9 或更早版本升级
+
+v0.0.9 及更早版本的 `cairn init` 会把 Claude Code Skill 写到 `.claude/skills/cairn/SKILL.md`（按需加载）。从 v0.0.10 起，正确位置改为 `.claude/CLAUDE.md`（每次会话自动加载）。
+
+**如果你用 v0.0.9 或更早初始化过项目**，Skill 在错误位置，约束协议不会触发。用以下任一方式修复，不会碰数据层：
+
+**方式 A — 新命令（推荐）**
+
+```bash
+cd <你的项目>
+cairn install-skill claude-code
+# 提示 "Remove old skill files? [y/N]" → 输入 y 清理旧文件
+```
+
+**方式 B — 通过 `cairn init` 三选菜单**
+
+```bash
+cd <你的项目>
+cairn init
+# 遇到"已存在 .cairn/"提示时：
+#   [2] 保留数据层，仅重新安装 Skill 文件
+# 然后照常选择工具
+```
+
+完成后运行 `cairn doctor` 验证 —— Skill files 区段应显示 ✓。
+
+**启用全局协议**
+
+以上两种方式都只安装项目级 Skill。如需在未加载 Skill 文件的场景下也生效，运行：
+
+```bash
+cairn install-global
+```
+
+该命令将 Cairn Memory Protocol 块写入 `~/.claude/CLAUDE.md`（Claude Code）、`~/.codex/AGENTS.md`（Codex CLI）或 `~/GEMINI.md`（Gemini CLI）。

@@ -54,5 +54,7 @@ source "$TESTS_DIR/test_cli_reflect.sh"
 source "$TESTS_DIR/test_cli_audit.sh"
 # shellcheck source=test_cli_symlink.sh
 source "$TESTS_DIR/test_cli_symlink.sh"
+# shellcheck source=test_cli_install_skill.sh
+source "$TESTS_DIR/test_cli_install_skill.sh"
 
 print_summary

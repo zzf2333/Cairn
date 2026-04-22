@@ -266,6 +266,23 @@ msg_init_skills_unknown()      { echo "  Unknown option '${1}', skipped"; }
 msg_init_written()             { echo "  Written: ${1}"; }
 msg_init_appended()            { echo "  Appended to: ${1}"; }
 msg_init_agents_skipped()      { echo "  AGENTS.md already written (shared by Codex/OpenCode), skipping duplicate"; }
+msg_init_existing_opts()       { echo "Choose how to proceed:"; }
+msg_init_existing_opt1()       { echo "  [1] Overwrite everything (re-run all init steps)"; }
+msg_init_existing_opt2()       { echo "  [2] Keep data, reinstall skill files only (safe upgrade)"; }
+msg_init_existing_opt3()       { echo "  [3] Cancel"; }
+msg_init_existing_choose()     { printf "  Your choice [1/2/3]: "; }
+msg_init_skills_only_title()   { echo "Skill files updated"; }
+msg_init_global_tip()          { echo "  Tip: run 'cairn install-global' to also enable the global Cairn memory protocol."; }
+msg_install_skill_title()      { echo "Cairn — Install Skill Files"; }
+msg_install_skill_no_cairn()   { echo "No .cairn/ directory found. Run 'cairn init' first."; }
+msg_install_skill_intro()      { echo "Select AI tools to install the Cairn skill for (comma-separated numbers):"; }
+msg_install_skill_cancel()     { echo "Cancelled — no changes made."; }
+msg_install_skill_files_updated() { echo "Files updated:"; }
+msg_install_skill_unknown()    { echo "Unknown tool: '${1}'. Run 'cairn install-skill --help' for supported tools."; }
+msg_install_skill_old_detected() { echo "Old skill location detected: .claude/skills/cairn/"; }
+msg_install_skill_old_remove() { printf "  Remove old skill files? [y/N] "; }
+msg_install_skill_old_removed() { echo "Removed .claude/skills/cairn/"; }
+msg_install_skill_old_kept()   { echo "Old files kept — .claude/skills/cairn/ still present (consider removing manually)"; }
 msg_init_done_title()          { echo "Initialization complete"; }
 msg_init_done_created()        { echo "Files created:"; }
 msg_init_done_structure()      { echo "Directory structure:"; }
@@ -563,3 +580,9 @@ msg_doctor_reflect_none_yet()       { echo "(no reflections/ directory found —
 msg_doctor_reflect_missing_large()  { echo "large recent change (${1} files in last commit) but no reflection record in last 7 days"; }
 msg_doctor_reflect_missing_migration() { echo "migration-like commit detected ('${1}') but no reflection record found"; }
 msg_doctor_reflect_suggest()        { echo "  Suggested action: run cairn reflect --since HEAD~${1}"; }
+
+# ── doctor skill drift checks (v0.0.11) ───────────────────────────────────────
+msg_doctor_section_skill_drift()    { echo "── Skill files"; }
+msg_doctor_skill_drift_ok()         { echo "skill file locations are up to date"; }
+msg_doctor_skill_drift_old_only()   { echo "old skill location detected (.claude/skills/cairn/) but .claude/CLAUDE.md has no Cairn block — run: cairn install-skill claude-code"; }
+msg_doctor_skill_drift_both()       { echo "old skill file .claude/skills/cairn/SKILL.md still present alongside new .claude/CLAUDE.md — safe to delete the old one"; }

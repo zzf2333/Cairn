@@ -93,6 +93,8 @@ prompt() {
 # global state
 SELECTED_DOMAINS=()
 CREATED_FILES=()
+_INIT_SKILLS_ONLY=false
+_INSTALL_TIP_TOKENS=()
 
 # ---- preset domain keyword mapping ----
 
@@ -709,6 +711,139 @@ SKILL_EOF
 # flag to track whether AGENTS.md has been written (avoid duplicate writes when both Codex and OpenCode are selected)
 AGENTS_MD_WRITTEN=0
 
+# ============================================================================
+# Shared skill installation primitives
+# (used by both cairn-init.sh and cli/cmd/install-skill.sh)
+# ============================================================================
+
+# Returns 0 if the cairn global-protocol marker is present in the given file.
+_global_marker_present() {
+    local file="$1"
+    [ -f "$file" ] && grep -qF "<!-- cairn:global-protocol:start -->" "$file" 2>/dev/null
+}
+
+# Print a tip to run cairn install-global when global config files lack the marker.
+# Usage: _maybe_print_global_tip <token> [token...]
+# Tokens: 1=claude-code, 6=codex, 7=gemini
+_maybe_print_global_tip() {
+    local show_tip=false
+    for tok in "$@"; do
+        case "$tok" in
+            1) _global_marker_present "$HOME/.claude/CLAUDE.md" || show_tip=true ;;
+            6) _global_marker_present "$HOME/.codex/AGENTS.md"  || show_tip=true ;;
+            7) _global_marker_present "$HOME/GEMINI.md"         || show_tip=true ;;
+        esac
+    done
+    if [ "$show_tip" = true ]; then
+        echo ""
+        echo -e "  ${C_DIM}$(msg_init_global_tip)${C_RESET}"
+    fi
+}
+
+# Install the skill file for a single tool token (1–8).
+# Appends to CREATED_FILES and respects AGENTS_MD_WRITTEN.
+# For token 1 (Claude Code): detects and optionally removes old v0.0.9 skill path.
+install_one_skill() {
+    local token="$1"
+    case "$token" in
+        1)
+            local target_file=".claude/CLAUDE.md"
+            # Detect old skill location from ≤v0.0.9
+            if [ -d ".claude/skills/cairn" ]; then
+                echo ""
+                print_warn "$(msg_install_skill_old_detected)"
+                msg_install_skill_old_remove
+                local ans
+                read -r ans || ans="N"
+                case "${ans:-N}" in
+                    [Yy]*)
+                        rm -rf ".claude/skills/cairn"
+                        print_ok "$(msg_install_skill_old_removed)"
+                        ;;
+                    *)
+                        print_info "$(msg_install_skill_old_kept)"
+                        ;;
+                esac
+            fi
+            if grep -qF "<!-- cairn:start -->" "$target_file" 2>/dev/null; then
+                print_info "Cairn already installed in $target_file"
+            else
+                mkdir -p ".claude"
+                printf '\n' >> "$target_file"
+                {
+                    echo "<!-- cairn:start -->"
+                    echo "$SKILL_CLAUDE_CODE"
+                    echo "<!-- cairn:end -->"
+                } >> "$target_file"
+                CREATED_FILES+=("$target_file")
+                print_ok "$(msg_init_appended "$target_file")"
+            fi
+            _INSTALL_TIP_TOKENS+=("1")
+            ;;
+        2)
+            local target_dir=".cursor/rules"
+            local target_file="${target_dir}/cairn.mdc"
+            mkdir -p "$target_dir"
+            echo "$SKILL_CURSOR" > "$target_file"
+            CREATED_FILES+=("$target_file")
+            print_ok "$(msg_init_written "$target_file")"
+            ;;
+        3)
+            local target_file=".clinerules"
+            echo "$SKILL_GENERIC" >> "$target_file"
+            CREATED_FILES+=("$target_file")
+            print_ok "$(msg_init_appended "$target_file")"
+            ;;
+        4)
+            local target_file=".windsurfrules"
+            echo "$SKILL_GENERIC" >> "$target_file"
+            CREATED_FILES+=("$target_file")
+            print_ok "$(msg_init_appended "$target_file")"
+            ;;
+        5)
+            local target_dir=".github"
+            local target_file="${target_dir}/copilot-instructions.md"
+            mkdir -p "$target_dir"
+            echo "$SKILL_GENERIC" >> "$target_file"
+            CREATED_FILES+=("$target_file")
+            print_ok "$(msg_init_appended "$target_file")"
+            ;;
+        6)
+            local target_file="AGENTS.md"
+            if [ "$AGENTS_MD_WRITTEN" -eq 0 ]; then
+                echo "$SKILL_AGENTS" >> "$target_file"
+                AGENTS_MD_WRITTEN=1
+                CREATED_FILES+=("$target_file")
+                print_ok "$(msg_init_appended "$target_file")"
+            else
+                print_info "$(msg_init_agents_skipped)"
+            fi
+            _INSTALL_TIP_TOKENS+=("6")
+            ;;
+        7)
+            local target_file="GEMINI.md"
+            echo "$SKILL_GEMINI" >> "$target_file"
+            CREATED_FILES+=("$target_file")
+            print_ok "$(msg_init_appended "$target_file")"
+            _INSTALL_TIP_TOKENS+=("7")
+            ;;
+        8)
+            local target_file="AGENTS.md"
+            if [ "$AGENTS_MD_WRITTEN" -eq 0 ]; then
+                echo "$SKILL_AGENTS" >> "$target_file"
+                AGENTS_MD_WRITTEN=1
+                CREATED_FILES+=("$target_file")
+                print_ok "$(msg_init_appended "$target_file")"
+            else
+                print_info "$(msg_init_agents_skipped)"
+            fi
+            ;;
+        *)
+            print_warn "$(msg_init_skills_unknown "$token")"
+            ;;
+    esac
+}
+
 step5_install_skills() {
     print_step "5" "$(msg_init_step_skills)"
 
@@ -735,90 +870,11 @@ step5_install_skills() {
     local normalized
     normalized=$(echo "$tool_input" | tr ',' ' ')
 
+    _INSTALL_TIP_TOKENS=()
     for token in $normalized; do
         token=$(echo "$token" | tr -d '[:space:]')
         [ -z "$token" ] && continue
-
-        case "$token" in
-            1)
-                local target_file=".claude/CLAUDE.md"
-                if grep -qF "<!-- cairn:start -->" "$target_file" 2>/dev/null; then
-                    print_info "Cairn already installed in $target_file"
-                else
-                    mkdir -p ".claude"
-                    printf '\n' >> "$target_file"
-                    {
-                        echo "<!-- cairn:start -->"
-                        echo "$SKILL_CLAUDE_CODE"
-                        echo "<!-- cairn:end -->"
-                    } >> "$target_file"
-                    CREATED_FILES+=("$target_file")
-                    print_ok "$(msg_init_appended "$target_file")"
-                fi
-                ;;
-            2)
-                local target_dir=".cursor/rules"
-                local target_file="${target_dir}/cairn.mdc"
-                mkdir -p "$target_dir"
-                echo "$SKILL_CURSOR" > "$target_file"
-                CREATED_FILES+=("$target_file")
-                print_ok "$(msg_init_written "$target_file")"
-                ;;
-            3)
-                local target_file=".clinerules"
-                echo "$SKILL_GENERIC" >> "$target_file"
-                CREATED_FILES+=("$target_file")
-                print_ok "$(msg_init_appended "$target_file")"
-                ;;
-            4)
-                local target_file=".windsurfrules"
-                echo "$SKILL_GENERIC" >> "$target_file"
-                CREATED_FILES+=("$target_file")
-                print_ok "$(msg_init_appended "$target_file")"
-                ;;
-            5)
-                local target_dir=".github"
-                local target_file="${target_dir}/copilot-instructions.md"
-                mkdir -p "$target_dir"
-                echo "$SKILL_GENERIC" >> "$target_file"
-                CREATED_FILES+=("$target_file")
-                print_ok "$(msg_init_appended "$target_file")"
-                ;;
-            6)
-                # Codex CLI — AGENTS.md
-                local target_file="AGENTS.md"
-                if [ "$AGENTS_MD_WRITTEN" -eq 0 ]; then
-                    echo "$SKILL_AGENTS" >> "$target_file"
-                    AGENTS_MD_WRITTEN=1
-                    CREATED_FILES+=("$target_file")
-                    print_ok "$(msg_init_appended "$target_file")"
-                else
-                    print_info "$(msg_init_agents_skipped)"
-                fi
-                ;;
-            7)
-                # Gemini CLI — GEMINI.md
-                local target_file="GEMINI.md"
-                echo "$SKILL_GEMINI" >> "$target_file"
-                CREATED_FILES+=("$target_file")
-                print_ok "$(msg_init_appended "$target_file")"
-                ;;
-            8)
-                # OpenCode — AGENTS.md (shared with Codex)
-                local target_file="AGENTS.md"
-                if [ "$AGENTS_MD_WRITTEN" -eq 0 ]; then
-                    echo "$SKILL_AGENTS" >> "$target_file"
-                    AGENTS_MD_WRITTEN=1
-                    CREATED_FILES+=("$target_file")
-                    print_ok "$(msg_init_appended "$target_file")"
-                else
-                    print_info "$(msg_init_agents_skipped)"
-                fi
-                ;;
-            *)
-                print_warn "$(msg_init_skills_unknown "$token")"
-                ;;
-        esac
+        install_one_skill "$token"
     done
 }
 
@@ -881,7 +937,11 @@ step0_run_analysis_if_requested() {
 
 print_summary() {
     echo ""
-    print_header "$(msg_init_done_title)"
+    if [ "$_INIT_SKILLS_ONLY" = "true" ]; then
+        print_header "$(msg_init_skills_only_title)"
+    else
+        print_header "$(msg_init_done_title)"
+    fi
 
     echo ""
     echo -e "  ${C_BOLD}$(msg_init_done_created)${C_RESET}"
@@ -889,23 +949,27 @@ print_summary() {
         echo -e "    ${C_GREEN}·${C_RESET} $f"
     done
 
-    echo ""
-    echo -e "  ${C_BOLD}$(msg_init_done_structure)${C_RESET}"
-    echo -e "    ${C_DIM}.cairn/${C_RESET}"
-    echo -e "$(msg_init_layer1_desc)"
-    echo -e "$(msg_init_layer2_desc)"
-    echo -e "$(msg_init_layer3_desc)"
+    if [ "$_INIT_SKILLS_ONLY" = "false" ]; then
+        echo ""
+        echo -e "  ${C_BOLD}$(msg_init_done_structure)${C_RESET}"
+        echo -e "    ${C_DIM}.cairn/${C_RESET}"
+        echo -e "$(msg_init_layer1_desc)"
+        echo -e "$(msg_init_layer2_desc)"
+        echo -e "$(msg_init_layer3_desc)"
 
-    echo ""
-    echo -e "  ${C_BOLD}$(msg_init_next_steps)${C_RESET}"
-    echo ""
-    echo -e "$(msg_init_next1)"
-    echo -e "$(msg_init_next2)"
-    echo -e "$(msg_init_next3)"
-    echo -e "$(msg_init_next4)"
-    if [ "$_INIT_RUN_ANALYZE" = "true" ]; then
-        echo -e "  5. Run 'cairn stage review' to review the git-analysis candidates"
+        echo ""
+        echo -e "  ${C_BOLD}$(msg_init_next_steps)${C_RESET}"
+        echo ""
+        echo -e "$(msg_init_next1)"
+        echo -e "$(msg_init_next2)"
+        echo -e "$(msg_init_next3)"
+        echo -e "$(msg_init_next4)"
+        if [ "$_INIT_RUN_ANALYZE" = "true" ]; then
+            echo -e "  5. Run 'cairn stage review' to review the git-analysis candidates"
+        fi
     fi
+
+    _maybe_print_global_tip "${_INSTALL_TIP_TOKENS[@]+"${_INSTALL_TIP_TOKENS[@]}"}"
     echo ""
 }
 
@@ -923,13 +987,31 @@ main() {
     if [ -d ".cairn" ]; then
         echo ""
         print_warn "$(msg_init_exists_warning)"
-        msg_init_overwrite_prompt
-        read -r confirm
-        if [ "$confirm" != "yes" ]; then
-            echo ""
-            print_info "$(msg_init_cancelled)"
-            exit 0
-        fi
+        echo ""
+        echo -e "  $(msg_init_existing_opts)"
+        echo -e "$(msg_init_existing_opt1)"
+        echo -e "$(msg_init_existing_opt2)"
+        echo -e "$(msg_init_existing_opt3)"
+        echo ""
+        msg_init_existing_choose
+        local existing_choice
+        read -r existing_choice
+        case "${existing_choice:-3}" in
+            1)
+                ;;
+            2)
+                _INIT_SKILLS_ONLY=true
+                _INSTALL_TIP_TOKENS=()
+                step5_install_skills
+                print_summary
+                return 0
+                ;;
+            *)
+                echo ""
+                print_info "$(msg_init_cancelled)"
+                exit 0
+                ;;
+        esac
     fi
 
     step0_offer_git_analysis
@@ -942,4 +1024,6 @@ main() {
     print_summary
 }
 
-main "$@"
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    main "$@"
+fi

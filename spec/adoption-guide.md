@@ -572,3 +572,41 @@ Check `.cairn/audits/<name>.md` to review findings and mark items resolved.
 3. If `candidates-created` or `audit-required`: `cairn stage review`
 4. If `audit-required`: `cairn audit start <domain> --trigger "<change>"` + `cairn audit scan`
 5. `cairn doctor` → confirm no drift, stale audits, or missing reflections remain
+
+---
+
+## Upgrading from v0.0.9 or earlier
+
+In v0.0.9 and earlier, `cairn init` installed the Claude Code skill to `.claude/skills/cairn/SKILL.md` (loaded on-demand). From v0.0.10 onward, the correct location is `.claude/CLAUDE.md` (always-loaded at session start).
+
+**If you initialized with v0.0.9 or earlier**, the skill is in the wrong place and the constraint protocol will not trigger. Use either path to fix this without touching your data layer:
+
+**Path A — New command (recommended)**
+
+```bash
+cd <your-project>
+cairn install-skill claude-code
+# When prompted "Remove old skill files? [y/N]" → enter y to clean up
+```
+
+**Path B — Via `cairn init` three-choice menu**
+
+```bash
+cd <your-project>
+cairn init
+# When prompted about existing .cairn/:
+#   [2] Keep data, reinstall skill files only
+# Then select your tools as usual
+```
+
+After either path, verify with `cairn doctor` — the Skill files section should show ✓.
+
+**Enabling the global protocol**
+
+Both paths install the skill at project level. To also cover projects where the skill file is not loaded, run:
+
+```bash
+cairn install-global
+```
+
+This writes a short Cairn Memory Protocol block to `~/.claude/CLAUDE.md` (Claude Code), `~/.codex/AGENTS.md` (Codex CLI), or `~/GEMINI.md` (Gemini CLI).

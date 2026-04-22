@@ -267,6 +267,23 @@ msg_init_skills_unknown()      { echo "  未知选项 '${1}'，已忽略"; }
 msg_init_written()             { echo "  已写入：${1}"; }
 msg_init_appended()            { echo "  已追加到：${1}"; }
 msg_init_agents_skipped()      { echo "  AGENTS.md 已写入（Codex/OpenCode 共用），跳过重复写入"; }
+msg_init_existing_opts()       { echo "请选择操作："; }
+msg_init_existing_opt1()       { echo "  [1] 全量覆盖（重新运行所有初始化步骤）"; }
+msg_init_existing_opt2()       { echo "  [2] 保留数据层，仅重新安装 Skill 文件（安全升级）"; }
+msg_init_existing_opt3()       { echo "  [3] 取消"; }
+msg_init_existing_choose()     { printf "  请输入 [1/2/3]："; }
+msg_init_skills_only_title()   { echo "Skill 文件已更新"; }
+msg_init_global_tip()          { echo "  提示：运行 'cairn install-global' 可同时启用全局 Cairn 内存协议。"; }
+msg_install_skill_title()      { echo "Cairn — 安装 Skill 文件"; }
+msg_install_skill_no_cairn()   { echo "未找到 .cairn/ 目录，请先运行 'cairn init'。"; }
+msg_install_skill_intro()      { echo "选择要安装 Cairn Skill 的 AI 工具（编号逗号分隔）："; }
+msg_install_skill_cancel()     { echo "已取消，未做任何修改。"; }
+msg_install_skill_files_updated() { echo "已更新的文件："; }
+msg_install_skill_unknown()    { echo "未知工具：'${1}'，运行 'cairn install-skill --help' 查看支持列表。"; }
+msg_install_skill_old_detected() { echo "检测到旧版 Skill 路径：.claude/skills/cairn/"; }
+msg_install_skill_old_remove() { printf "  是否删除旧版 Skill 文件？[y/N] "; }
+msg_install_skill_old_removed() { echo "已删除 .claude/skills/cairn/"; }
+msg_install_skill_old_kept()   { echo "旧文件已保留 — .claude/skills/cairn/ 仍存在（建议手动删除）"; }
 msg_init_done_title()          { echo "初始化完成"; }
 msg_init_done_created()        { echo "已创建的文件："; }
 msg_init_done_structure()      { echo "目录结构："; }
@@ -564,3 +581,9 @@ msg_doctor_reflect_none_yet()       { echo "（未找到 reflections/ 目录 —
 msg_doctor_reflect_missing_large()  { echo "最近提交变更较大（${1} 个文件）但 7 天内无反思记录"; }
 msg_doctor_reflect_missing_migration() { echo "检测到迁移类提交（'${1}'）但未找到反思记录"; }
 msg_doctor_reflect_suggest()        { echo "  建议操作：运行 cairn reflect --since HEAD~${1}"; }
+
+# ── doctor skill 漂移检查（v0.0.11）──────────────────────────────────────────
+msg_doctor_section_skill_drift()    { echo "── Skill 文件"; }
+msg_doctor_skill_drift_ok()         { echo "Skill 文件路径已是最新"; }
+msg_doctor_skill_drift_old_only()   { echo "检测到旧版 Skill 路径（.claude/skills/cairn/），但 .claude/CLAUDE.md 中无 Cairn 块 — 请运行：cairn install-skill claude-code"; }
+msg_doctor_skill_drift_both()       { echo "旧版 .claude/skills/cairn/SKILL.md 与新版 .claude/CLAUDE.md 同时存在 — 旧文件可安全删除"; }

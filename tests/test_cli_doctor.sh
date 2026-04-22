@@ -551,3 +551,64 @@ _has_refl_out="$(cd "$_doctor_has_refl_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/
 # Should NOT warn about missing reflection
 assert_exit_code "recent reflection record: no missing-reflection warning" \
     "0" "$(echo "$_has_refl_out" | grep -qi "no reflection record" && echo 1 || echo 0)"
+
+# =============================================================================
+# v0.0.11: doctor warns on old skill location (old only, no new)
+# =============================================================================
+
+start_suite "cairn doctor — Skill Drift: old location only"
+
+_doctor_old_skill_dir="${_CAIRN_TMPDIR}/doctor_old_skill_$$"
+_create_doctor_clean_fixture "$_doctor_old_skill_dir"
+
+# Simulate old v0.0.9 skill location only (no .claude/CLAUDE.md with cairn block)
+mkdir -p "$_doctor_old_skill_dir/.claude/skills/cairn"
+echo "old skill" > "$_doctor_old_skill_dir/.claude/skills/cairn/SKILL.md"
+
+_old_skill_exit=0
+_old_skill_out="$(cd "$_doctor_old_skill_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null)" \
+    || _old_skill_exit=$?
+
+assert_exit_code "doctor exits 1 (old skill only)" 1 "$_old_skill_exit"
+assert_exit_code "output mentions install-skill" \
+    "0" "$(echo "$_old_skill_out" | grep -qi "install-skill" && echo 0 || echo 1)"
+
+# =============================================================================
+# v0.0.11: doctor warns when both old and new skill locations present
+# =============================================================================
+
+start_suite "cairn doctor — Skill Drift: both old and new present"
+
+_doctor_both_skill_dir="${_CAIRN_TMPDIR}/doctor_both_skill_$$"
+_create_doctor_clean_fixture "$_doctor_both_skill_dir"
+
+mkdir -p "$_doctor_both_skill_dir/.claude/skills/cairn"
+echo "old skill" > "$_doctor_both_skill_dir/.claude/skills/cairn/SKILL.md"
+mkdir -p "$_doctor_both_skill_dir/.claude"
+{
+    echo "<!-- cairn:start -->"
+    echo "# Cairn skill"
+    echo "<!-- cairn:end -->"
+} > "$_doctor_both_skill_dir/.claude/CLAUDE.md"
+
+_both_exit=0
+_both_out="$(cd "$_doctor_both_skill_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null)" \
+    || _both_exit=$?
+
+assert_exit_code "doctor exits 1 (both old and new)" 1 "$_both_exit"
+assert_exit_code "output warns about old file" \
+    "0" "$(echo "$_both_out" | grep -qi "skills/cairn" && echo 0 || echo 1)"
+
+# =============================================================================
+# v0.0.11: doctor passes skill check when only new location exists
+# =============================================================================
+
+start_suite "cairn doctor — Skill Drift: clean (no old location)"
+
+_doctor_clean_skill_dir="${_CAIRN_TMPDIR}/doctor_clean_skill_$$"
+_create_doctor_clean_fixture "$_doctor_clean_skill_dir"
+
+_clean_skill_out="$(cd "$_doctor_clean_skill_dir" && bash "$_CAIRN_BIN" doctor 2>/dev/null || true)"
+
+assert_exit_code "skill drift section: ok message present" \
+    "0" "$(echo "$_clean_skill_out" | grep -qi "skill file" && echo 0 || echo 1)"

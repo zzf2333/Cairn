@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.11] - 2026-04-22
+
+### Added
+
+- **`cairn install-skill` command**: Install Cairn skill adapter files into an existing project without touching the data layer (`.cairn/`). Supports all 8 AI tools by name (`claude-code`, `cursor`, `cline`, `windsurf`, `copilot`, `codex`, `gemini`, `opencode`) or via interactive menu. Safe to run repeatedly — idempotent via existing `<!-- cairn:start -->` markers.
+- **Old skill path migration**: When `cairn install-skill claude-code` detects the old v0.0.9 location (`.claude/skills/cairn/SKILL.md`), it prompts `Remove old skill files? [y/N]` before writing the new location. Selecting `y` removes the old directory; `n` keeps it and prints a reminder.
+- **`cairn init` three-choice menu for existing projects**: When `.cairn/` already exists, init now offers `[1] Overwrite everything / [2] Keep data, reinstall skill files only / [3] Cancel` instead of a single yes/no prompt. Option 2 provides a zero-risk upgrade path for existing users.
+- **`cairn install-global` tip**: After installing Claude Code, Codex, or Gemini skills, a tip is shown when the corresponding global config file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/GEMINI.md`) does not yet have the global Cairn memory protocol marker.
+- **`cairn doctor` skill drift detection**: New `_doctor_check_skill_drift` check warns when `.claude/skills/cairn/` (old v0.0.9 location) is present without the new `.claude/CLAUDE.md` Cairn block, or when both old and new locations coexist. Output: `⚠ run: cairn install-skill claude-code` to guide the user.
+
+### Changed
+
+- `scripts/cairn-init.sh` now supports being sourced as a library (source guard: `BASH_SOURCE[0] == $0`). The `install_one_skill` and `_global_marker_present` functions are shared between `cairn init` and `cairn install-skill` with no code duplication.
+
 ## [0.0.10] - 2026-04-21
 
 ### Added

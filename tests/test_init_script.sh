@@ -180,3 +180,43 @@ start_suite "Overwrite Protection"
 assert_exit_code "script exits 0 when overwrite cancelled" 0 "$_ow_exit"
 assert_file_not_exists "output.md NOT created when overwrite cancelled" \
     "$_OW_DIR/.cairn/output.md"
+
+# =============================================================================
+# Scenario E — Three-choice menu: [3] Cancel keeps data intact
+# =============================================================================
+
+_TC_CANCEL_DIR="${_CAIRN_TMPDIR}/threechoice_cancel_$$"
+mkdir -p "$_TC_CANCEL_DIR/.cairn"
+echo "existing-data" > "$_TC_CANCEL_DIR/.cairn/output.md"
+
+_tc_cancel_exit=0
+(cd "$_TC_CANCEL_DIR" && printf "3\n" | bash "$CAIRN_SCRIPT") >/dev/null 2>&1 \
+    || _tc_cancel_exit=$?
+
+start_suite "Three-Choice Menu — Cancel ([3])"
+assert_exit_code "exit 0 on [3] cancel" 0 "$_tc_cancel_exit"
+assert_contains  "output.md unchanged on cancel" \
+    "$_TC_CANCEL_DIR/.cairn/output.md" "existing-data"
+
+# =============================================================================
+# Scenario F — Three-choice menu: [2] Skills-only does not overwrite output.md
+# =============================================================================
+
+_TC_SKILLS_DIR="${_CAIRN_TMPDIR}/threechoice_skills_$$"
+mkdir -p "$_TC_SKILLS_DIR/.cairn"
+echo "existing-output" > "$_TC_SKILLS_DIR/.cairn/output.md"
+
+# Record mtime before (seconds since epoch)
+_tc_mtime_before="$(stat -f '%m' "$_TC_SKILLS_DIR/.cairn/output.md" 2>/dev/null \
+    || stat -c '%Y' "$_TC_SKILLS_DIR/.cairn/output.md" 2>/dev/null || echo 0)"
+
+# Input: [2] (skills-only), then select Claude Code (1)
+(cd "$_TC_SKILLS_DIR" && printf "2\n1\n" | bash "$CAIRN_SCRIPT") >/dev/null 2>&1 || true
+
+start_suite "Three-Choice Menu — Skills-Only ([2])"
+assert_contains  "output.md content unchanged after skills-only run" \
+    "$_TC_SKILLS_DIR/.cairn/output.md" "existing-output"
+assert_file_exists "claude skill file created in skills-only mode" \
+    "$_TC_SKILLS_DIR/.claude/CLAUDE.md"
+assert_contains    "claude skill has cairn:start marker" \
+    "$_TC_SKILLS_DIR/.claude/CLAUDE.md" "cairn:start"

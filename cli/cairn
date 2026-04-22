@@ -36,7 +36,7 @@ done
 CAIRN_CLI_DIR="$(cd -P "$(dirname "$_cairn_src")" && pwd)"
 unset _cairn_src _cairn_dir
 
-CAIRN_VERSION="0.0.10"
+CAIRN_VERSION="0.0.11"
 
 # =============================================================================
 # Color support
@@ -258,6 +258,7 @@ show_help() {
     echo -e "  ${C_CYAN}analyze${C_RESET}  $(msg_help_cmd_analyze)"
     echo -e "  ${C_CYAN}reflect${C_RESET}  $(msg_help_cmd_reflect)"
     echo -e "  ${C_CYAN}audit${C_RESET}           $(msg_help_cmd_audit)"
+    echo -e "  ${C_CYAN}install-skill${C_RESET}   Install Cairn skill files into the current project (safe upgrade)"
     echo -e "  ${C_CYAN}install-global${C_RESET}  Inject Cairn Memory Protocol into global AI config files"
     echo -e "  ${C_CYAN}version${C_RESET}         $(msg_help_cmd_version)"
     echo -e "  ${C_CYAN}help${C_RESET}     $(msg_help_cmd_help)"
@@ -318,6 +319,10 @@ case "$CMD" in
     audit)
         source "$CAIRN_CLI_DIR/cmd/audit.sh"
         cmd_audit "$@"
+        ;;
+    install-skill)
+        source "$CAIRN_CLI_DIR/cmd/install-skill.sh"
+        cmd_install_skill "$@"
         ;;
     install-global)
         source "$CAIRN_CLI_DIR/cmd/install-global.sh"
