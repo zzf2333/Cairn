@@ -506,7 +506,7 @@ cairn init
 以上两种方式都只安装项目级 Skill。如需在未加载 Skill 文件的场景下也生效，运行：
 
 ```bash
-cairn install-global
+cairn init --global
 ```
 
-该命令将 Cairn Memory Protocol 块写入 `~/.claude/CLAUDE.md`（Claude Code）、`~/.codex/AGENTS.md`（Codex CLI）或 `~/GEMINI.md`（Gemini CLI）。
+该命令将 Cairn Memory Protocol 块写入 `~/CLAUDE.md`（Claude Code）、`~/.codex/AGENTS.md`（Codex CLI）或 `~/GEMINI.md`（Gemini CLI）。

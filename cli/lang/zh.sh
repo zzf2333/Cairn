@@ -273,7 +273,7 @@ msg_init_existing_opt2()       { echo "  [2] 保留数据层，仅重新安装 S
 msg_init_existing_opt3()       { echo "  [3] 取消"; }
 msg_init_existing_choose()     { printf "  请输入 [1/2/3]："; }
 msg_init_skills_only_title()   { echo "Skill 文件已更新"; }
-msg_init_global_tip()          { echo "  提示：运行 'cairn init --global' 可同时在全局 AI 配置文件中安装引导块（~/.claude/CLAUDE.md 等）。"; }
+msg_init_global_tip()          { echo "  提示：运行 'cairn init --global' 可同时在全局 AI 配置文件中安装引导块（~/CLAUDE.md 等）。"; }
 msg_init_skill_refreshed()     { echo "  已刷新：${1}（您的其他内容已保留）"; }
 msg_init_skill_unchanged()     { echo "  已是最新：${1}"; }
 msg_init_step_global()         { echo "安装全局引导块"; }

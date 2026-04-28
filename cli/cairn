@@ -15,7 +15,7 @@
 #   analyze   Analyze git history and generate staged candidates
 #   reflect   Scan recent commits and emit staged update candidates
 #   audit            Track migration residue (start / scan)
-#   install-global   Inject Cairn Memory Protocol into global AI config files
+#   init --global    Inject Cairn Memory Protocol into global AI config files
 #   version          Print version
 #   help             Print this help message
 #
@@ -256,7 +256,7 @@ show_help() {
     echo ""
     echo -e "${C_BOLD}init flags:${C_RESET}"
     echo -e "  ${C_DIM}--refresh-skills${C_RESET}  Refresh .cairn/SKILL.md and AI tool guide blocks only"
-    echo -e "  ${C_DIM}--global${C_RESET}          Also install guide block in global AI config (~/.claude/CLAUDE.md etc.)"
+    echo -e "  ${C_DIM}--global${C_RESET}          Also install guide block in global AI config (~/CLAUDE.md etc.)"
     echo -e "  ${C_DIM}--upgrade${C_RESET}         Warn about v0.0.11 residue (staged/audits/reflections)"
     echo ""
     echo -e "${C_BOLD}$(msg_help_examples_label)${C_RESET}"

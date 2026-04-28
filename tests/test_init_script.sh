@@ -252,6 +252,33 @@ assert_contains "--refresh-skills: output.md unchanged (no output.md token conte
     "$_REFRESH_DIR/.cairn/output.md" "^phase:"
 
 # =============================================================================
+# Scenario G2 — --global: Claude global guide writes to ~/CLAUDE.md
+# =============================================================================
+
+_GLOBAL_DIR="${_CAIRN_TMPDIR}/global_base_$$"
+_GLOBAL_DIR="$(_run_init "global_base" \
+    "2\ntest (2024-01+)\nspeed > quality\n\n\n\n\n\n1\n")"
+_GLOBAL_HOME="${_CAIRN_TMPDIR}/global_home_$$"
+mkdir -p "$_GLOBAL_HOME/.claude"
+
+_global_exit=0
+(cd "$_GLOBAL_DIR" && printf "\n" | HOME="$_GLOBAL_HOME" bash "$CAIRN_SCRIPT" --global) >/dev/null 2>&1 \
+    || _global_exit=$?
+
+start_suite "Init --global"
+assert_exit_code "--global exits 0" 0 "$_global_exit"
+assert_file_exists "--global: Claude guide written to ~/CLAUDE.md" \
+    "$_GLOBAL_HOME/CLAUDE.md"
+assert_contains "--global: ~/CLAUDE.md has global marker" \
+    "$_GLOBAL_HOME/CLAUDE.md" "<!-- cairn:global-start -->"
+assert_file_not_exists "--global: does not write Claude guide under ~/.claude" \
+    "$_GLOBAL_HOME/.claude/CLAUDE.md"
+assert_file_exists "--global: Codex guide still written to ~/.codex/AGENTS.md" \
+    "$_GLOBAL_HOME/.codex/AGENTS.md"
+assert_file_exists "--global: Gemini guide still written to ~/GEMINI.md" \
+    "$_GLOBAL_HOME/GEMINI.md"
+
+# =============================================================================
 # Scenario H — --upgrade: warns about v0.0.11 residue directories
 # =============================================================================
 
@@ -268,13 +295,13 @@ echo "candidate" > "$_UPGRADE_DIR/.cairn/staged/history-candidate_2024-01_foo.md
 echo "audit" > "$_UPGRADE_DIR/.cairn/audits/2024-01_state-management.md"
 
 # Run --upgrade (captures output to check for warnings)
-_upgrade_out="$(_CAIRN_TMPDIR/upgrade_out.txt)"
-(cd "$_UPGRADE_DIR" && bash "$CAIRN_SCRIPT" --upgrade) >"${_CAIRN_TMPDIR}/upgrade_out.txt" 2>&1 || true
+_upgrade_out="${_CAIRN_TMPDIR}/upgrade_out.txt"
+(cd "$_UPGRADE_DIR" && bash "$CAIRN_SCRIPT" --upgrade) >"$_upgrade_out" 2>&1 || true
 
 start_suite "Init --upgrade"
 assert_file_exists "--upgrade: staged/ residue still present (not deleted)" \
     "$_UPGRADE_DIR/.cairn/staged/history-candidate_2024-01_foo.md"
 assert_contains "--upgrade: output mentions staged residue warning" \
-    "${_CAIRN_TMPDIR}/upgrade_out.txt" "staged"
+    "$_upgrade_out" "staged"
 assert_contains "--upgrade: SKILL.md refreshed" \
     "$_UPGRADE_DIR/.cairn/SKILL.md" "ON TASK COMPLETION"

@@ -426,7 +426,7 @@ cairn init
 # Refresh guide blocks and .cairn/SKILL.md without touching output.md or history/
 cairn init --refresh-skills
 
-# Also install guide blocks in global AI config files (~/.claude/CLAUDE.md etc.)
+# Also install guide blocks in global AI config files (~/CLAUDE.md etc.)
 cairn init --global
 
 # Check for v0.0.11 residue (staged/, audits/, reflections/) and refresh SKILL.md
@@ -545,7 +545,7 @@ Verify with `cairn doctor` — the Skill Guide and SKILL.md sections should show
 
 ### Enabling global scope
 
-To install the guide block in global AI config files (`~/.claude/CLAUDE.md` etc.) so
+To install the guide block in global AI config files (`~/CLAUDE.md` etc.) so
 Cairn activates in any project that has a `.cairn/` directory:
 
 ```bash

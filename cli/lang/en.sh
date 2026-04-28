@@ -272,7 +272,7 @@ msg_init_existing_opt2()       { echo "  [2] Keep data, reinstall skill files on
 msg_init_existing_opt3()       { echo "  [3] Cancel"; }
 msg_init_existing_choose()     { printf "  Your choice [1/2/3]: "; }
 msg_init_skills_only_title()   { echo "Skill files updated"; }
-msg_init_global_tip()          { echo "  Tip: run 'cairn init --global' to also install the guide in global AI config files (~/.claude/CLAUDE.md etc.)."; }
+msg_init_global_tip()          { echo "  Tip: run 'cairn init --global' to also install the guide in global AI config files (~/CLAUDE.md etc.)."; }
 msg_init_skill_refreshed()     { echo "  Refreshed: ${1} (your other content preserved)"; }
 msg_init_skill_unchanged()     { echo "  Up to date: ${1}"; }
 msg_init_step_global()         { echo "Install global guide blocks"; }

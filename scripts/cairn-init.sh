@@ -550,14 +550,14 @@ install_one_skill() {
     esac
 }
 
-# Inject guide block into global AI config files (~/.claude/CLAUDE.md, etc.)
+# Inject guide block into global AI config files (~/CLAUDE.md, etc.)
 install_global_skills() {
     echo ""
     print_step "G" "$(msg_init_step_global)"
     echo ""
 
     local files=(
-        "$HOME/.claude/CLAUDE.md"
+        "$HOME/CLAUDE.md"
         "$HOME/.codex/AGENTS.md"
         "$HOME/GEMINI.md"
     )
@@ -668,7 +668,7 @@ print_summary() {
 
     echo ""
     echo -e "  ${C_BOLD}$(msg_init_done_created)${C_RESET}"
-    for f in "${CREATED_FILES[@]}"; do
+    for f in "${CREATED_FILES[@]+"${CREATED_FILES[@]}"}"; do
         echo -e "    ${C_GREEN}·${C_RESET} $f"
     done
 
@@ -716,7 +716,7 @@ main() {
                 echo "  --refresh-skills   Refresh .cairn/SKILL.md and AI tool guide blocks only"
                 echo "                     (does not modify output.md / domains/ / history/)"
                 echo "  --global           Also install guide block in global AI config files"
-                echo "                     (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/GEMINI.md)"
+                echo "                     (~/CLAUDE.md, ~/.codex/AGENTS.md, ~/GEMINI.md)"
                 echo "  --upgrade          Check for v0.0.11 residue (staged/audits/reflections)"
                 echo "                     and refresh skills; implies --refresh-skills"
                 echo ""
