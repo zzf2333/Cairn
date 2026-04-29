@@ -15,8 +15,8 @@ The MCP server upgrades the precision of Cairn's domain injection from the behav
 | `cairn_output` | Read `.cairn/output.md` — Layer 1 global constraints (stage, no-go, hooks, stack, debt) |
 | `cairn_domain` | Read `.cairn/domains/<name>.md` — Layer 2 domain design context |
 | `cairn_query` | Search `.cairn/history/` — Layer 3 raw decision events, with domain/type filters |
-| `cairn_propose` | Draft a history entry to `.cairn/staged/` for human review |
-| `cairn_sync_domain` | Generate context to regenerate a domain file from its history entries |
+| `cairn_write_history` | Write a new decision event directly to `.cairn/history/` after a task crystallizes |
+| `cairn_doctor` | Run `cairn doctor --json` and return structured health check results |
 | `cairn_match` | Match keywords (and optional `files` paths) against domain `hooks` — returns confidence levels (`high`/`medium`/`low`) and related domain advisory |
 
 ## Resources
@@ -138,28 +138,28 @@ cairn_domain("api-layer")
 # When you need full historical detail:
 cairn_query(domain="api-layer", type="rejection")
 
-# When you want to propose recording a decision:
-cairn_propose(type="rejection", domain="api-layer", ...)
-→ writes to .cairn/staged/ for human review
+# After a task produces a recordable decision:
+cairn_write_history(type="rejection", domain="api-layer", ...)
+→ writes a canonical entry to .cairn/history/
 
-# When domain files are out of date:
-cairn_sync_domain("api-layer")
-→ returns context to regenerate the domain file
+# After writing memory or before finishing a session:
+cairn_doctor()
+→ returns JSON health checks and write-back drift signals
 ```
 
-## `cairn_propose` staging workflow
+## Write-back Workflow
 
-The `cairn_propose` tool writes to `.cairn/staged/` instead of directly to `.cairn/history/`. This enforces the human-in-the-loop principle — the AI proposes, the human approves.
+For v0.0.12+, there is no MCP staging ceremony. AI assistants maintain `.cairn/`
+directly using either their native file tools or the `cairn_write_history` MCP tool.
+After writing memory, run `cairn_doctor` to verify the structure and surface stale
+domains or write-back drift.
 
-```bash
-# Review the staged entry
-cat .cairn/staged/2024-03_rejected-graphql.md
-
-# Approve: move to canonical history
-mv .cairn/staged/2024-03_rejected-graphql.md .cairn/history/
-
-# Or discard
-rm .cairn/staged/2024-03_rejected-graphql.md
+```text
+1. Read cairn_output at session start.
+2. Use cairn_match and cairn_domain before planning in a matched domain.
+3. Use cairn_query when full historical reasoning is needed.
+4. Use cairn_write_history only after a real decision, rejection, transition, debt, or experiment crystallizes.
+5. Run cairn_doctor before final response when memory was changed.
 ```
 
 ## Development
@@ -180,7 +180,7 @@ mcp/
 │   ├── server.ts             # McpServer factory: registers all tools + resources
 │   ├── paths.ts              # .cairn/ root detection
 │   ├── hooks.ts              # Frontmatter hooks index for cairn_match
-│   ├── staging.ts            # Staging area logic for cairn_propose
+│   ├── staging.ts            # History-entry serialization and filename helpers
 │   ├── errors.ts             # Typed error codes
 │   ├── parsers/
 │   │   ├── frontmatter.ts    # YAML frontmatter extraction (domain files)
@@ -191,8 +191,8 @@ mcp/
 │       ├── cairn-output.ts
 │       ├── cairn-domain.ts
 │       ├── cairn-query.ts
-│       ├── cairn-propose.ts
-│       ├── cairn-sync-domain.ts
+│       ├── cairn-write-history.ts
+│       ├── cairn-doctor.ts
 │       └── cairn-match.ts
 └── tests/
     ├── fixtures/.cairn/      # Real example data from examples/saas-18mo/

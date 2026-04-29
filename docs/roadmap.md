@@ -1,6 +1,24 @@
 # Cairn — 版本路线图
 
-> 基于 v0.0.1 和 v0.0.2 已交付内容规划
+> 历史路线图 + 当前方向说明。v0.0.12 起，Cairn 已从 staging/reflect/audit CLI 工作流收缩为 AI-direct file protocol：CLI 只保留初始化、自检、版本与帮助；AI 直接维护 `.cairn/`。
+
+---
+
+## 当前方向（v0.0.12+）
+
+- CLI 小表面：`cairn init`、`cairn doctor`、`cairn version`、`cairn help`
+- 记忆维护：AI 根据 `.cairn/SKILL.md` 直接写 `history/`、覆盖更新 `domains/`、必要时更新 `output.md`
+- MCP 当前工具：`cairn_output`、`cairn_domain`、`cairn_query`、`cairn_write_history`、`cairn_doctor`、`cairn_match`
+- 旧 staging/reflect/analyze/audit 流程仅作为历史记录和迁移背景，不再作为当前使用指南
+
+### v0.0.15 — 协议一致性 / 信任修复
+
+**目标：让文档、CLI 提示、MCP README、规范与真实实现保持一致。**
+
+- 修复 MCP README 中旧 `cairn_propose` / `cairn_sync_domain` 工具说明
+- 修复 `doctor` 和 MCP 工具返回中的旧命令建议
+- 同步中文采用指南与格式规范到 v0.0.12+ 的 AI-direct 模型
+- 增加公开文档反回归测试，防止旧工作流重新进入当前指南
 
 ---
 

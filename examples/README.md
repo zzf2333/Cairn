@@ -28,7 +28,6 @@ saas-18mo/.cairn/
 
 **Try it:**
 ```bash
-cd examples/saas-18mo && cairn status
 cd examples/saas-18mo && cairn doctor
 ```
 
@@ -52,7 +51,6 @@ api-service-2yr/.cairn/
 
 **Try it:**
 ```bash
-cd examples/api-service-2yr && cairn status
 cd examples/api-service-2yr && cairn doctor
 # doctor will flag: rate-limiting stale, "microservices split" no-go unsupported
 ```

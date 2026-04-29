@@ -260,7 +260,7 @@ rm -rf ~/.cairn
 ```bash
 npm uninstall -g cairn-mcp-server
 # 从 MCP 设置文件中移除 "cairn" 块
-# （Claude Code：~/.claude/settings.json 或 .claude/settings.json）
+# （Claude Code：~/.claude/mcp.json 或 .claude/mcp.json）
 ```
 
 **Skill 适配文件：**

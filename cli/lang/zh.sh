@@ -46,7 +46,7 @@ msg_status_no_updated_date()   { echo "frontmatter 中无 updated 日期"; }
 msg_status_up_to_date()        { echo "已是最新"; }
 msg_status_last_updated()      { echo "最后更新 ${1}"; }
 msg_status_new_since()         { echo "此后新增 ${1} $(msg_plural_history_entry "${1}")"; }
-msg_status_run_sync()          { echo "运行：cairn sync ${1}"; }
+msg_status_run_sync()          { echo "直接更新 .cairn/domains/${1}.md，然后运行：cairn doctor"; }
 msg_status_history_total()     { echo "历史记录：共 ${1} $(msg_plural_entry "${1}")"; }
 
 # ── singular/plural helpers（中文不区分复数）────────────────────────────────
@@ -310,12 +310,12 @@ msg_doctor_tokens_warn()       { echo "tokens: ≈${1} — 接近硬上限（目
 msg_doctor_tokens_err()        { echo "tokens: ≈${1} — 超过硬上限 800，请压缩 output.md"; }
 msg_doctor_nogo_unsupported()  { echo "no-go \"${1}\" 没有对应的 history 条目支撑"; }
 msg_doctor_domain_ok()         { echo "${1}  ${2}，更新于 ${3}"; }
-msg_doctor_domain_stale()      { echo "${1}  已过期：${2} 以来新增 ${3} $(msg_plural_history_entry "${3}") — 运行：cairn sync ${1}"; }
+msg_doctor_domain_stale()      { echo "${1}  已过期：${2} 以来新增 ${3} $(msg_plural_history_entry "${3}") — 直接更新 .cairn/domains/${1}.md"; }
 msg_doctor_domain_no_updated() { echo "${1}  frontmatter 中无 updated 日期"; }
 msg_doctor_domain_not_created(){ echo "${1}  尚未创建"; }
 msg_doctor_hooks_output_only() { echo "\"${1}\" 出现在 output.md hooks 中，但未出现在任何域的 hooks[]"; }
 msg_doctor_hooks_domain_only() { echo "\"${1}\" 出现在域 ${2} 的 hooks[] 中，但未出现在 output.md hooks 章节"; }
-msg_doctor_hooks_run_sync()    { echo "运行：cairn sync --hooks 重新生成 hooks 章节"; }
+msg_doctor_hooks_run_sync()    { echo "将 .cairn/output.md 的 ## hooks 与 domain frontmatter hooks[] 对齐，然后运行：cairn doctor"; }
 msg_doctor_staged_empty()      { echo "暂存队列为空，无待审核条目"; }
 msg_doctor_staged_todo()       { echo "${1} 条暂存条目含 [TODO] 字段 — 运行：cairn stage review"; }
 msg_doctor_staged_stale()      { echo "${1} 条暂存条目滞留超 14 天 — 请审核或丢弃"; }
@@ -590,7 +590,7 @@ msg_doctor_write_back_suggest()     { echo "请让 AI 完成任务并输出 Cair
 # ── doctor skill 漂移检查（v0.0.11）──────────────────────────────────────────
 msg_doctor_section_skill_drift()    { echo "── Skill 文件"; }
 msg_doctor_skill_drift_ok()         { echo "Skill 文件路径已是最新"; }
-msg_doctor_skill_drift_old_only()   { echo "检测到旧版 Skill 路径（.claude/skills/cairn/），但 .claude/CLAUDE.md 中无 Cairn 块 — 请运行：cairn install-skill claude-code"; }
+msg_doctor_skill_drift_old_only()   { echo "检测到旧版 Skill 路径（.claude/skills/cairn/），但 .claude/CLAUDE.md 中无 Cairn 块 — 请运行：cairn init --refresh-skills"; }
 msg_doctor_skill_drift_both()       { echo "旧版 .claude/skills/cairn/SKILL.md 与新版 .claude/CLAUDE.md 同时存在 — 旧文件可安全删除"; }
 
 # ── doctor 引导块检查（v0.0.12）──────────────────────────────────────────────

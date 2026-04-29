@@ -13,21 +13,15 @@ English | [中文](FORMAT.zh.md)
 ```
 .cairn/
 ├── output.md          # 第一层：全局约束，始终注入
+├── SKILL.md           # 操作协议；由 cairn init 复制
 ├── domains/           # 第二层：域上下文，按需注入
 │   ├── api-layer.md
 │   ├── auth.md
 │   └── state-management.md
-├── history/           # 第三层：原始决策事件，按需查询
+└── history/           # 第三层：原始决策事件，按需查询
 │   ├── 2023-03_state-mgmt-transition.md
 │   ├── 2023-09_trpc-experiment-rejection.md
 │   └── 2024-01_auth-debt-accepted.md
-├── staged/            # 候选收件箱：等待审阅的前缀文件
-│   ├── history-candidate_2026-04_trpc-rejection.md
-│   ├── domain-update-candidate_2026-04_auth-open-question.md
-│   ├── output-update-candidate_2026-04_stack-drift.md
-│   └── audit-candidate_2026-04_state-cleanup.md
-└── audits/            # 迁移清理追踪（由 cairn audit start 创建）
-    └── 2026-04_state-management-migration.md
 ```
 
 ---
@@ -254,7 +248,7 @@ related: ["domain-name"]   # 可选
 |------|---------|------|------|
 | `domain` | 必须 | kebab-case | 必须与文件名主干和 `# title` 标题匹配 |
 | `hooks` | 必须 | 字符串 JSON 数组 | 触发注入的关键词。被 `output.md` hooks 章节引用。Phase 3 MCP Server 使用此字段进行精确匹配而无需 AI 推断。 |
-| `updated` | 必须 | `YYYY-MM` | 最后实质性更新日期。被 `cairn status` 用于过期检测。 |
+| `updated` | 必须 | `YYYY-MM` | 最后实质性更新日期。被 `cairn doctor` 用于过期检测。 |
 | `status` | 建议 | `active` 或 `stable` | `active`——设计仍在演进；`stable`——设计已稳定。过期状态始终根据 `updated` 与历史日期计算，绝不手动声明。 |
 | `related` | 可选 | YAML flow-style 字符串数组 | 声明与该 domain 相关的其他 domain 名称。MCP `cairn_match` 使用该字段为匹配的主 domain 推荐加载相关 domain 的 `## trajectory` 章节。展开规则：BFS 仅展开 1 跳（不做传递展开）；最多展开 2 个；按作者声明顺序取前 2；引用不存在的 domain 时静默丢弃并返回 warning；禁止循环引用（主 domain 自身不展开）。 |
 
@@ -344,7 +338,7 @@ AI 在该域工作时必须主动考虑的操作陷阱。
 - 可选——仅在迁移产生明确清理债务时添加
 - 条目使用复选框；已完成的条目可以保留为 `[x]` 作为历史记录
 - 所有项目都勾选后，应从域文件中删除
-- 通过 `.cairn/audits/` 中对应的文件跨会话追踪
+- 直接在 domain 文件中跨会话追踪，直到清单完成
 
 ### 生命周期
 
@@ -550,22 +544,26 @@ revisit_when: Greenfield service with no existing REST consumers, or tRPC adds
 
 ---
 
-## 支持目录
+## 支持目录（v0.0.11，v0.0.12 起已废弃）
 
-`.cairn/staged/` 和 `.cairn/audits/` 是支持目录。它们不构成额外的协议层——它们的存在是为了维护官方三层系统。
+> **v0.0.12 说明：** `.cairn/staged/`、`.cairn/audits/` 和
+> `.cairn/reflections/` 不再由 Cairn 创建或使用。v0.0.12 起，AI 助手使用原生文件工具直接写入 history 条目并更新 domain 文件，没有暂存门禁或 CLI 仪式。
+> 如果旧项目中仍有这些目录，`cairn doctor` 会提示。请人工审查内容，将有价值的信息迁移到 `history/` 或 `domains/` 后删除旧目录。
+
+`.cairn/staged/` 和 `.cairn/audits/` 是 v0.0.11 的支持目录。它们不构成额外协议层。下面内容仅用于帮助升级旧项目，不应作为新工作流使用。
 
 ### `.cairn/staged/` — 候选收件箱
 
-暂存候选是等待人工审阅的前缀文件。文件名前缀决定 `cairn stage review` 在接受时如何路由文件。
+暂存候选曾是等待人工审阅的前缀文件。
 
 #### 候选类型
 
 | 前缀 | 接受时 | 生成来源 |
 |------|--------|---------|
-| `history-candidate_` | 移动到 `history/`（去除前缀） | `cairn reflect`、`cairn analyze`、`cairn log --quick` |
-| `domain-update-candidate_` | 在目标 `domains/<name>.md` 上打开 `$EDITOR` | `cairn reflect`、`cairn analyze` |
-| `output-update-candidate_` | 在 `output.md` 上打开 `$EDITOR` | `cairn reflect`、`cairn analyze` |
-| `audit-candidate_` | 移动到 `audits/`（去除前缀） | `cairn reflect`、`cairn analyze` |
+| `history-candidate_` | 移动到 `history/`（去除前缀） | 旧写回辅助工具 |
+| `domain-update-candidate_` | 合并到目标 `domains/<name>.md` | 旧写回辅助工具 |
+| `output-update-candidate_` | 合并到 `output.md` | 旧写回辅助工具 |
+| `audit-candidate_` | 将有用内容合并到 domain 文件 | 旧写回辅助工具 |
 
 #### 文件命名
 
@@ -587,7 +585,7 @@ revisit_when: Greenfield service with no existing REST consumers, or tRPC adds
 
 ### `.cairn/audits/` — 迁移清理追踪
 
-审计文件记录明确的迁移清理义务。由 `cairn audit start` 创建，由 `cairn audit scan` 更新。
+审计文件曾在 v0.0.11 中记录明确的迁移清理义务。
 
 #### 文件命名
 
@@ -623,7 +621,6 @@ status: open|partial|complete
 
 #### 生命周期
 
-- **创建：** 重大迁移后运行 `cairn audit start <domain> --trigger "<change>"`
-- **扫描：** 运行 `cairn audit scan` 用残留检测结果填充 Findings
-- **更新：** 直接编辑文件标记已解决的项目；完成时更改 `status`
-- **归档：** 将 `status: complete` 的文件保留在 `audits/` 中作为历史记录；`cairn doctor` 不再标记它们
+- **审查：** 升级时检查旧 audit 文件。
+- **迁移：** 将有用的清理义务移入 domain 的 `## residue checklist` 或 `## known pitfalls`。
+- **删除：** 有用内容迁移后删除 `.cairn/audits/`。

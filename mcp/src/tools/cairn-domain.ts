@@ -48,7 +48,7 @@ export function handleCairnDomain(args: { name: string }): ToolResult {
             const hint =
                 available.length > 0
                     ? `\n\nAvailable domains: ${available.join(", ")}`
-                    : "\n\nNo domain files have been created yet. Record history entries first, then run `cairn sync` to generate domain files.";
+                    : "\n\nNo domain files have been created yet. Create `.cairn/domains/<name>.md` directly from history entries, following `.cairn/SKILL.md`.";
 
             return formatToolError(
                 new Error(`Domain file '${name}' not found.${hint}`),

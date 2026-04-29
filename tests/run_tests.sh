@@ -39,6 +39,8 @@ source "$TESTS_DIR/test_skill_files.sh"
 source "$TESTS_DIR/test_skill_protocol.sh"
 # shellcheck source=test_task_completion_protocol.sh
 source "$TESTS_DIR/test_task_completion_protocol.sh"
+# shellcheck source=test_docs_protocol.sh
+source "$TESTS_DIR/test_docs_protocol.sh"
 # shellcheck source=test_examples.sh
 source "$TESTS_DIR/test_examples.sh"
 # shellcheck source=test_cli_dispatch.sh

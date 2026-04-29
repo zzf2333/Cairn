@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.15] - 2026-04-29
+
+### Changed
+
+- **Protocol consistency pass**: Public docs now align with the v0.0.12+ AI-direct file protocol. The current CLI surface is `init`, `doctor`, `version`, and `help`; ongoing memory maintenance is handled by AI file writes plus `Cairn reflection`.
+- **MCP README sync**: `mcp/README.md` and `mcp/README.zh.md` now document the actual 6 MCP tools: `cairn_output`, `cairn_domain`, `cairn_query`, `cairn_write_history`, `cairn_doctor`, and `cairn_match`.
+- **Doctor guidance**: User-facing doctor hints no longer recommend removed commands such as `cairn sync` or `cairn install-skill`; stale domains now point users to direct `.cairn/domains/` updates and `cairn doctor`.
+- **Chinese docs sync**: `spec/adoption-guide.zh.md`, `spec/FORMAT.zh.md`, and `spec/DESIGN.zh.md` now match the current AI-direct workflow and MCP tool surface.
+- **Integration diagram**: Updated `docs/diagrams/03-integration-overview.svg` and PNG to show current CLI and MCP tools.
+
+### Fixed
+
+- `mcp/src/tools/cairn-domain.ts` no longer suggests the removed `cairn sync` command when a domain file is missing.
+- `README.zh.md` now references Claude Code MCP config at `~/.claude/mcp.json` / `.claude/mcp.json`.
+
+### Tests
+
+- Added `tests/test_docs_protocol.sh` to prevent MCP README regressions back to the old `cairn_propose` / `cairn_sync_domain` / `.cairn/staged/` workflow.
+
 ## [0.0.14] - 2026-04-29
 
 ### Fixed

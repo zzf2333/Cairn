@@ -7,14 +7,7 @@
 #
 # Commands:
 #   init      Interactively initialize .cairn/ in the current project
-#   status    Show three-layer summary and stale domain warnings
-#   log       Record a history entry (interactive or flag mode)
-#   sync      Generate an AI prompt to update a domain file from history
 #   doctor    Run health checks on the .cairn/ structure (rules-only, no LLM)
-#   stage     Manage staged history entries (review / accept / skip)
-#   analyze   Analyze git history and generate staged candidates
-#   reflect   Scan recent commits and emit staged update candidates
-#   audit            Track migration residue (start / scan)
 #   init --global    Inject Cairn Memory Protocol into global AI config files
 #   version          Print version
 #   help             Print this help message
@@ -36,7 +29,7 @@ done
 CAIRN_CLI_DIR="$(cd -P "$(dirname "$_cairn_src")" && pwd)"
 unset _cairn_src _cairn_dir
 
-CAIRN_VERSION="0.0.14"
+CAIRN_VERSION="0.0.15"
 
 # =============================================================================
 # Color support

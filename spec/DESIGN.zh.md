@@ -191,6 +191,6 @@ Cairn 分三个阶段开发。
 
 **Phase 1 — 协议层。** 已完成。交付物是格式规范（`spec/FORMAT.md`）、本设计文档、五个支持工具的 Skill 适配文件、一个涵盖所有三层且有 18+ 个月历史的真实项目示例，以及一个交互式 `cairn-init.sh` Shell 脚本。成功标准：三人或以上的团队能够独立运行 `cairn init` 并在不需要额外说明的情况下获得可工作的设置；记录的 `no-go` 条目可靠地防止 AI 重新建议这些方向；域文件上下文在规划期间明显提高了 AI 建议的质量。
 
-**Phase 2 — CLI。** 已完成。带四个子命令的 `cairn` 命令行工具：`cairn init`（交互式初始化）、`cairn status`（三层摘要）、`cairn log`（手动追加历史条目）和 `cairn sync`（AI 辅助：从积累的历史条目重新生成域文件，并经人工确认）。`sync` 命令是相对于 Shell 脚本的关键新增——它在不需要手动重写的情况下关闭了原始历史积累和域文件维护之间的循环。
+**Phase 2 — CLI。** 已完成。当前 CLI 保持小表面：`cairn init` 负责初始化和刷新 `.cairn/SKILL.md` 与各工具引导块；`cairn doctor` 负责只读健康检查；`cairn version` 和 `cairn help` 提供基础信息。v0.0.12 起，ongoing memory maintenance 由 AI 直接使用文件工具完成，不再依赖额外 CLI ceremony。
 
-**Phase 3 — MCP Server。** 已完成。一个 Model Context Protocol 服务器（`mcp/`），通过类型化工具调用公开对三层的结构化访问：`cairn_output()` 读取 `output.md`，`cairn_domain(name)` 读取特定域文件，`cairn_query(domain, type?)` 搜索历史条目，`cairn_propose(entry)` 让 AI 将新历史条目草稿写入暂存区供人工审核，`cairn_sync_domain(name)` 从历史条目重新生成域文件，以及 `cairn_match(keywords)` 进行精确的基于 hooks 的域匹配而无需 AI 推断。MCP 层实现了更丰富的工具集成，并消除了每个 AI 工具手动处理原始文件注入的需要。详见 `mcp/README.md` 中的配置说明。
+**Phase 3 — MCP Server。** 已完成。一个 Model Context Protocol 服务器（`mcp/`），通过类型化工具调用公开对三层的结构化访问：`cairn_output()` 读取 `output.md`，`cairn_domain(name)` 读取特定域文件，`cairn_query(domain, type?)` 搜索历史条目，`cairn_write_history(entry)` 写入新的 history 条目，`cairn_doctor()` 返回结构化健康检查结果，以及 `cairn_match(keywords, files?)` 进行精确的 hooks / 文件路径匹配。MCP 层把领域匹配和自检提升到工具层，同时保持 `.cairn/` 仍是项目内的纯文件协议。详见 `mcp/README.md` 中的配置说明。

@@ -45,7 +45,7 @@ msg_status_no_updated_date()   { echo "no updated date in frontmatter"; }
 msg_status_up_to_date()        { echo "up to date"; }
 msg_status_last_updated()      { echo "last updated ${1}"; }
 msg_status_new_since()         { echo "${1} new $(msg_plural_history_entry "${1}") since"; }
-msg_status_run_sync()          { echo "run: cairn sync ${1}"; }
+msg_status_run_sync()          { echo "update .cairn/domains/${1}.md directly, then run: cairn doctor"; }
 msg_status_history_total()     { echo "history: ${1} $(msg_plural_entry "${1}") total"; }
 
 # ── singular/plural helpers ───────────────────────────────────────────────────
@@ -309,12 +309,12 @@ msg_doctor_tokens_warn()       { echo "tokens: ≈${1} — approaching hard limi
 msg_doctor_tokens_err()        { echo "tokens: ≈${1} — over hard limit 800, compress output.md"; }
 msg_doctor_nogo_unsupported()  { echo "no-go \"${1}\" has no supporting history entry"; }
 msg_doctor_domain_ok()         { echo "${1}  ${2}, updated ${3}"; }
-msg_doctor_domain_stale()      { echo "${1}  stale: ${2} new $(msg_plural_history_entry "${2}") since ${3} — run: cairn sync ${1}"; }
+msg_doctor_domain_stale()      { echo "${1}  stale: ${2} new $(msg_plural_history_entry "${2}") since ${3} — update .cairn/domains/${1}.md directly"; }
 msg_doctor_domain_no_updated() { echo "${1}  no updated date in frontmatter"; }
 msg_doctor_domain_not_created(){ echo "${1}  not yet created"; }
 msg_doctor_hooks_output_only() { echo "\"${1}\" appears in output.md hooks but not in any domain's hooks[]"; }
 msg_doctor_hooks_domain_only() { echo "\"${1}\" appears in domain ${2} hooks[] but not in output.md hooks section"; }
-msg_doctor_hooks_run_sync()    { echo "run: cairn sync --hooks to regenerate the hooks section"; }
+msg_doctor_hooks_run_sync()    { echo "align .cairn/output.md ## hooks with domain frontmatter hooks[], then run: cairn doctor"; }
 msg_doctor_staged_empty()      { echo "no entries pending review"; }
 msg_doctor_staged_todo()       { echo "${1} staged $(msg_plural_entry "${1}") with [TODO] fields — run: cairn stage review"; }
 msg_doctor_staged_stale()      { echo "${1} staged $(msg_plural_entry "${1}") older than 14 days — consider review or discard"; }
@@ -589,7 +589,7 @@ msg_doctor_write_back_suggest()     { echo "run your AI and end the task with a 
 # ── doctor skill guide checks (v0.0.12) ───────────────────────────────────────
 msg_doctor_section_skill_drift()    { echo "── Skill files"; }
 msg_doctor_skill_drift_ok()         { echo "skill file locations are up to date"; }
-msg_doctor_skill_drift_old_only()   { echo "old skill location detected (.claude/skills/cairn/) but .claude/CLAUDE.md has no Cairn block — run: cairn install-skill claude-code"; }
+msg_doctor_skill_drift_old_only()   { echo "old skill location detected (.claude/skills/cairn/) but .claude/CLAUDE.md has no Cairn block — run: cairn init --refresh-skills"; }
 msg_doctor_skill_drift_both()       { echo "old skill file .claude/skills/cairn/SKILL.md still present alongside new .claude/CLAUDE.md — safe to delete the old one"; }
 
 msg_doctor_section_skill_guide()    { echo "── Cairn guide block"; }
