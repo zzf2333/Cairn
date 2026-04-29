@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.14] - 2026-04-29
+
+### Fixed
+
+- **Global config path**: `cairn init --global` now writes the Claude Code guide block to `~/CLAUDE.md` instead of `~/.claude/CLAUDE.md`, matching the actual Claude Code global config location.
+- **Help text**: Updated `--global` flag description and tip messages across CLI, adoption guide, and localization files.
+- **`cairn-init.sh`**: Fixed `CREATED_FILES` array expansion to avoid unbound variable error when the array is empty.
+- **`tests/test_init_script.sh`**: Fixed `--upgrade` test variable assignment (was using subshell syntax instead of plain string), added `--global` path validation tests.
+
 ## [0.0.13] - 2026-04-22
 
 ### Added

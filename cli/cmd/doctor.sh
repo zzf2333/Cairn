@@ -687,7 +687,7 @@ _doctor_emit_json() {
 
     cat <<JSON
 {
-  "cairn_version": "0.0.13",
+  "cairn_version": "0.0.14",
   "issues": ${_DOCTOR_FAIL},
   "output": {
     "status": "${_DOCTOR_JSON_OUTPUT_STATUS:-ok}",
