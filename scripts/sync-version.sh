@@ -12,6 +12,7 @@
 #   - mcp/package.json        (via npm version --no-git-tag-version)
 #   - mcp/package-lock.json   (updated automatically by npm)
 #   - mcp/src/server.ts       (hardcoded version field in createCairnServer)
+#   - cli/cmd/doctor.sh       (doctor --json cairn_version field)
 #   - cli/cairn               (CAIRN_VERSION constant)
 # =============================================================================
 
@@ -52,6 +53,12 @@ sed -i.bak "s/^CAIRN_VERSION=\"[0-9]*\.[0-9]*\.[0-9]*\"/CAIRN_VERSION=\"$VERSION
 rm -f "${CLI_FILE}.bak"
 echo "  [OK] cli/cairn"
 
+# 4. cli/cmd/doctor.sh — replace JSON cairn_version field
+DOCTOR_SH="$REPO_ROOT/cli/cmd/doctor.sh"
+sed -i.bak "s/\"cairn_version\": \"[0-9]*\.[0-9]*\.[0-9]*\"/\"cairn_version\": \"$VERSION\"/" "$DOCTOR_SH"
+rm -f "${DOCTOR_SH}.bak"
+echo "  [OK] cli/cmd/doctor.sh"
+
 echo ""
 echo "Done. All files updated to version $VERSION."
 echo ""
@@ -59,3 +66,4 @@ echo "Verify with:"
 echo "  grep 'version' mcp/package.json"
 echo "  grep 'version:' mcp/src/server.ts"
 echo "  grep 'CAIRN_VERSION' cli/cairn"
+echo "  grep 'cairn_version' cli/cmd/doctor.sh"

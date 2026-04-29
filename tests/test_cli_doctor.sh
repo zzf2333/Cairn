@@ -19,6 +19,42 @@ _CAIRN_BIN="$REPO_ROOT/cli/cairn"
 # Fixture helpers
 # =============================================================================
 
+_assert_doctor_json_contract() {
+    local desc="$1" file="$2"
+    if node -e '
+const fs = require("fs");
+const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+const isString = (v) => typeof v === "string";
+const isNumber = (v) => typeof v === "number";
+const isArray = Array.isArray;
+if (!isString(data.cairn_version)) process.exit(1);
+if (!isNumber(data.issues)) process.exit(1);
+if (!data.output || !isString(data.output.status) || !isNumber(data.output.tokens)) process.exit(1);
+if (!isArray(data.domains_stale)) process.exit(1);
+if (!isString(data.skill_guide)) process.exit(1);
+if (!isString(data.skill_md)) process.exit(1);
+if (!isArray(data.v0011_residue)) process.exit(1);
+if (!data.write_back || !isString(data.write_back.status) || !isString(data.write_back.reason) || !isArray(data.write_back.signals)) process.exit(1);
+' "$file" 2>/dev/null; then
+        _pass "$desc"
+    else
+        _fail "$desc" "doctor --json output does not match expected schema"
+    fi
+}
+
+_assert_doctor_json_expr() {
+    local desc="$1" file="$2" expr="$3"
+    if node -e '
+const fs = require("fs");
+const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+if (!eval(process.argv[2])) process.exit(1);
+' "$file" "$expr" 2>/dev/null; then
+        _pass "$desc"
+    else
+        _fail "$desc" "JSON expression failed: $expr"
+    fi
+}
+
 # Create a minimal clean .cairn/ that passes all doctor checks.
 _create_doctor_clean_fixture() {
     local dir="$1"
@@ -466,6 +502,11 @@ assert_contains "json output starts with {" "$_json_tmp" "^\{"
 assert_contains "json output has issues field" "$_json_tmp" '"issues"'
 assert_contains "json output has cairn_version field" "$_json_tmp" '"cairn_version"'
 assert_contains "json output has write_back field" "$_json_tmp" '"write_back"'
+_assert_doctor_json_contract "json output matches doctor schema" "$_json_tmp"
+_assert_doctor_json_expr "json clean: issues is 0" "$_json_tmp" "data.issues === 0"
+_assert_doctor_json_expr "json clean: no stale domains" "$_json_tmp" "data.domains_stale.length === 0"
+_assert_doctor_json_expr "json clean: skill guide ok" "$_json_tmp" "data.skill_guide === 'ok'"
+_assert_doctor_json_expr "json clean: skill md ok" "$_json_tmp" "data.skill_md === 'ok'"
 
 # =============================================================================
 # v0.0.11: doctor warns on old skill location (old only, no new)
@@ -548,6 +589,9 @@ echo "$_wb_nogit_json" > "$_wb_nogit_tmp"
 assert_contains "write_back: json has write_back field"     "$_wb_nogit_tmp" '"write_back"'
 assert_contains "write_back: status is skipped (no git)"    "$_wb_nogit_tmp" '"skipped"'
 assert_contains "write_back: reason is no_git"              "$_wb_nogit_tmp" '"no_git"'
+_assert_doctor_json_contract "write_back no-git: json matches schema" "$_wb_nogit_tmp"
+_assert_doctor_json_expr "write_back no-git: status skipped" "$_wb_nogit_tmp" "data.write_back.status === 'skipped'"
+_assert_doctor_json_expr "write_back no-git: reason no_git" "$_wb_nogit_tmp" "data.write_back.reason === 'no_git'"
 
 # =============================================================================
 # v0.0.13: write_back — git repo with large change + no history → missing-write-back
@@ -580,3 +624,28 @@ echo "$_wb_large_json" > "$_wb_large_tmp"
 assert_contains "write_back large: json has write_back field"     "$_wb_large_tmp" '"write_back"'
 assert_contains "write_back large: status is warn"                "$_wb_large_tmp" '"warn"'
 assert_contains "write_back large: signals has missing-write-back" "$_wb_large_tmp" "missing-write-back"
+_assert_doctor_json_contract "write_back large: json matches schema" "$_wb_large_tmp"
+_assert_doctor_json_expr "write_back large: status warn" "$_wb_large_tmp" "data.write_back.status === 'warn'"
+_assert_doctor_json_expr "write_back large: signal array contains missing-write-back" "$_wb_large_tmp" "data.write_back.signals.includes('missing-write-back')"
+
+# =============================================================================
+# v0.1.0: doctor --json issue states are machine-verifiable
+# =============================================================================
+
+start_suite "cairn doctor — JSON Contract: Issue States"
+
+_json_stale_out="$_CAIRN_TMPDIR/doctor_json_stale.txt"
+(cd "$_doctor_stale_dir" && bash "$_CAIRN_BIN" doctor --json 2>/dev/null || true) > "$_json_stale_out"
+_assert_doctor_json_contract "json stale: matches schema" "$_json_stale_out"
+_assert_doctor_json_expr "json stale: domains_stale includes api-layer" "$_json_stale_out" "data.domains_stale.includes('api-layer')"
+_assert_doctor_json_expr "json stale: issues are nonzero" "$_json_stale_out" "data.issues > 0"
+
+_json_noguide_out="$_CAIRN_TMPDIR/doctor_json_noguide.txt"
+(cd "$_doctor_noguide_dir" && bash "$_CAIRN_BIN" doctor --json 2>/dev/null || true) > "$_json_noguide_out"
+_assert_doctor_json_contract "json missing guide: matches schema" "$_json_noguide_out"
+_assert_doctor_json_expr "json missing guide: skill_guide is missing" "$_json_noguide_out" "data.skill_guide === 'missing'"
+
+_json_residue_out="$_CAIRN_TMPDIR/doctor_json_residue.txt"
+(cd "$_doctor_residue_dir" && bash "$_CAIRN_BIN" doctor --json 2>/dev/null || true) > "$_json_residue_out"
+_assert_doctor_json_contract "json residue: matches schema" "$_json_residue_out"
+_assert_doctor_json_expr "json residue: v0011_residue includes staged" "$_json_residue_out" "data.v0011_residue.includes('staged')"

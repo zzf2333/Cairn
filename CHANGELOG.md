@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2026-04-29
+
+### Added
+
+- **Verifiable onboarding E2E**: Added `tests/test_onboarding_e2e.sh`, which creates a fresh git project, runs `cairn init`, verifies `.cairn/output.md`, `.cairn/SKILL.md`, the history template, the domains directory, and the Claude guide block, then proves `cairn doctor` and `cairn doctor --json` pass.
+- **Public docs workflow contract**: Expanded `tests/test_docs_protocol.sh` to cover the English public docs (`README.md`, `mcp/README.md`, `spec/adoption-guide.md`, `examples/README.md`) and prevent deleted CLI commands or retired MCP tools from reappearing as current guidance.
+- **Doctor JSON schema contract**: Strengthened `tests/test_cli_doctor.sh` with machine-verified schema checks and explicit JSON assertions for clean projects, stale domains, missing guide blocks, v0.0.11 residue, and write-back warning states.
+
+### Changed
+
+- **Version sync script**: `scripts/sync-version.sh` now updates the `cairn_version` field emitted by `cairn doctor --json` alongside the CLI and MCP package versions.
+- **Roadmap**: Updated the current roadmap direction to mark v0.1.0 as the first verifiable onboarding milestone.
+
 ## [0.0.15] - 2026-04-29
 
 ### Changed

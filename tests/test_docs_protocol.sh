@@ -29,3 +29,48 @@ for _mcp_readme in "$_MCP_README_EN" "$_MCP_README_ZH"; do
     assert_not_contains "$_mcp_label: no staged workflow" \
         "$_mcp_readme" "\\.cairn/staged/"
 done
+
+start_suite "Docs Protocol — Public English Current Workflow"
+
+_PUBLIC_DOCS_EN="
+$REPO_ROOT/README.md
+$REPO_ROOT/mcp/README.md
+$REPO_ROOT/spec/adoption-guide.md
+$REPO_ROOT/examples/README.md
+"
+
+for _public_doc in $_PUBLIC_DOCS_EN; do
+    _doc_label="${_public_doc#$REPO_ROOT/}"
+
+    assert_not_contains "$_doc_label: no deleted cairn status command" \
+        "$_public_doc" "cairn status"
+    assert_not_contains "$_doc_label: no deleted cairn log command" \
+        "$_public_doc" "cairn log"
+    assert_not_contains "$_doc_label: no deleted cairn sync command" \
+        "$_public_doc" "cairn sync"
+    assert_not_contains "$_doc_label: no deleted cairn stage command" \
+        "$_public_doc" "cairn stage"
+    assert_not_contains "$_doc_label: no deleted cairn reflect command" \
+        "$_public_doc" "cairn reflect"
+    assert_not_contains "$_doc_label: no deleted cairn analyze command" \
+        "$_public_doc" "cairn analyze"
+    assert_not_contains "$_doc_label: no deleted cairn audit command" \
+        "$_public_doc" "cairn audit"
+    assert_not_contains "$_doc_label: no deleted cairn install-skill command" \
+        "$_public_doc" "cairn install-skill"
+    assert_not_contains "$_doc_label: no old cairn_propose MCP tool" \
+        "$_public_doc" "cairn_propose"
+    assert_not_contains "$_doc_label: no old cairn_sync_domain MCP tool" \
+        "$_public_doc" "cairn_sync_domain"
+done
+
+assert_contains "README.md: documents cairn init" \
+    "$REPO_ROOT/README.md" "cairn init"
+assert_contains "README.md: documents cairn doctor" \
+    "$REPO_ROOT/README.md" "cairn doctor"
+assert_contains "adoption-guide.md: documents cairn init" \
+    "$REPO_ROOT/spec/adoption-guide.md" "cairn init"
+assert_contains "adoption-guide.md: documents cairn doctor" \
+    "$REPO_ROOT/spec/adoption-guide.md" "cairn doctor"
+assert_contains "examples/README.md: documents cairn doctor" \
+    "$REPO_ROOT/examples/README.md" "cairn doctor"

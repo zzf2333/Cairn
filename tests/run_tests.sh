@@ -13,6 +13,8 @@
 #   test_skill_files.sh                 — skill file best-practice quality tests
 #   test_skill_protocol.sh              — SKILL.md CLI-ceremony regression tests
 #   test_task_completion_protocol.sh    — task completion protocol conformance tests
+#   test_docs_protocol.sh               — public documentation protocol tests
+#   test_onboarding_e2e.sh              — fresh-project init-to-doctor E2E
 #   test_examples.sh                    — example file FORMAT.md compliance tests
 #   test_cli_dispatch.sh                — CLI dispatcher routing tests
 #   test_cli_doctor.sh                  — cairn doctor health check tests
@@ -41,6 +43,8 @@ source "$TESTS_DIR/test_skill_protocol.sh"
 source "$TESTS_DIR/test_task_completion_protocol.sh"
 # shellcheck source=test_docs_protocol.sh
 source "$TESTS_DIR/test_docs_protocol.sh"
+# shellcheck source=test_onboarding_e2e.sh
+source "$TESTS_DIR/test_onboarding_e2e.sh"
 # shellcheck source=test_examples.sh
 source "$TESTS_DIR/test_examples.sh"
 # shellcheck source=test_cli_dispatch.sh

@@ -20,6 +20,15 @@
 - 同步中文采用指南与格式规范到 v0.0.12+ 的 AI-direct 模型
 - 增加公开文档反回归测试，防止旧工作流重新进入当前指南
 
+### v0.1.0 — Verifiable Onboarding
+
+**目标：让首次接入路径可测试、可证明，而不是只靠文档承诺。**
+
+- 新增 fresh project E2E：`git init` → `cairn init` → guide block / `.cairn/SKILL.md` 生成 → `cairn doctor` 通过
+- 扩展英文公开文档契约测试，确保 README、MCP README、adoption guide、examples README 与当前 CLI/MCP surface 一致
+- 增强 `cairn doctor --json` schema 测试，覆盖 clean、stale、missing guide、v0.0.11 residue、write-back warn
+- 同步版本号到 `0.1.0`，并让 `scripts/sync-version.sh` 覆盖 doctor JSON 版本字段
+
 ---
 
 ## 已交付确认
