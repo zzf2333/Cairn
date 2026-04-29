@@ -9,6 +9,8 @@
 #   - Cairn guide block presence and format in .claude/CLAUDE.md
 #   - .cairn/SKILL.md presence and canonical consistency
 #   - v0.0.11 residue directories (staged/, audits/, reflections/)
+#   - memory loop traceability (history rejected fields, domain rejected paths,
+#     output debt support)
 #
 # Options:
 #   --json   Emit JSON instead of human-readable output (for AI parsing)
@@ -362,6 +364,174 @@ _doctor_check_hooks() {
 }
 
 # -----------------------------------------------------------------------------
+# Check core memory-loop traceability.
+# These checks verify that Cairn's compressed layers remain backed by history:
+#   - every history entry has a non-empty rejected field
+#   - every domain rejected path is supported by same-domain history
+#   - every output.md debt entry is supported by a debt history entry
+# -----------------------------------------------------------------------------
+_doctor_memory_loop_signal() {
+    local signal="$1"
+    case ",${_DOCTOR_JSON_MEMORY_LOOP_SIGNALS}," in
+        *,"${signal}",*) return 0 ;;
+        *) _DOCTOR_JSON_MEMORY_LOOP_SIGNALS="${_DOCTOR_JSON_MEMORY_LOOP_SIGNALS}${signal}," ;;
+    esac
+}
+
+_doctor_history_supports_domain_term() {
+    local cairn_dir="$1"
+    local domain="$2"
+    local term="$3"
+    local required_type="${4:-}"
+
+    [ -d "${cairn_dir}/history" ] || return 1
+    [ -n "$term" ] || return 1
+
+    while IFS= read -r hist_file; do
+        [ -f "$hist_file" ] || continue
+        grep -qE "^domain:[[:space:]]*${domain}[[:space:]]*$" "$hist_file" 2>/dev/null || continue
+        if [ -n "$required_type" ]; then
+            grep -qE "^type:[[:space:]]*${required_type}[[:space:]]*$" "$hist_file" 2>/dev/null || continue
+        fi
+        if grep -qiF "$term" "$hist_file" 2>/dev/null; then
+            return 0
+        fi
+    done < <(find "${cairn_dir}/history" -maxdepth 1 -name "*.md" -type f 2>/dev/null)
+
+    return 1
+}
+
+_doctor_history_supports_domain_path() {
+    local cairn_dir="$1"
+    local domain="$2"
+    local path="$3"
+    local required_type="${4:-}"
+
+    if _doctor_history_supports_domain_term "$cairn_dir" "$domain" "$path" "$required_type"; then
+        return 0
+    fi
+
+    if echo "$path" | grep -q "/" 2>/dev/null; then
+        local part=""
+        while IFS= read -r part; do
+            part="$(echo "$part" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            [ -z "$part" ] && continue
+            if _doctor_history_supports_domain_term "$cairn_dir" "$domain" "$part" "$required_type"; then
+                return 0
+            fi
+        done <<< "$(echo "$path" | tr '/' '\n')"
+    fi
+
+    return 1
+}
+
+_doctor_check_memory_loop() {
+    local cairn_dir="$1"
+    local output_md="$cairn_dir/output.md"
+
+    if [ "$_DOCTOR_JSON" = false ]; then
+        echo ""
+        echo -e "${C_BOLD}$(msg_doctor_section_memory_loop)${C_RESET}"
+    fi
+
+    _DOCTOR_JSON_MEMORY_LOOP_STATUS="ok"
+    _DOCTOR_JSON_MEMORY_LOOP_SIGNALS=""
+    local found_issue=false
+
+    if [ -d "${cairn_dir}/history" ]; then
+        while IFS= read -r hist_file; do
+            [ -f "$hist_file" ] || continue
+            case "$(basename "$hist_file")" in
+                _TEMPLATE.md) continue ;;
+            esac
+            if ! grep -qE "^rejected:[[:space:]]*[^[:space:]]" "$hist_file" 2>/dev/null; then
+                if [ "$_DOCTOR_JSON" = false ]; then
+                    echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_memory_history_missing_rejected "$(basename "$hist_file")")"
+                fi
+                _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                _doctor_memory_loop_signal "history-missing-rejected"
+                found_issue=true
+            fi
+        done < <(find "${cairn_dir}/history" -maxdepth 1 -name "*.md" -type f 2>/dev/null)
+    fi
+
+    if [ -f "$output_md" ]; then
+        local locked_domains=""
+        locked_domains="$(parse_domain_list < "$output_md" || true)"
+
+        while IFS= read -r d; do
+            [ -z "$d" ] && continue
+            local domain_file="$cairn_dir/domains/${d}.md"
+            [ -f "$domain_file" ] || continue
+
+            local rejected_section=""
+            rejected_section="$(awk '/^## rejected paths/{found=1; next} /^## [a-z]/{found=0} found{print}' "$domain_file")"
+            while IFS= read -r line; do
+                local raw_path=""
+                raw_path="$(echo "$line" | grep -oE '^- [^:]+' | sed 's/^- //' | sed 's/[[:space:]]*$//' || true)"
+                [ -z "$raw_path" ] && continue
+                case "$(echo "$raw_path" | tr '[:upper:]' '[:lower:]')" in
+                    none|none.) continue ;;
+                esac
+                if ! _doctor_history_supports_domain_path "$cairn_dir" "$d" "$raw_path"; then
+                    if [ "$_DOCTOR_JSON" = false ]; then
+                        echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_memory_domain_rejected_unsupported "$d" "$raw_path")"
+                    fi
+                    _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                    _doctor_memory_loop_signal "domain-rejected-path-unsupported"
+                    found_issue=true
+                fi
+            done <<< "$rejected_section"
+        done <<< "$locked_domains"
+
+        local debt_section=""
+        debt_section="$(awk '/^## debt/{found=1; next} /^## [a-z]/{found=0} found{print}' "$output_md")"
+        while IFS= read -r line; do
+            local raw_debt=""
+            raw_debt="$(echo "$line" | grep -oE '^- [^:|()]+' | sed 's/^- //' | sed 's/[[:space:]]*$//' || true)"
+            [ -z "$raw_debt" ] && continue
+            case "$(echo "$raw_debt" | tr '[:upper:]' '[:lower:]')" in
+                none|none.) continue ;;
+            esac
+            local debt_domain="__any__"
+            if [ -n "$locked_domains" ]; then
+                debt_domain="$(echo "$locked_domains" | head -1)"
+            fi
+            local supported=false
+            if [ "$debt_domain" = "__any__" ]; then
+                if grep -Ril "^type:[[:space:]]*debt" "${cairn_dir}/history" 2>/dev/null \
+                    | xargs grep -qiF "$raw_debt" 2>/dev/null; then
+                    supported=true
+                fi
+            else
+                while IFS= read -r d; do
+                    [ -z "$d" ] && continue
+                    if _doctor_history_supports_domain_term "$cairn_dir" "$d" "$raw_debt" "debt"; then
+                        supported=true
+                        break
+                    fi
+                done <<< "$locked_domains"
+            fi
+            if [ "$supported" = false ]; then
+                if [ "$_DOCTOR_JSON" = false ]; then
+                    echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_memory_output_debt_unsupported "$raw_debt")"
+                fi
+                _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                _doctor_memory_loop_signal "output-debt-unsupported"
+                found_issue=true
+            fi
+        done <<< "$debt_section"
+    fi
+
+    _DOCTOR_JSON_MEMORY_LOOP_SIGNALS="${_DOCTOR_JSON_MEMORY_LOOP_SIGNALS%,}"
+    if [ "$found_issue" = true ]; then
+        _DOCTOR_JSON_MEMORY_LOOP_STATUS="warn"
+    elif [ "$_DOCTOR_JSON" = false ]; then
+        echo -e "  ${C_GREEN}✓${C_RESET}  $(msg_doctor_memory_loop_ok)"
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Check for legacy v0.0.9 skill location vs v0.0.10+ location.
 # Warns if old .claude/skills/cairn/ directory is still present.
 # -----------------------------------------------------------------------------
@@ -670,6 +840,7 @@ _doctor_emit_json() {
     local stale="${_DOCTOR_JSON_STALE_DOMAINS:-}"
     local v0011="${_DOCTOR_JSON_V0011_RESIDUE:-}"
     local wb="${_DOCTOR_JSON_WRITE_BACK_SIGNALS:-}"
+    local ml="${_DOCTOR_JSON_MEMORY_LOOP_SIGNALS:-}"
 
     # Convert comma-separated lists to JSON arrays
     local stale_arr="[]"
@@ -684,10 +855,14 @@ _doctor_emit_json() {
     if [ -n "$wb" ]; then
         wb_arr='["'"$(echo "$wb" | sed 's/,/","/g')"'"]'
     fi
+    local ml_arr="[]"
+    if [ -n "$ml" ]; then
+        ml_arr='["'"$(echo "$ml" | sed 's/,/","/g')"'"]'
+    fi
 
     cat <<JSON
 {
-  "cairn_version": "0.1.0",
+  "cairn_version": "0.1.1",
   "issues": ${_DOCTOR_FAIL},
   "output": {
     "status": "${_DOCTOR_JSON_OUTPUT_STATUS:-ok}",
@@ -701,6 +876,10 @@ _doctor_emit_json() {
     "status": "${_DOCTOR_JSON_WRITE_BACK_STATUS:-skipped}",
     "reason": "${_DOCTOR_JSON_WRITE_BACK_REASON:-no_git}",
     "signals": ${wb_arr}
+  },
+  "memory_loop": {
+    "status": "${_DOCTOR_JSON_MEMORY_LOOP_STATUS:-ok}",
+    "signals": ${ml_arr}
   }
 }
 JSON
@@ -733,10 +912,13 @@ cmd_doctor() {
     _DOCTOR_JSON_WRITE_BACK_STATUS="skipped"
     _DOCTOR_JSON_WRITE_BACK_REASON="no_git"
     _DOCTOR_JSON_WRITE_BACK_SIGNALS=""
+    _DOCTOR_JSON_MEMORY_LOOP_STATUS="ok"
+    _DOCTOR_JSON_MEMORY_LOOP_SIGNALS=""
 
     _doctor_check_output "$cairn_dir"
     _doctor_check_domains "$cairn_dir"
     _doctor_check_hooks "$cairn_dir"
+    _doctor_check_memory_loop "$cairn_dir"
     _doctor_check_skill_drift "$root"
     _doctor_check_skill_guide "$root"
     _doctor_check_skill_md "$cairn_dir"

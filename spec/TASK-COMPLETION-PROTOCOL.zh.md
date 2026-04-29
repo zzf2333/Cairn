@@ -135,6 +135,23 @@ block 的最后一行必须是以下两者之一：
 
 ---
 
+## 核心记忆闭环质量
+
+v0.1.1 将写回闭环本身纳入健康契约。一次有效的任务完成写回，必须保持 Cairn
+三层之间的可追溯性：
+
+| 层级边 | 要求 |
+|--------|------|
+| History → domain | 如果新的 history 事件改变了当前设计、rejected paths、known pitfalls 或 open questions，必须在同一任务中更新对应 domain 文件。 |
+| Domain → history | 每个 `domains/*.md` 的 `## rejected paths` 条目都必须能追溯到同域 history 条目。 |
+| Output → history | 每个 `output.md` 的 `## no-go` 条目必须有 history 支撑；每个 `## debt` 条目必须有 `type: debt` 的 history 条目支撑。 |
+| History 字段质量 | 每个 history 条目都必须包含非空 `rejected:` 字段，即使是 `decision` 条目也一样。 |
+
+`rejected:` 是 history 条目中杠杆最高的字段：它记录未来 AI 最可能重新建议、
+但项目已经排除过的路径。
+
+---
+
 ## 协议违规（机器可检测）
 
 `cairn doctor --json` 在 `write_back` 字段中暴露以下写回缺失信号。
@@ -149,6 +166,17 @@ block 的最后一行必须是以下两者之一：
 
 `write_back.status` 字段的值为 `ok`、`warn` 或 `skipped`（项目无 `.git/` 目录时为 `skipped`）。
 具体信号见 `write_back.signals`。
+
+`cairn doctor --json` 还会在 `memory_loop` 字段中暴露核心记忆闭环的可追溯性：
+
+| 信号 | 触发条件 |
+|------|----------|
+| `history-missing-rejected` | 某个 history 条目没有非空 `rejected:` 字段 |
+| `domain-rejected-path-unsupported` | 某个 domain 的 `## rejected paths` 条目没有同域 history 支撑 |
+| `output-debt-unsupported` | 某个 `output.md` `## debt` 条目没有 `type: debt` history 支撑 |
+
+`memory_loop.status` 字段的值为 `ok` 或 `warn`。记忆闭环警告会增加普通 `issues`
+计数，因为它意味着压缩后的记忆不可完全信任。
 
 ---
 

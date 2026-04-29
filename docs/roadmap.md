@@ -29,6 +29,15 @@
 - 增强 `cairn doctor --json` schema 测试，覆盖 clean、stale、missing guide、v0.0.11 residue、write-back warn
 - 同步版本号到 `0.1.0`，并让 `scripts/sync-version.sh` 覆盖 doctor JSON 版本字段
 
+### v0.1.1 — Core Memory Loop
+
+**目标：让任务结束后的记忆写回质量可检查，而不是只靠协议文本约束。**
+
+- 强化 `.cairn/SKILL.md` 的任务完成写回判断：history / domain / output 三层必须保持可追溯
+- 新增 `doctor` memory loop 检查：history 缺少 `rejected`、domain rejected paths 无 history 支撑、output debt 无 debt history 支撑
+- 扩展 `doctor --json`：新增 `memory_loop.status` 与 `memory_loop.signals[]`
+- 同步任务完成协议，明确 Core Memory Loop 质量门
+
 ---
 
 ## 已交付确认

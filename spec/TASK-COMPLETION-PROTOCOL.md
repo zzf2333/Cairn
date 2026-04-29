@@ -141,6 +141,24 @@ Do not alter this line's format. Do not replace it with prose.
 
 ---
 
+## Core memory loop quality
+
+v0.1.1 makes the write-back loop itself part of the health contract. A valid
+task-completion write-back must preserve traceability across all three Cairn
+layers:
+
+| Layer edge | Requirement |
+|------------|-------------|
+| History → domain | If a new history event changes current design, rejected paths, known pitfalls, or open questions, update the matching domain file in the same task. |
+| Domain → history | Every `domains/*.md` `## rejected paths` bullet must be supported by a same-domain history entry. |
+| Output → history | Every `output.md` `## no-go` entry must be backed by history; every `## debt` entry must be backed by a `type: debt` history entry. |
+| History field quality | Every history entry must include a non-empty `rejected:` field, even for `decision` entries. |
+
+The `rejected:` field is the highest-leverage part of a history entry: it records
+what future AI is most likely to re-suggest unless explicitly constrained.
+
+---
+
 ## Protocol violations (machine-detectable)
 
 `cairn doctor --json` surfaces the following write-back gaps in the `write_back` field.
@@ -155,6 +173,18 @@ These are advisory signals, not hard failures — `cairn doctor` does not exit 1
 
 The `write_back.status` field is one of `ok`, `warn`, or `skipped` (the last when the
 project has no `.git/` directory). See `write_back.signals` for the specific signals found.
+
+`cairn doctor --json` also surfaces core memory-loop traceability in the `memory_loop`
+field:
+
+| Signal | Condition |
+|--------|-----------|
+| `history-missing-rejected` | A history entry has no non-empty `rejected:` field |
+| `domain-rejected-path-unsupported` | A domain `## rejected paths` bullet has no same-domain history support |
+| `output-debt-unsupported` | An `output.md` `## debt` entry has no supporting `type: debt` history entry |
+
+The `memory_loop.status` field is `ok` or `warn`. Memory-loop warnings increment
+the normal `issues` count because they mean the compressed memory cannot be trusted.
 
 ---
 

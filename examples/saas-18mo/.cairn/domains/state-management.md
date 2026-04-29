@@ -26,12 +26,6 @@ split into 3 slices: auth, ui, data. Selector-based subscriptions throughout.
 - Redux / Redux Toolkit: evaluated 2023-08; boilerplate and middleware overhead
   disproportionate for a 2-person team at current state complexity
   Re-evaluate when: team > 5 and state complexity requires middleware or devtools
-- React Query / SWR for server state: considered 2024-02, deferred — current
-  custom hooks work, cache invalidation is not yet a recurring pain point
-  Re-evaluate when: cache invalidation becomes a repeated source of bugs
-- Jotai / Recoil: atomic model does not fit current slice architecture; full
-  rewrite required, no incremental adoption path found
-  Re-evaluate when: starting a new major module from scratch with no existing state
 
 ## known pitfalls
 

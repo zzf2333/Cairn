@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-04-29
+
+### Added
+
+- **Core memory loop checks**: `cairn doctor` now validates write-back traceability across history, domains, and `output.md`.
+- **Memory loop JSON contract**: `cairn doctor --json` now emits `memory_loop.status` and `memory_loop.signals[]` for AI self-checks.
+- **Traceability tests**: Added doctor coverage for missing history `rejected` fields, unsupported domain rejected paths, and unsupported output debt entries.
+
+### Changed
+
+- **Task completion protocol**: Strengthened `.cairn/SKILL.md` and `spec/TASK-COMPLETION-PROTOCOL.md` with explicit History → Domain, Domain → History, and Output → History write-back rules.
+- **Version sync**: Bumped CLI, MCP package, MCP server metadata, and doctor JSON to `0.1.1`.
+
 ## [0.1.0] - 2026-04-29
 
 ### Added

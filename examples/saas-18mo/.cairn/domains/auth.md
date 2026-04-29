@@ -22,12 +22,6 @@ exists but lacks email verification. Google OAuth added 2024-06.
 
 ## rejected paths
 
-- Session-based auth: stateful sessions incompatible with Railway's
-  horizontal scaling without sticky sessions or a Redis session store
-  Re-evaluate when: infrastructure supports a Redis-backed session store
-- Auth0 / third-party auth service: cost unjustified at current scale;
-  integration complexity too high for a 2-person team
-  Re-evaluate when: team > 4 or compliance requirements emerge
 - Middleware extraction: scoped at 2 weeks for a 2-person team; 38+ protected
   routes need refactoring and regression testing; risk of subtle auth bypass
   Re-evaluate when: team > 4 with dedicated capacity for the migration

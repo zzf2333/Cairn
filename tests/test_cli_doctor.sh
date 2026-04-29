@@ -35,6 +35,7 @@ if (!isString(data.skill_guide)) process.exit(1);
 if (!isString(data.skill_md)) process.exit(1);
 if (!isArray(data.v0011_residue)) process.exit(1);
 if (!data.write_back || !isString(data.write_back.status) || !isString(data.write_back.reason) || !isArray(data.write_back.signals)) process.exit(1);
+if (!data.memory_loop || !isString(data.memory_loop.status) || !isArray(data.memory_loop.signals)) process.exit(1);
 ' "$file" 2>/dev/null; then
         _pass "$desc"
     else
@@ -507,6 +508,107 @@ _assert_doctor_json_expr "json clean: issues is 0" "$_json_tmp" "data.issues ===
 _assert_doctor_json_expr "json clean: no stale domains" "$_json_tmp" "data.domains_stale.length === 0"
 _assert_doctor_json_expr "json clean: skill guide ok" "$_json_tmp" "data.skill_guide === 'ok'"
 _assert_doctor_json_expr "json clean: skill md ok" "$_json_tmp" "data.skill_md === 'ok'"
+_assert_doctor_json_expr "json clean: memory loop ok" "$_json_tmp" "data.memory_loop.status === 'ok'"
+
+# =============================================================================
+# v0.1.1: memory loop traceability
+# =============================================================================
+
+start_suite "cairn doctor — Memory Loop Traceability"
+
+_doctor_memory_hist_dir="$_CAIRN_TMPDIR/doctor_memory_hist_$$"
+mkdir -p "$_doctor_memory_hist_dir"
+_create_doctor_clean_fixture "$_doctor_memory_hist_dir"
+{
+    echo "type: decision"
+    echo "domain: api-layer"
+    echo "decision_date: 2024-02"
+    echo "recorded_date: 2024-02"
+    echo "summary: REST pagination accepted"
+    echo "rejected:"
+    echo "reason: Cursor pagination is enough"
+    echo "revisit_when: never"
+} > "$_doctor_memory_hist_dir/.cairn/history/2024-02_missing-rejected.md"
+
+_memory_hist_json="$_CAIRN_TMPDIR/doctor_memory_hist_json.txt"
+(cd "$_doctor_memory_hist_dir" && bash "$_CAIRN_BIN" doctor --json 2>/dev/null || true) > "$_memory_hist_json"
+_assert_doctor_json_contract "memory loop: missing rejected matches schema" "$_memory_hist_json"
+_assert_doctor_json_expr "memory loop: missing rejected status warn" "$_memory_hist_json" "data.memory_loop.status === 'warn'"
+_assert_doctor_json_expr "memory loop: missing rejected signal" "$_memory_hist_json" "data.memory_loop.signals.includes('history-missing-rejected')"
+
+_doctor_memory_domain_dir="$_CAIRN_TMPDIR/doctor_memory_domain_$$"
+mkdir -p "$_doctor_memory_domain_dir"
+_create_doctor_clean_fixture "$_doctor_memory_domain_dir"
+{
+    echo "---"
+    echo "domain: api-layer"
+    echo "hooks: [\"api\", \"rest\", \"endpoint\"]"
+    echo "updated: 2024-01"
+    echo "status: stable"
+    echo "---"
+    echo ""
+    echo "# api-layer"
+    echo ""
+    echo "## current design"
+    echo ""
+    echo "Express REST API."
+    echo ""
+    echo "## trajectory"
+    echo ""
+    echo "2024-01 Initial design"
+    echo ""
+    echo "## rejected paths"
+    echo ""
+    echo "- SOAP: unsupported historical claim"
+    echo "  Re-evaluate when: never"
+    echo ""
+    echo "## known pitfalls"
+    echo ""
+    echo "None."
+    echo ""
+    echo "## open questions"
+    echo ""
+    echo "None."
+} > "$_doctor_memory_domain_dir/.cairn/domains/api-layer.md"
+
+_memory_domain_json="$_CAIRN_TMPDIR/doctor_memory_domain_json.txt"
+(cd "$_doctor_memory_domain_dir" && bash "$_CAIRN_BIN" doctor --json 2>/dev/null || true) > "$_memory_domain_json"
+_assert_doctor_json_contract "memory loop: unsupported domain rejected path matches schema" "$_memory_domain_json"
+_assert_doctor_json_expr "memory loop: unsupported domain rejected path signal" "$_memory_domain_json" "data.memory_loop.signals.includes('domain-rejected-path-unsupported')"
+
+_doctor_memory_debt_dir="$_CAIRN_TMPDIR/doctor_memory_debt_$$"
+mkdir -p "$_doctor_memory_debt_dir"
+_create_doctor_clean_fixture "$_doctor_memory_debt_dir"
+{
+    echo "## stage"
+    echo ""
+    echo "phase: test-phase (2024-01+)"
+    echo "mode: stability > speed"
+    echo "team: 2"
+    echo ""
+    echo "## no-go"
+    echo ""
+    echo "- GraphQL (N+1 risk without DataLoader; see 2024-01 history)"
+    echo ""
+    echo "## hooks"
+    echo ""
+    echo "planning / designing / suggesting for:"
+    echo ""
+    echo "- api / rest / endpoint → read domains/api-layer.md first"
+    echo ""
+    echo "## stack"
+    echo ""
+    echo "Node.js / Express / PostgreSQL"
+    echo ""
+    echo "## debt"
+    echo ""
+    echo "- RawSQL: accepted | legacy reports | revisit after query builder migration"
+} > "$_doctor_memory_debt_dir/.cairn/output.md"
+
+_memory_debt_json="$_CAIRN_TMPDIR/doctor_memory_debt_json.txt"
+(cd "$_doctor_memory_debt_dir" && bash "$_CAIRN_BIN" doctor --json 2>/dev/null || true) > "$_memory_debt_json"
+_assert_doctor_json_contract "memory loop: unsupported output debt matches schema" "$_memory_debt_json"
+_assert_doctor_json_expr "memory loop: unsupported output debt signal" "$_memory_debt_json" "data.memory_loop.signals.includes('output-debt-unsupported')"
 
 # =============================================================================
 # v0.0.11: doctor warns on old skill location (old only, no new)

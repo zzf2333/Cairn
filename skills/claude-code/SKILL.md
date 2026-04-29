@@ -123,6 +123,12 @@ revisit_when: <condition for re-evaluation>
 `rejected` is mandatory for every entry type. Even `decision` entries must record
 what alternatives were considered and discarded.
 
+History is the source of truth for traceability. If you update `output.md` or a
+domain file with a no-go, debt, transition, rejected path, or known pitfall, the
+supporting history entry must contain the term or alternative that future AI is
+likely to re-suggest. `cairn doctor` treats empty `rejected:` fields as memory-loop
+breaks.
+
 **b) If the event changes a domain's current state** — use Edit tool to overwrite the
 corresponding `.cairn/domains/<name>.md`. Domains reflect **current state only** —
 overwrite, do not append. The domain file structure:
@@ -162,6 +168,19 @@ status: <active | stable>
 **c) If the event introduces a new no-go or accepted debt** — use Edit tool to add
 the entry to `.cairn/output.md` under the appropriate section (`## no-go` or `## debt`).
 Keep `output.md` under 500 tokens; move detailed rationale to `domains/` and `history/`.
+
+### Step 2.5 — Check the memory loop
+
+Before you answer, verify the three-layer loop is coherent:
+
+- **History → domain**: if a history event changes current design, rejected paths,
+  pitfalls, or open questions, update the domain file in the same task.
+- **Domain → history**: every `## rejected paths` bullet must be traceable to a
+  same-domain history entry. Do not add rejected paths from intuition.
+- **Output → history**: every `## no-go` and `## debt` entry must be backed by a
+  history entry. Debt entries specifically need `type: debt`.
+- **Output stays compressed**: only promote constraints that should affect future
+  AI behavior. Keep rationale in history/domain files.
 
 ### Step 3 — Emit the completion block
 

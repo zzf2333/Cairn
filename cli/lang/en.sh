@@ -586,6 +586,13 @@ msg_doctor_write_back_signal_missing_output_follow_up() { echo "dependency file(
 msg_doctor_write_back_signal_missing_audit_flag()  { echo "migration-like commit(s) detected but no type:transition history entry found — consider audit-required reflection"; }
 msg_doctor_write_back_suggest()     { echo "run your AI and end the task with a Cairn reflection block (see .cairn/SKILL.md Step 3)"; }
 
+# ── doctor memory loop traceability (v0.1.1) ──────────────────────────────────
+msg_doctor_section_memory_loop()    { echo "── Memory loop"; }
+msg_doctor_memory_loop_ok()         { echo "memory loop traceability looks clean"; }
+msg_doctor_memory_history_missing_rejected()    { echo "history entry ${1} is missing a non-empty rejected field"; }
+msg_doctor_memory_domain_rejected_unsupported() { echo "domain ${1} rejected path '${2}' has no same-domain history support"; }
+msg_doctor_memory_output_debt_unsupported()     { echo "output.md debt '${1}' has no debt history support"; }
+
 # ── doctor skill guide checks (v0.0.12) ───────────────────────────────────────
 msg_doctor_section_skill_drift()    { echo "── Skill files"; }
 msg_doctor_skill_drift_ok()         { echo "skill file locations are up to date"; }
