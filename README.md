@@ -81,7 +81,7 @@ Cairn uses a three-layer directory at your repository root:
 ├── domains/           # Layer 2: domain design context, read during planning
 │   ├── api-layer.md
 │   └── auth.md
-└── history/           # Layer 3: raw decision events, queried on demand
+└── history/           # Layer 3: structured source events, queried on demand
     ├── 2023-09_trpc-experiment-rejection.md
     └── 2024-01_auth-debt-accepted.md
 ```
@@ -97,7 +97,7 @@ Cairn uses a three-layer directory at your repository root:
 **Runtime flow:**
 1. AI reads `output.md` at session start — establishes what's off-limits and the current project stage
 2. When planning a feature, AI reads the relevant domain file — understands that area's evolution and pitfalls
-3. When full historical detail is needed, AI queries `history/` — the raw decision events with rejected alternatives
+3. When full historical detail is needed, AI queries `history/` — structured source events with rejected alternatives
 
 ### Three Constraint Types
 

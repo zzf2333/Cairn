@@ -14,7 +14,7 @@ The MCP server upgrades the precision of Cairn's domain injection from the behav
 |------|-------------|
 | `cairn_output` | Read `.cairn/output.md` — Layer 1 global constraints (stage, no-go, hooks, stack, debt) |
 | `cairn_domain` | Read `.cairn/domains/<name>.md` — Layer 2 domain design context |
-| `cairn_query` | Search `.cairn/history/` — Layer 3 raw decision events, with domain/type filters |
+| `cairn_query` | Search `.cairn/history/` — Layer 3 structured source events, with domain/type filters |
 | `cairn_write_history` | Write a new decision event directly to `.cairn/history/` after a task crystallizes |
 | `cairn_doctor` | Run `cairn doctor --json` and return structured health check results |
 | `cairn_match` | Match keywords (and optional `files` paths) against domain `hooks` — returns confidence levels (`high`/`medium`/`low`) and related domain advisory |

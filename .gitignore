@@ -28,3 +28,6 @@ dist/
 build/
 
 CLAUDE.md
+docs/design.md
+docs/roadmap.md
+tasks/
