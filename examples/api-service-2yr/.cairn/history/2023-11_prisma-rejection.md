@@ -1,5 +1,9 @@
 type: experiment
 domain: db-layer
+scope: domain
+status: active
+behavior_effect: avoid
+confidence: high
 decision_date: 2023-11
 recorded_date: 2023-11
 summary: Rejected Prisma ORM after 6-week evaluation; raw SQL + sqlc adopted as permanent pattern

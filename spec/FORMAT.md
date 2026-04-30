@@ -406,12 +406,15 @@ inconsistent — new endpoints MUST use { code, message, data } structure.
 
 ---
 
-## Layer 3: `history/*.md` — Raw Decision Events
+## Layer 3: `history/*.md` — Structured Source Events
 
 ### Purpose
 
-`history/` stores all raw decision events with full context. It is the source of truth
-for `domains/*.md` and enables precise historical queries.
+`history/` stores structured source events with full context. Each file is a
+lightweight memory atom: it records what happened, how that event should affect AI
+behavior, where it applies, whether it is still active, and how strongly it is
+supported. `output.md` and `domains/*.md` are runtime projections derived from this
+source layer.
 
 ### Injection Timing
 
@@ -447,10 +450,15 @@ Examples:
 ```
 type: <decision | rejection | transition | debt | experiment>
 domain: <domain key from project domain list>
+scope: <global | domain | module>
+status: <active | superseded | stale>
+behavior_effect: <never_suggest | avoid | preserve | prefer | revisit>
+confidence: <high | medium | low>
 decision_date: <YYYY-MM>
 recorded_date: <YYYY-MM>
 summary: <one sentence>
 rejected: <rejected alternatives and reasons>
+chosen: <chosen alternative, when applicable>
 reason: <why this choice was made>
 revisit_when: <condition for re-evaluation>
 ```
@@ -459,12 +467,43 @@ revisit_when: <condition for re-evaluation>
 |-------|----------|-------|
 | `type` | MUST | One of the five types above |
 | `domain` | MUST | MUST match a key in the project's locked domain list |
+| `scope` | MUST | `global`, `domain`, or `module` |
+| `status` | MUST | `active`, `superseded`, or `stale` |
+| `behavior_effect` | MUST | `never_suggest`, `avoid`, `preserve`, `prefer`, or `revisit` |
+| `confidence` | MUST | `high`, `medium`, or `low` |
 | `decision_date` | MUST | When the decision actually happened |
 | `recorded_date` | MUST | When it was written into Cairn (may differ from `decision_date`) |
 | `summary` | MUST | One sentence |
 | `rejected` | MUST | **Most critical field.** Even `decision` entries MUST record what was considered and not chosen |
+| `chosen` | MAY | What was chosen instead, when applicable |
 | `reason` | MUST | Why this path was taken |
 | `revisit_when` | SHOULD | Condition under which this decision should be reconsidered |
+
+### Structured Semantics
+
+The four structured memory fields answer the questions an AI needs before applying
+a memory:
+
+| Field | AI question answered |
+|-------|----------------------|
+| `scope` | Where does this memory apply? |
+| `status` | Is it still active, or has it been superseded/staled out? |
+| `behavior_effect` | What should the AI do differently because of this memory? |
+| `confidence` | Is this strongly supported enough to project into `output.md`? |
+
+Default `behavior_effect` values:
+
+| Type | Default |
+|------|---------|
+| `rejection` | `never_suggest` |
+| `debt` | `preserve` |
+| `transition` | `prefer` |
+| `decision` | `prefer` |
+| `experiment` | `avoid` |
+
+`status: stale` or `status: superseded` entries MUST NOT remain projected into
+`output.md`. `confidence: low` entries MAY remain in `history/` or domain context,
+but MUST NOT be promoted into always-on global constraints.
 
 ### Dual Timestamp
 
@@ -495,12 +534,17 @@ evaluated and discarded.
 ```
 type: rejection
 domain: api-layer
+scope: domain
+status: active
+behavior_effect: never_suggest
+confidence: high
 decision_date: 2023-09
 recorded_date: 2025-01
 summary: Rejected tRPC after a 2-week trial; migration cost for existing REST clients too high
 rejected: tRPC — type-safe RPC layer. Two-week spike showed that migrating existing
   REST consumers (mobile app, 3 webhook integrations, 2 partner API clients) would
   require a coordinated multi-client release. No incremental adoption path found.
+chosen: Existing REST clients and REST API surface
 reason: Existing REST API surface consumed by 6+ clients. tRPC's all-or-nothing router
   model made migration a flag day, not a gradual rollout. A team of 2 could not absorb
   the coordination cost.

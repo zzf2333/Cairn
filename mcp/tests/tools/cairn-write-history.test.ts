@@ -57,12 +57,42 @@ describe("handleCairnWriteHistory", () => {
         );
         expect(content).toContain("type: rejection");
         expect(content).toContain("domain: api-layer");
+        expect(content).toContain("scope: domain");
+        expect(content).toContain("status: active");
+        expect(content).toContain("behavior_effect: never_suggest");
+        expect(content).toContain("confidence: high");
         expect(content).toContain("decision_date: 2024-03");
         expect(content).toContain("recorded_date:");
         expect(content).toContain("summary: Rejected GraphQL");
         expect(content).toContain("rejected: GraphQL");
         expect(content).toContain("reason: Current data complexity");
         expect(content).toContain("revisit_when: When frontend");
+    });
+
+    it("writes explicit structured memory fields when provided", async () => {
+        process.env["CAIRN_ROOT"] = tmpDir;
+
+        await handleCairnWriteHistory({
+            ...baseEntry,
+            scope: "global",
+            status: "active",
+            behavior_effect: "avoid",
+            confidence: "medium",
+            chosen: "REST",
+        });
+
+        const historyDir = join(tmpDir, ".cairn", "history");
+        const files = (await import("node:fs")).readdirSync(historyDir).filter(
+            (f) => f.endsWith(".md") && f !== "_TEMPLATE.md",
+        );
+        const content = (await import("node:fs")).readFileSync(
+            join(historyDir, files[0]!),
+            "utf-8",
+        );
+        expect(content).toContain("scope: global");
+        expect(content).toContain("behavior_effect: avoid");
+        expect(content).toContain("confidence: medium");
+        expect(content).toContain("chosen: REST");
     });
 
     it("filename follows YYYY-MM_<slug>.md pattern", async () => {

@@ -1,5 +1,9 @@
 type: debt
 domain: rate-limiting
+scope: domain
+status: active
+behavior_effect: preserve
+confidence: high
 decision_date: 2024-04
 recorded_date: 2025-04
 summary: Accepted RATE-GLOBAL-ONLY debt — per-user rate buckets deferred until scale signals are met

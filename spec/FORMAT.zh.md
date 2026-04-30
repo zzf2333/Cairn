@@ -435,10 +435,15 @@ YYYY-MM_<short-slug>.md
 ```
 type: <decision | rejection | transition | debt | experiment>
 domain: <domain key from project domain list>
+scope: <global | domain | module>
+status: <active | superseded | stale>
+behavior_effect: <never_suggest | avoid | preserve | prefer | revisit>
+confidence: <high | medium | low>
 decision_date: <YYYY-MM>
 recorded_date: <YYYY-MM>
 summary: <one sentence>
 rejected: <rejected alternatives and reasons>
+chosen: <chosen alternative, when applicable>
 reason: <why this choice was made>
 revisit_when: <condition for re-evaluation>
 ```
@@ -447,12 +452,41 @@ revisit_when: <condition for re-evaluation>
 |------|---------|------|
 | `type` | 必须 | 以上五种类型之一 |
 | `domain` | 必须 | 必须与项目锁定域列表中的键匹配 |
+| `scope` | 必须 | `global`、`domain` 或 `module` |
+| `status` | 必须 | `active`、`superseded` 或 `stale` |
+| `behavior_effect` | 必须 | `never_suggest`、`avoid`、`preserve`、`prefer` 或 `revisit` |
+| `confidence` | 必须 | `high`、`medium` 或 `low` |
 | `decision_date` | 必须 | 决策实际发生的时间 |
 | `recorded_date` | 必须 | 写入 Cairn 的时间（可能与 `decision_date` 不同） |
 | `summary` | 必须 | 一句话 |
 | `rejected` | 必须 | **最关键字段。** 即使 `decision` 条目也必须记录哪些被考虑但未被选择 |
+| `chosen` | 可选 | 适用时记录最终选择了什么 |
 | `reason` | 必须 | 为什么走了这条路 |
 | `revisit_when` | 建议 | 应重新考虑此决策的条件 |
+
+### 结构化语义
+
+四个结构化记忆字段回答 AI 应用记忆前必须判断的问题：
+
+| 字段 | 回答的问题 |
+|------|-----------|
+| `scope` | 这条记忆适用于哪里？ |
+| `status` | 它仍然有效，还是已经被替代 / 过期？ |
+| `behavior_effect` | AI 因为这条记忆应该改变什么行为？ |
+| `confidence` | 它是否足够可靠，可以投影到 `output.md`？ |
+
+默认 `behavior_effect`：
+
+| 类型 | 默认值 |
+|------|--------|
+| `rejection` | `never_suggest` |
+| `debt` | `preserve` |
+| `transition` | `prefer` |
+| `decision` | `prefer` |
+| `experiment` | `avoid` |
+
+`status: stale` 或 `status: superseded` 的条目不得继续投影到 `output.md`。
+`confidence: low` 的条目可以留在 `history/` 或域上下文中，但不得提升为常驻全局约束。
 
 ### 双时间戳
 
@@ -478,12 +512,17 @@ revisit_when: <condition for re-evaluation>
 ```
 type: rejection
 domain: api-layer
+scope: domain
+status: active
+behavior_effect: never_suggest
+confidence: high
 decision_date: 2023-09
 recorded_date: 2025-01
 summary: Rejected tRPC after a 2-week trial; migration cost for existing REST clients too high
 rejected: tRPC — type-safe RPC layer. Two-week spike showed that migrating existing
   REST consumers (mobile app, 3 webhook integrations, 2 partner API clients) would
   require a coordinated multi-client release. No incremental adoption path found.
+chosen: Existing REST clients and REST API surface
 reason: Existing REST API surface consumed by 6+ clients. tRPC's all-or-nothing router
   model made migration a flag day, not a gradual rollout. A team of 2 could not absorb
   the coordination cost.

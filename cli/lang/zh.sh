@@ -349,10 +349,15 @@ tpl_history_template() {
 
 type: <decision | rejection | transition | debt | experiment>
 domain: <domain key — must match one of the locked domains>
+scope: <global | domain | module>
+status: <active | superseded | stale>
+behavior_effect: <never_suggest | avoid | preserve | prefer | revisit>
+confidence: <high | medium | low>
 decision_date: <YYYY-MM>
 recorded_date: <YYYY-MM>
 summary: <one sentence — what happened>
 rejected: <what alternatives were considered and not chosen — MOST CRITICAL FIELD>
+chosen: <what was chosen instead, when applicable>
 reason: <why this path was taken>
 revisit_when: <condition under which this decision should be reconsidered>
 EOF
@@ -591,6 +596,10 @@ msg_doctor_write_back_suggest()     { echo "请让 AI 完成任务并输出 Cair
 msg_doctor_section_memory_loop()    { echo "── 记忆闭环"; }
 msg_doctor_memory_loop_ok()         { echo "记忆闭环可追溯性正常"; }
 msg_doctor_memory_history_missing_rejected()    { echo "历史条目 ${1} 缺少非空 rejected 字段"; }
+msg_doctor_memory_history_missing_structured_fields() { echo "历史条目 ${1} 缺少结构化记忆字段（scope/status/behavior_effect/confidence）"; }
+msg_doctor_memory_history_invalid_structured_field()  { echo "历史条目 ${1} 的结构化记忆字段 '${2}' 不合法"; }
+msg_doctor_memory_inactive_history_in_output()        { echo "历史条目 ${1} 已非 active，但 '${2}' 仍出现在 output.md"; }
+msg_doctor_memory_low_confidence_in_output()          { echo "历史条目 ${1} 可信度为 low，但 '${2}' 出现在 output.md"; }
 msg_doctor_memory_domain_rejected_unsupported() { echo "域 ${1} 的 rejected path '${2}' 缺少同域 history 支撑"; }
 msg_doctor_memory_output_debt_unsupported()     { echo "output.md debt '${1}' 缺少 debt history 支撑"; }
 

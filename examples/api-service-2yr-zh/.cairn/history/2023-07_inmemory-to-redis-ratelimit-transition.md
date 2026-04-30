@@ -1,5 +1,9 @@
 type: decision
 domain: rate-limiting
+scope: domain
+status: active
+behavior_effect: prefer
+confidence: high
 decision_date: 2023-07
 recorded_date: 2023-07
 summary: 在经历部署重置事故后，将限流从进程内内存迁移至 Redis 令牌桶实现

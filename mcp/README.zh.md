@@ -140,7 +140,15 @@ cairn_domain("api-layer")
 cairn_query(domain="api-layer", type="rejection")
 
 # 当任务形成可记录的决策时：
-cairn_write_history(type="rejection", domain="api-layer", ...)
+cairn_write_history(
+  type="rejection",
+  domain="api-layer",
+  scope="domain",
+  status="active",
+  behavior_effect="never_suggest",
+  confidence="high",
+  ...
+)
 → 写入正式 .cairn/history/ 条目
 
 # 写入记忆后或会话结束前：
@@ -158,7 +166,7 @@ v0.0.12 起不再使用 MCP 暂存流程。AI 助手使用原生文件工具或
 1. 会话开始读取 cairn_output。
 2. 规划某个域前使用 cairn_match 与 cairn_domain。
 3. 需要完整历史原因时使用 cairn_query。
-4. 只有在真实 decision / rejection / transition / debt / experiment 形成后，才使用 cairn_write_history。
+4. 只有在真实 decision / rejection / transition / debt / experiment 形成后，才使用 cairn_write_history。新条目包含结构化记忆字段；省略时会按条目类型保守推断。
 5. 改动记忆后，在最终回复前运行 cairn_doctor。
 ```
 

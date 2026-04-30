@@ -1,5 +1,9 @@
 type: experiment
 domain: db-layer
+scope: domain
+status: active
+behavior_effect: avoid
+confidence: high
 decision_date: 2023-11
 recorded_date: 2023-11
 summary: 经过 6 周评估后拒绝 Prisma ORM；原生 SQL + sqlc 作为永久模式采用

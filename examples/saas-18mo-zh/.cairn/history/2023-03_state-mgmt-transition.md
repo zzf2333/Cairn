@@ -1,5 +1,9 @@
 type: transition
 domain: state-management
+scope: domain
+status: active
+behavior_effect: prefer
+confidence: high
 decision_date: 2023-03
 recorded_date: 2025-01
 summary: 将客户端状态管理从 React Context 迁移至 Zustand，原因是完整子树重渲染导致的性能问题

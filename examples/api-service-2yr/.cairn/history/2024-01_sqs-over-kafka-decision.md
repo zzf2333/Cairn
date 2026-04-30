@@ -1,5 +1,9 @@
 type: decision
 domain: api-gateway
+scope: domain
+status: active
+behavior_effect: prefer
+confidence: high
 decision_date: 2024-01
 recorded_date: 2024-01
 summary: Chose AWS SQS for async job queue over Kafka; throughput requirements do not justify broker ops

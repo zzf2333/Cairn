@@ -48,6 +48,10 @@ describe("serializeHistoryEntry", () => {
 
         expect(output).toContain("type: rejection");
         expect(output).toContain("domain: api-layer");
+        expect(output).toContain("scope: domain");
+        expect(output).toContain("status: active");
+        expect(output).toContain("behavior_effect: never_suggest");
+        expect(output).toContain("confidence: high");
         expect(output).toContain("decision_date: 2023-09");
         expect(output).toContain("recorded_date: 2025-01");
         expect(output).toContain("summary: Rejected GraphQL");
@@ -90,5 +94,28 @@ describe("serializeHistoryEntry", () => {
         };
         const output = serializeHistoryEntry(entry, "2025-01");
         expect(output).not.toContain("---");
+    });
+
+    it("preserves explicit structured memory fields", () => {
+        const entry = {
+            type: "decision",
+            domain: "auth",
+            scope: "global",
+            status: "superseded",
+            behavior_effect: "revisit",
+            confidence: "medium",
+            decision_date: "2022-12",
+            summary: "Adopted JWT",
+            rejected: "session",
+            chosen: "JWT",
+            reason: "stateless",
+            revisit_when: "",
+        };
+        const output = serializeHistoryEntry(entry, "2025-01");
+        expect(output).toContain("scope: global");
+        expect(output).toContain("status: superseded");
+        expect(output).toContain("behavior_effect: revisit");
+        expect(output).toContain("confidence: medium");
+        expect(output).toContain("chosen: JWT");
     });
 });

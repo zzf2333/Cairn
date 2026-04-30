@@ -1,5 +1,9 @@
 type: decision
 domain: api-gateway
+scope: domain
+status: active
+behavior_effect: prefer
+confidence: high
 decision_date: 2023-05
 recorded_date: 2023-05
 summary: 从评估 Kong 转向自定义 Express 中间件；API 网关层保持进程内实现

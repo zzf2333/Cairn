@@ -1,5 +1,9 @@
 type: debt
 domain: db-layer
+scope: domain
+status: active
+behavior_effect: preserve
+confidence: high
 decision_date: 2024-12
 recorded_date: 2024-12
 summary: Formally accepted SQL-NO-ORM debt — raw SQL + sqlc is the permanent pattern, not a temporary workaround

@@ -1,5 +1,9 @@
 type: experiment
 domain: api-layer
+scope: domain
+status: active
+behavior_effect: avoid
+confidence: high
 decision_date: 2023-09
 recorded_date: 2025-01
 summary: Rejected tRPC after a 2-week trial; migration cost for existing REST consumers too high

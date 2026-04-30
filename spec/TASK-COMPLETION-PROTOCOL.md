@@ -152,7 +152,7 @@ layers:
 | History → domain | If a new history event changes current design, rejected paths, known pitfalls, or open questions, update the matching domain file in the same task. |
 | Domain → history | Every `domains/*.md` `## rejected paths` bullet must be supported by a same-domain history entry. |
 | Output → history | Every `output.md` `## no-go` entry must be backed by history; every `## debt` entry must be backed by a `type: debt` history entry. |
-| History field quality | Every history entry must include a non-empty `rejected:` field, even for `decision` entries. |
+| History field quality | Every history entry must include a non-empty `rejected:` field and structured memory fields (`scope`, `status`, `behavior_effect`, `confidence`). |
 
 The `rejected:` field is the highest-leverage part of a history entry: it records
 what future AI is most likely to re-suggest unless explicitly constrained.
@@ -180,6 +180,10 @@ field:
 | Signal | Condition |
 |--------|-----------|
 | `history-missing-rejected` | A history entry has no non-empty `rejected:` field |
+| `history-missing-structured-fields` | A history entry is missing `scope`, `status`, `behavior_effect`, or `confidence` |
+| `history-invalid-structured-field` | A structured history field has a value outside the allowed enum |
+| `inactive-history-in-output` | A `status: stale` or `status: superseded` history entry still appears projected in `output.md` |
+| `low-confidence-in-output` | A `confidence: low` history entry appears projected in `output.md` |
 | `domain-rejected-path-unsupported` | A domain `## rejected paths` bullet has no same-domain history support |
 | `output-debt-unsupported` | An `output.md` `## debt` entry has no supporting `type: debt` history entry |
 

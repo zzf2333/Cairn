@@ -71,8 +71,9 @@ When writing new `history/*.md` entries or updating `domains/*.md` content:
 - **Keep format contracts in English**: section headers (`## stage`, `## no-go`,
   `## hooks`, `## current design`, `## trajectory`, `## rejected paths`,
   `## known pitfalls`, `## open questions`) and all frontmatter field names
-  (`type:`, `domain:`, `decision_date:`, `recorded_date:`, `summary:`, `rejected:`,
-  `reason:`, `revisit_when:`, `updated:`, `status:`, `hooks:`) stay English
+  (`type:`, `domain:`, `scope:`, `status:`, `behavior_effect:`, `confidence:`,
+  `decision_date:`, `recorded_date:`, `summary:`, `rejected:`, `chosen:`,
+  `reason:`, `revisit_when:`, `updated:`, `hooks:`) stay English
   regardless of content language.
 
 ---
@@ -112,16 +113,33 @@ Content (plain text, no markdown fences — these are the actual file contents):
 ```
 type: <decision | rejection | transition | debt | experiment>
 domain: <domain key>
+scope: <global | domain | module>
+status: <active | superseded | stale>
+behavior_effect: <never_suggest | avoid | preserve | prefer | revisit>
+confidence: <high | medium | low>
 decision_date: <YYYY-MM>
 recorded_date: <YYYY-MM>
 summary: <one sentence>
 rejected: <what alternatives were evaluated and not chosen — MOST CRITICAL FIELD>
+chosen: <what was chosen instead, when applicable>
 reason: <why this path was taken>
 revisit_when: <condition for re-evaluation>
 ```
 
 `rejected` is mandatory for every entry type. Even `decision` entries must record
 what alternatives were considered and discarded.
+
+Structured memory fields are mandatory for new entries:
+- `scope` says where the memory applies.
+- `status` says whether it is still `active`, `superseded`, or `stale`.
+- `behavior_effect` says how AI behavior changes (`never_suggest`, `avoid`,
+  `preserve`, `prefer`, or `revisit`).
+- `confidence` says whether the evidence is strong enough to project globally.
+
+Use these defaults unless the event says otherwise: `rejection → never_suggest`,
+`debt → preserve`, `transition/decision → prefer`, `experiment → avoid`.
+Do not keep `status: stale` / `status: superseded` or `confidence: low` memories in
+`output.md`; keep them in history or domain context only.
 
 History is the source of truth for traceability. If you update `output.md` or a
 domain file with a no-go, debt, transition, rejected path, or known pitfall, the

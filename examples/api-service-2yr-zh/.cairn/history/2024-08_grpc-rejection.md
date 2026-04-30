@@ -1,5 +1,9 @@
 type: experiment
 domain: api-gateway
+scope: domain
+status: active
+behavior_effect: avoid
+confidence: high
 decision_date: 2024-08
 recorded_date: 2024-08
 summary: 性能评估后拒绝将 gRPC 用于内部服务通信；HTTP/JSON 已满足当前需求

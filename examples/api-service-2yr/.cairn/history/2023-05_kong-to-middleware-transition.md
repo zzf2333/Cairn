@@ -1,5 +1,9 @@
 type: transition
 domain: api-gateway
+scope: domain
+status: active
+behavior_effect: prefer
+confidence: high
 decision_date: 2023-05
 recorded_date: 2023-05
 summary: Transitioned from evaluating Kong to custom Express middleware; API gateway layer stays in-process

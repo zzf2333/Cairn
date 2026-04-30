@@ -139,7 +139,15 @@ cairn_domain("api-layer")
 cairn_query(domain="api-layer", type="rejection")
 
 # After a task produces a recordable decision:
-cairn_write_history(type="rejection", domain="api-layer", ...)
+cairn_write_history(
+  type="rejection",
+  domain="api-layer",
+  scope="domain",
+  status="active",
+  behavior_effect="never_suggest",
+  confidence="high",
+  ...
+)
 → writes a canonical entry to .cairn/history/
 
 # After writing memory or before finishing a session:
@@ -158,7 +166,7 @@ domains or write-back drift.
 1. Read cairn_output at session start.
 2. Use cairn_match and cairn_domain before planning in a matched domain.
 3. Use cairn_query when full historical reasoning is needed.
-4. Use cairn_write_history only after a real decision, rejection, transition, debt, or experiment crystallizes.
+4. Use cairn_write_history only after a real decision, rejection, transition, debt, or experiment crystallizes. New entries include structured memory fields; omitted values are inferred conservatively from the entry type.
 5. Run cairn_doctor before final response when memory was changed.
 ```
 

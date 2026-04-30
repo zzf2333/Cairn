@@ -13,6 +13,40 @@ describe("parseHistoryEntry", () => {
         const content = [
             "type: decision",
             "domain: auth",
+            "scope: domain",
+            "status: active",
+            "behavior_effect: prefer",
+            "confidence: high",
+            "decision_date: 2022-12",
+            "recorded_date: 2025-01",
+            "summary: Adopted JWT + Refresh token pattern",
+            "rejected: session-based auth",
+            "chosen: JWT + Refresh",
+            "reason: stateless scaling",
+            "revisit_when: team grows to 10+",
+        ].join("\n");
+
+        const entry = parseHistoryEntry(content, "2022-12_jwt.md");
+        expect(entry.type).toBe("decision");
+        expect(entry.domain).toBe("auth");
+        expect(entry.scope).toBe("domain");
+        expect(entry.status).toBe("active");
+        expect(entry.behavior_effect).toBe("prefer");
+        expect(entry.confidence).toBe("high");
+        expect(entry.decision_date).toBe("2022-12");
+        expect(entry.recorded_date).toBe("2025-01");
+        expect(entry.summary).toBe("Adopted JWT + Refresh token pattern");
+        expect(entry.rejected).toBe("session-based auth");
+        expect(entry.chosen).toBe("JWT + Refresh");
+        expect(entry.reason).toBe("stateless scaling");
+        expect(entry.revisit_when).toBe("team grows to 10+");
+        expect(entry.filename).toBe("2022-12_jwt.md");
+    });
+
+    it("keeps old 8-field history entries compatible", () => {
+        const content = [
+            "type: decision",
+            "domain: auth",
             "decision_date: 2022-12",
             "recorded_date: 2025-01",
             "summary: Adopted JWT + Refresh token pattern",
@@ -22,15 +56,11 @@ describe("parseHistoryEntry", () => {
         ].join("\n");
 
         const entry = parseHistoryEntry(content, "2022-12_jwt.md");
-        expect(entry.type).toBe("decision");
-        expect(entry.domain).toBe("auth");
-        expect(entry.decision_date).toBe("2022-12");
-        expect(entry.recorded_date).toBe("2025-01");
-        expect(entry.summary).toBe("Adopted JWT + Refresh token pattern");
-        expect(entry.rejected).toBe("session-based auth");
-        expect(entry.reason).toBe("stateless scaling");
-        expect(entry.revisit_when).toBe("team grows to 10+");
-        expect(entry.filename).toBe("2022-12_jwt.md");
+        expect(entry.scope).toBe("");
+        expect(entry.status).toBe("");
+        expect(entry.behavior_effect).toBe("");
+        expect(entry.confidence).toBe("");
+        expect(entry.chosen).toBe("");
     });
 
     it("parses multi-line values with 2-space continuation", () => {
@@ -141,7 +171,7 @@ describe("sortHistoryEntries", () => {
             { decision_date: "2023-03" },
             { decision_date: "2024-01" },
             { decision_date: "2023-09" },
-        ].map((e) => ({ ...e, type: "", domain: "", recorded_date: "", summary: "", rejected: "", reason: "", revisit_when: "", raw: "", filename: "" }));
+        ].map((e) => ({ ...e, type: "", domain: "", scope: "", status: "", behavior_effect: "", confidence: "", recorded_date: "", summary: "", rejected: "", chosen: "", reason: "", revisit_when: "", raw: "", filename: "" }));
 
         const sorted = sortHistoryEntries(entries);
         expect(sorted.map((e) => e.decision_date)).toEqual([
@@ -156,7 +186,7 @@ describe("sortHistoryEntries", () => {
         const entries = [
             { decision_date: "2024-01" },
             { decision_date: "2023-01" },
-        ].map((e) => ({ ...e, type: "", domain: "", recorded_date: "", summary: "", rejected: "", reason: "", revisit_when: "", raw: "", filename: "" }));
+        ].map((e) => ({ ...e, type: "", domain: "", scope: "", status: "", behavior_effect: "", confidence: "", recorded_date: "", summary: "", rejected: "", chosen: "", reason: "", revisit_when: "", raw: "", filename: "" }));
 
         sortHistoryEntries(entries);
         expect(entries[0]!.decision_date).toBe("2024-01"); // original unchanged

@@ -1,5 +1,9 @@
 type: decision
 domain: api-gateway
+scope: domain
+status: active
+behavior_effect: prefer
+confidence: high
 decision_date: 2024-01
 recorded_date: 2024-01
 summary: 异步任务队列选择 AWS SQS 而非 Kafka；当前吞吐量需求不足以支撑消息代理的运维成本

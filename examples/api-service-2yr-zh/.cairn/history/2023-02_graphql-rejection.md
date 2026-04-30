@@ -1,5 +1,9 @@
 type: experiment
 domain: api-gateway
+scope: domain
+status: active
+behavior_effect: avoid
+confidence: high
 decision_date: 2023-02
 recorded_date: 2023-02
 summary: 经过 3 周评估后拒绝 GraphQL；当前客户端数量下 REST + OpenAPI 已足够

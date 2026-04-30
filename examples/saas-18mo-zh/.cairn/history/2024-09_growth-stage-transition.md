@@ -1,5 +1,9 @@
 type: transition
 domain: architecture
+scope: domain
+status: active
+behavior_effect: prefer
+confidence: high
 decision_date: 2024-09
 recorded_date: 2025-01
 summary: 项目从 MVP 阶段过渡到早期增长阶段；优先模式转变为稳定性 > 交付速度 > 优雅性

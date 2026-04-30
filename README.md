@@ -121,12 +121,14 @@ The `.cairn/` directory is plain Markdown with a defined structure, versioned al
 
 **Layer 2 (domain files):** YAML frontmatter with `hooks` keyword lists for intent detection,
 followed by Markdown sections for no-go rules, known pitfalls, and evolution history. Written
-to be **replaced wholesale**, not appended — the raw events stay in `history/`.
+to be **replaced wholesale**, not appended — the source events stay in `history/`.
 
-**Layer 3 (history files):** Bare `key: value` format (no YAML fences). Each file is one
-decision event with fields: `type`, `domain`, `summary`, `rejected`, `chosen`, `reason`,
-`revisit_when`. The `rejected` field is the most critical — it's what AI is most likely to
-re-propose.
+**Layer 3 (history files):** Bare `key: value` format (no YAML fences). Each file is a
+structured source event with `scope`, `status`, `behavior_effect`, and `confidence`,
+plus decision fields such as `summary`, `rejected`, `chosen`, `reason`, and
+`revisit_when`. `output.md` and domain files are runtime projections of this source
+layer. The `rejected` field remains the most critical — it's what AI is most likely
+to re-propose.
 
 **Protocol layer (`.cairn/SKILL.md`):** The full operating protocol — when to read each
 layer, how to interpret constraints, when and how to write back to history/domains/output.

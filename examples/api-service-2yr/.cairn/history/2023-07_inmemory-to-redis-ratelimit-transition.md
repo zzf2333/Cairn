@@ -1,5 +1,9 @@
 type: transition
 domain: rate-limiting
+scope: domain
+status: active
+behavior_effect: prefer
+confidence: high
 decision_date: 2023-07
 recorded_date: 2023-07
 summary: Migrated rate limiting from in-memory to Redis-backed token bucket after deploy-reset incidents

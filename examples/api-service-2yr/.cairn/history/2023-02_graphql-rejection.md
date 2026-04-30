@@ -1,5 +1,9 @@
 type: rejection
 domain: api-gateway
+scope: domain
+status: active
+behavior_effect: never_suggest
+confidence: high
 decision_date: 2023-02
 recorded_date: 2023-02
 summary: Rejected GraphQL after 3-week evaluation; REST + OpenAPI sufficient for current client count

@@ -1,5 +1,9 @@
 type: rejection
 domain: api-gateway
+scope: domain
+status: active
+behavior_effect: never_suggest
+confidence: high
 decision_date: 2024-08
 recorded_date: 2024-08
 summary: Rejected gRPC for internal service traffic after performance evaluation; HTTP/JSON sufficient

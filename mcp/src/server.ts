@@ -38,7 +38,7 @@ const VALID_ENTRY_TYPES = [
 export function createCairnServer(): McpServer {
     const server = new McpServer({
         name: "cairn",
-        version: "0.1.1",
+        version: "0.1.2",
     });
 
     // =========================================================================
@@ -119,6 +119,24 @@ export function createCairnServer(): McpServer {
                 domain: z
                     .string()
                     .describe("Domain name from the project's locked domain list"),
+                scope: z
+                    .enum(["global", "domain", "module"])
+                    .optional()
+                    .describe("Memory scope. Defaults to domain."),
+                status: z
+                    .enum(["active", "superseded", "stale"])
+                    .optional()
+                    .describe("Current validity of this memory. Defaults to active."),
+                behavior_effect: z
+                    .enum(["never_suggest", "avoid", "preserve", "prefer", "revisit"])
+                    .optional()
+                    .describe(
+                        "How this memory should change AI behavior. Defaults are inferred from entry type.",
+                    ),
+                confidence: z
+                    .enum(["high", "medium", "low"])
+                    .optional()
+                    .describe("How strongly this memory is supported. Defaults to high."),
                 decision_date: z
                     .string()
                     .regex(/^\d{4}-\d{2}$/)
@@ -130,6 +148,10 @@ export function createCairnServer(): McpServer {
                         "MOST CRITICAL: What alternatives were considered and not chosen. " +
                         "Even for 'decision' types, record what was evaluated and discarded.",
                     ),
+                chosen: z
+                    .string()
+                    .optional()
+                    .describe("What was chosen instead, when applicable"),
                 reason: z.string().describe("Why this path was taken"),
                 revisit_when: z
                     .string()

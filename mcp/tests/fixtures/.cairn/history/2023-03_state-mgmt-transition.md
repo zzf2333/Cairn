@@ -1,5 +1,9 @@
 type: transition
 domain: state-management
+scope: domain
+status: active
+behavior_effect: prefer
+confidence: high
 decision_date: 2023-03
 recorded_date: 2025-01
 summary: Migrated client state from React Context to Zustand due to full subtree re-render performance issues

@@ -1,10 +1,15 @@
 export interface HistoryEntry {
     type: string;
     domain: string;
+    scope: string;
+    status: string;
+    behavior_effect: string;
+    confidence: string;
     decision_date: string;
     recorded_date: string;
     summary: string;
     rejected: string;
+    chosen: string;
     reason: string;
     revisit_when: string;
     raw: string;
@@ -17,6 +22,10 @@ export interface HistoryEntry {
  * Format:
  *   type: experiment
  *   domain: api-layer
+ *   scope: domain
+ *   status: active
+ *   behavior_effect: avoid
+ *   confidence: high
  *   decision_date: 2023-09
  *   recorded_date: 2025-01
  *   summary: Rejected tRPC after a 2-week trial
@@ -68,10 +77,15 @@ export function parseHistoryEntry(
     return {
         type: fields["type"] ?? "",
         domain: fields["domain"] ?? "",
+        scope: fields["scope"] ?? "",
+        status: fields["status"] ?? "",
+        behavior_effect: fields["behavior_effect"] ?? "",
+        confidence: fields["confidence"] ?? "",
         decision_date: fields["decision_date"] ?? "",
         recorded_date: fields["recorded_date"] ?? "",
         summary: fields["summary"] ?? "",
         rejected: fields["rejected"] ?? "",
+        chosen: fields["chosen"] ?? "",
         reason: fields["reason"] ?? "",
         revisit_when: fields["revisit_when"] ?? "",
         raw: content,

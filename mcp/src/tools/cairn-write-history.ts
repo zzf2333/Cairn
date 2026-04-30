@@ -21,14 +21,31 @@ type ToolResult = { content: TextContent[]; isError?: true };
 export async function handleCairnWriteHistory(args: {
     type: string;
     domain: string;
+    scope?: string;
+    status?: string;
+    behavior_effect?: string;
+    confidence?: string;
     decision_date: string;
     summary: string;
     rejected: string;
+    chosen?: string;
     reason: string;
     revisit_when?: string;
 }): Promise<ToolResult> {
-    const { type, domain, decision_date, summary, rejected, reason, revisit_when } =
-        args;
+    const {
+        type,
+        domain,
+        scope,
+        status,
+        behavior_effect,
+        confidence,
+        decision_date,
+        summary,
+        rejected,
+        chosen,
+        reason,
+        revisit_when,
+    } = args;
 
     try {
         const paths = resolvePaths();
@@ -57,7 +74,20 @@ export async function handleCairnWriteHistory(args: {
         const recordedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
         const content = serializeHistoryEntry(
-            { type, domain, decision_date, summary, rejected, reason, revisit_when },
+            {
+                type,
+                domain,
+                scope,
+                status,
+                behavior_effect,
+                confidence,
+                decision_date,
+                summary,
+                rejected,
+                chosen,
+                reason,
+                revisit_when,
+            },
             recordedDate,
         );
 

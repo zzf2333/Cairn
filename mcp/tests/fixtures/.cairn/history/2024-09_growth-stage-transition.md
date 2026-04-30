@@ -1,5 +1,9 @@
 type: transition
 domain: architecture
+scope: domain
+status: active
+behavior_effect: prefer
+confidence: high
 decision_date: 2024-09
 recorded_date: 2025-01
 summary: Project transitioned from MVP stage to early-growth stage; reasoning mode shifted to stability > speed > elegance

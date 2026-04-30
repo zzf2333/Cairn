@@ -378,6 +378,26 @@ _doctor_memory_loop_signal() {
     esac
 }
 
+_doctor_history_field() {
+    local file="$1"
+    local field="$2"
+    grep -E "^${field}:[[:space:]]*" "$file" 2>/dev/null \
+        | head -1 \
+        | sed "s/^${field}:[[:space:]]*//" \
+        | sed 's/[[:space:]]*$//' || true
+}
+
+_doctor_history_projection_term() {
+    local file="$1"
+    local value=""
+    value="$(_doctor_history_field "$file" "rejected")"
+    [ -z "$value" ] && value="$(_doctor_history_field "$file" "summary")"
+    echo "$value" \
+        | sed 's/[(:—|].*$//' \
+        | awk '{print $1}' \
+        | sed 's/[^A-Za-z0-9_.+-]//g'
+}
+
 _doctor_history_supports_domain_term() {
     local cairn_dir="$1"
     local domain="$2"
@@ -451,6 +471,83 @@ _doctor_check_memory_loop() {
                 _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
                 _doctor_memory_loop_signal "history-missing-rejected"
                 found_issue=true
+            fi
+
+            local scope status behavior_effect confidence
+            scope="$(_doctor_history_field "$hist_file" "scope")"
+            status="$(_doctor_history_field "$hist_file" "status")"
+            behavior_effect="$(_doctor_history_field "$hist_file" "behavior_effect")"
+            confidence="$(_doctor_history_field "$hist_file" "confidence")"
+
+            local missing_structured=false
+            [ -n "$scope" ] || missing_structured=true
+            [ -n "$status" ] || missing_structured=true
+            [ -n "$behavior_effect" ] || missing_structured=true
+            [ -n "$confidence" ] || missing_structured=true
+
+            if [ "$missing_structured" = true ]; then
+                if [ "$_DOCTOR_JSON" = false ]; then
+                    echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_memory_history_missing_structured_fields "$(basename "$hist_file")")"
+                fi
+                _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                _doctor_memory_loop_signal "history-missing-structured-fields"
+                found_issue=true
+            fi
+
+            if [ -n "$scope" ] && ! echo "$scope" | grep -qE '^(global|domain|module)$' 2>/dev/null; then
+                if [ "$_DOCTOR_JSON" = false ]; then
+                    echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_memory_history_invalid_structured_field "$(basename "$hist_file")" "scope")"
+                fi
+                _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                _doctor_memory_loop_signal "history-invalid-structured-field"
+                found_issue=true
+            fi
+            if [ -n "$status" ] && ! echo "$status" | grep -qE '^(active|superseded|stale)$' 2>/dev/null; then
+                if [ "$_DOCTOR_JSON" = false ]; then
+                    echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_memory_history_invalid_structured_field "$(basename "$hist_file")" "status")"
+                fi
+                _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                _doctor_memory_loop_signal "history-invalid-structured-field"
+                found_issue=true
+            fi
+            if [ -n "$behavior_effect" ] && ! echo "$behavior_effect" | grep -qE '^(never_suggest|avoid|preserve|prefer|revisit)$' 2>/dev/null; then
+                if [ "$_DOCTOR_JSON" = false ]; then
+                    echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_memory_history_invalid_structured_field "$(basename "$hist_file")" "behavior_effect")"
+                fi
+                _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                _doctor_memory_loop_signal "history-invalid-structured-field"
+                found_issue=true
+            fi
+            if [ -n "$confidence" ] && ! echo "$confidence" | grep -qE '^(high|medium|low)$' 2>/dev/null; then
+                if [ "$_DOCTOR_JSON" = false ]; then
+                    echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_memory_history_invalid_structured_field "$(basename "$hist_file")" "confidence")"
+                fi
+                _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                _doctor_memory_loop_signal "history-invalid-structured-field"
+                found_issue=true
+            fi
+
+            if [ -f "$output_md" ]; then
+                local projection_term
+                projection_term="$(_doctor_history_projection_term "$hist_file")"
+                if [ -n "$projection_term" ] && grep -qiF "$projection_term" "$output_md" 2>/dev/null; then
+                    if echo "$status" | grep -qE '^(stale|superseded)$' 2>/dev/null; then
+                        if [ "$_DOCTOR_JSON" = false ]; then
+                            echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_memory_inactive_history_in_output "$(basename "$hist_file")" "$projection_term")"
+                        fi
+                        _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                        _doctor_memory_loop_signal "inactive-history-in-output"
+                        found_issue=true
+                    fi
+                    if [ "$confidence" = "low" ]; then
+                        if [ "$_DOCTOR_JSON" = false ]; then
+                            echo -e "  ${C_YELLOW}⚠${C_RESET}  $(msg_doctor_memory_low_confidence_in_output "$(basename "$hist_file")" "$projection_term")"
+                        fi
+                        _DOCTOR_FAIL=$(( _DOCTOR_FAIL + 1 ))
+                        _doctor_memory_loop_signal "low-confidence-in-output"
+                        found_issue=true
+                    fi
+                fi
             fi
         done < <(find "${cairn_dir}/history" -maxdepth 1 -name "*.md" -type f 2>/dev/null)
     fi
@@ -862,7 +959,7 @@ _doctor_emit_json() {
 
     cat <<JSON
 {
-  "cairn_version": "0.1.1",
+  "cairn_version": "0.1.2",
   "issues": ${_DOCTOR_FAIL},
   "output": {
     "status": "${_DOCTOR_JSON_OUTPUT_STATUS:-ok}",

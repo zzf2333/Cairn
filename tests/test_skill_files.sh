@@ -11,8 +11,7 @@
 #   6.  debt constraint: do not fix
 #   7.  known pitfalls: avoid trigger conditions
 #   8.  Has task-completion / reactive evolution section
-#   9.  Lists all 8 history fields:
-#       type, domain, decision_date, recorded_date, summary, rejected, reason, revisit_when
+#   9.  Lists required history fields, including structured memory fields
 
 # Run quality checks against a single skill file.
 # $1 = human-readable label, $2 = absolute path to skill file
@@ -63,10 +62,14 @@ check_skill() {
     assert_contains "$label — has task-completion section" \
         "$file" '(REACTIVE EVOLUTION|ON TASK COMPLETION)'
 
-    # 13-20. All 8 history entry fields listed.
+    # 13-24. Required history entry fields listed.
     # Pattern accepts both `field` (bare) and field: (plain in code block)
     assert_contains "$label — history field: \`type\`"          "$file" 'type:'
     assert_contains "$label — history field: \`domain\`"        "$file" 'domain:'
+    assert_contains "$label — history field: \`scope\`"         "$file" 'scope:'
+    assert_contains "$label — history field: \`status\`"        "$file" 'status:'
+    assert_contains "$label — history field: \`behavior_effect\`" "$file" 'behavior_effect:'
+    assert_contains "$label — history field: \`confidence\`"    "$file" 'confidence:'
     assert_contains "$label — history field: \`decision_date\`" "$file" 'decision_date:'
     assert_contains "$label — history field: \`recorded_date\`" "$file" 'recorded_date:'
     assert_contains "$label — history field: \`summary\`"       "$file" 'summary:'

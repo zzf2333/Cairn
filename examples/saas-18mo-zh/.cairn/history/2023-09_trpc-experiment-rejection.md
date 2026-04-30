@@ -1,5 +1,9 @@
 type: experiment
 domain: api-layer
+scope: domain
+status: active
+behavior_effect: avoid
+confidence: high
 decision_date: 2023-09
 recorded_date: 2025-01
 summary: 经过两周试验后拒绝 tRPC；现有 REST 消费方的迁移成本过高

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-04-30
+
+### Added
+
+- **Structured history semantics**: History entries now carry `scope`, `status`, `behavior_effect`, and `confidence` fields so AI tools can understand where a memory applies, whether it is active, and how it should affect behavior.
+- **MCP structured write support**: `cairn_write_history` accepts the new structured fields, preserves old calls, and infers default behavior effects from entry type.
+- **Projection drift checks**: `cairn doctor` now warns when structured fields are missing or invalid, inactive memories remain in `output.md`, or low-confidence memories are promoted globally.
+
+### Changed
+
+- **Memory model docs**: Updated FORMAT, Skill, README, MCP README, and task-completion protocol to describe history as structured source events and `output.md` / domain files as runtime projections.
+- **Examples and fixtures**: Migrated example history files and MCP fixtures to the structured history format.
+- **Version sync**: Bumped CLI, MCP package, MCP server metadata, and doctor JSON to `0.1.2`.
+
 ## [0.1.1] - 2026-04-29
 
 ### Added

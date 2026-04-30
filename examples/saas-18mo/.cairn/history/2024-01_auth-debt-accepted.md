@@ -1,5 +1,9 @@
 type: debt
 domain: auth
+scope: domain
+status: active
+behavior_effect: preserve
+confidence: high
 decision_date: 2024-01
 recorded_date: 2025-01
 summary: Accepted AUTH-COUPLING debt — auth checks remain inline in route handlers rather than extracted to middleware

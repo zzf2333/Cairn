@@ -1,5 +1,9 @@
 type: debt
 domain: auth
+scope: domain
+status: active
+behavior_effect: preserve
+confidence: high
 decision_date: 2024-01
 recorded_date: 2025-01
 summary: 接受 AUTH-COUPLING 技术债——认证校验保留内联在路由处理器中，不提取为中间件

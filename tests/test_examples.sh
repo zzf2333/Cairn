@@ -112,9 +112,13 @@ _check_history() {
 
     assert_file_exists "$label — file exists" "$file"
 
-    # All 8 required fields (FORMAT.md: MUST)
+    # Required history fields (FORMAT.md: MUST)
     assert_contains "$label — field: type"          "$file" "^type:"
     assert_contains "$label — field: domain"        "$file" "^domain:"
+    assert_contains "$label — field: scope"         "$file" "^scope:"
+    assert_contains "$label — field: status"        "$file" "^status:"
+    assert_contains "$label — field: behavior_effect" "$file" "^behavior_effect:"
+    assert_contains "$label — field: confidence"    "$file" "^confidence:"
     assert_contains "$label — field: decision_date" "$file" "^decision_date:"
     assert_contains "$label — field: recorded_date" "$file" "^recorded_date:"
     assert_contains "$label — field: summary"       "$file" "^summary:"
@@ -126,6 +130,15 @@ _check_history() {
     # type: must be one of the 5 valid values
     assert_contains "$label — type is a valid entry type" \
         "$file" "^type: (decision|rejection|transition|debt|experiment)$"
+
+    assert_contains "$label — scope is a valid memory scope" \
+        "$file" "^scope: (global|domain|module)$"
+    assert_contains "$label — status is a valid memory status" \
+        "$file" "^status: (active|superseded|stale)$"
+    assert_contains "$label — behavior_effect is valid" \
+        "$file" "^behavior_effect: (never_suggest|avoid|preserve|prefer|revisit)$"
+    assert_contains "$label — confidence is valid" \
+        "$file" "^confidence: (high|medium|low)$"
 
     # decision_date: YYYY-MM format
     assert_contains "$label — decision_date follows YYYY-MM format" \
@@ -337,6 +350,10 @@ for _hfile in "$_API_ZH_DIR/history/"*.md; do
         "$_hfile" "^type:"
     assert_contains "api-service-2yr-zh/$_hbase: domain: key" \
         "$_hfile" "^domain:"
+    assert_contains "api-service-2yr-zh/$_hbase: scope: key" \
+        "$_hfile" "^scope:"
+    assert_contains "api-service-2yr-zh/$_hbase: behavior_effect: key" \
+        "$_hfile" "^behavior_effect:"
     assert_contains "api-service-2yr-zh/$_hbase: decision_date: key" \
         "$_hfile" "^decision_date:"
     assert_contains "api-service-2yr-zh/$_hbase: recorded_date: key" \

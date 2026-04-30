@@ -348,10 +348,15 @@ tpl_history_template() {
 
 type: <decision | rejection | transition | debt | experiment>
 domain: <domain key — must match one of the locked domains>
+scope: <global | domain | module>
+status: <active | superseded | stale>
+behavior_effect: <never_suggest | avoid | preserve | prefer | revisit>
+confidence: <high | medium | low>
 decision_date: <YYYY-MM>
 recorded_date: <YYYY-MM>
 summary: <one sentence — what happened>
 rejected: <what alternatives were considered and not chosen — MOST CRITICAL FIELD>
+chosen: <what was chosen instead, when applicable>
 reason: <why this path was taken>
 revisit_when: <condition under which this decision should be reconsidered>
 EOF
@@ -590,6 +595,10 @@ msg_doctor_write_back_suggest()     { echo "run your AI and end the task with a 
 msg_doctor_section_memory_loop()    { echo "── Memory loop"; }
 msg_doctor_memory_loop_ok()         { echo "memory loop traceability looks clean"; }
 msg_doctor_memory_history_missing_rejected()    { echo "history entry ${1} is missing a non-empty rejected field"; }
+msg_doctor_memory_history_missing_structured_fields() { echo "history entry ${1} is missing structured memory fields (scope/status/behavior_effect/confidence)"; }
+msg_doctor_memory_history_invalid_structured_field()  { echo "history entry ${1} has invalid structured memory field '${2}'"; }
+msg_doctor_memory_inactive_history_in_output()        { echo "history entry ${1} is inactive but '${2}' still appears in output.md"; }
+msg_doctor_memory_low_confidence_in_output()          { echo "history entry ${1} is low-confidence but '${2}' appears in output.md"; }
 msg_doctor_memory_domain_rejected_unsupported() { echo "domain ${1} rejected path '${2}' has no same-domain history support"; }
 msg_doctor_memory_output_debt_unsupported()     { echo "output.md debt '${1}' has no debt history support"; }
 
