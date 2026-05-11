@@ -1,0 +1,28 @@
+version: "2.0"
+
+project:
+  name: acme-saas
+  created: "2023-01-15"
+
+domains:
+  locked:
+    - api-layer
+    - auth
+    - state-management
+
+trust_policy:
+  L3_auto_write:
+    - "source.kind == 'git-revert' AND scope == 'local'"
+    - "source.kind == 'git-dependency' AND type == 'rejection' AND scope == 'local'"
+  L2_staged:
+    - "scope == 'global'"
+    - "type == 'transition' AND affects_output == true"
+  never_auto:
+    - "新增全局 no-go"
+    - "阶段变更"
+    - "output 级别 stack 变更"
+    - "scope == 'global' 的 behavior_effect"
+
+stage:
+  override: null
+  auto_constraint: false

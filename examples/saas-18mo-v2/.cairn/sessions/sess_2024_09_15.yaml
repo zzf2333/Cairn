@@ -1,0 +1,19 @@
+id: sess_2024_09_15
+started_at: "2024-09-15T09:00:00Z"
+ended_at: "2024-09-15T11:30:00Z"
+summary: Reviewed project stage and confirmed growth phase transition
+signals_captured: 2
+signals_routed:
+  L0: 0
+  L1: 1
+  L2: 1
+  L3: 0
+domains_touched:
+  - architecture
+  - state-management
+decisions_made:
+  - "Project stage confirmed as growth"
+unresolved:
+  - "Auth coupling debt timeline still open"
+context_injections:
+  - "cairn_context at session start"

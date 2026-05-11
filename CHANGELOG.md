@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-alpha.0] - 2026-05-11
+
+### Breaking Changes
+
+- **Architecture rewrite**: Cairn is now a dynamic memory engine. The v1 static file format (human writes `.cairn/` → AI reads) is replaced by automatic signal capture, trust-routed memory, and auto-generated views (AI writes → AI reads → human reviews).
+- **MCP tools replaced**: v1's 6 tools (`cairn_output`, `cairn_domain`, `cairn_query`, `cairn_write_history`, `cairn_doctor`, `cairn_match`) replaced by v2's 6 tools: `cairn_context` (stable), `cairn_signal` (stable), `cairn_session_end` (stable), `cairn_status` (stable), `cairn_plan` (experimental), `cairn_doctor` (experimental).
+- **Directory structure changed**: `history/` → `memory/` (YAML), `domains/` → `views/domains/` (auto-generated), `output.md` → `views/output.md` (auto-generated). New directories: `signals/`, `staged/`, `sessions/`. New files: `config.yaml`, `state.yaml`.
+- **CLI rewritten in TypeScript**: v1 Bash CLI replaced by TypeScript CLI. Commands: `cairn init`, `cairn status`, `cairn review`, `cairn doctor`, `cairn stage confirm`, `cairn memory show/archive`.
+- **"Cairn reflection" block removed**: v1's task-completion reflection block is no longer required. v2 uses `cairn_signal()` during work and `cairn_session_end()` at session end.
+- **Bash init script removed**: `scripts/cairn-init.sh` replaced by `cairn init` TypeScript command.
+
+### Added
+
+- **Dual-ear signal capture**: Git Ear detects reverts, dependency changes, large refactors, commit patterns, new contributors. Conversation Ear captures user rejections, decisions, constraints, debt acceptance via `cairn_signal()`.
+- **Trust Router (L0–L3)**: Four-level routing with hard rules. L0 drop (noise), L1 candidate (accumulates), L2 staged (human review), L3 auto-write (strict conditions). Global no-go and stage changes always route to L2.
+- **Structured YAML memory**: Memory entries carry `type`, `domain`, `scope`, `status`, `confidence`, `source`, `behavior_effect`, `revisit`, `relations`. Five memory types: decision, rejection, transition, debt, experiment. Four behavior effects: avoid_suggestion, prefer_approach, warn_before, require_review.
+- **Views Engine**: Auto-generates `views/output.md` (target 500 / hard limit 800 tokens), `views/domains/*.md` (target 300 / hard limit 500), and `views/stage.md` from memory. Regenerated on every memory change.
+- **Stage Advisory Engine**: Infers project phase (exploration → growth → maturity → maintenance) from project age, commit trends, dependency change rate, new file ratio. Advisory only — no hard constraints unless human-confirmed.
+- **Memory Engine**: Conflict detection (same domain + subject + different behavior_effect direction), health tracking, supersession management.
+- **6 Zod schemas**: MemoryEntry, Signal, StagedEntry, Config, StageSnapshot, SessionRecord — runtime validation for all `.cairn/` data files.
+- **4 YAML stores**: MemoryStore, SignalStore, StagedStore, StateStore — typed CRUD with schema validation.
+- **`cairn review` CLI**: Interactive review for staged entries (accept / edit / skip / delete). Accepted entries promote to memory and trigger view regeneration.
+- **Session records**: `cairn_session_end()` creates audit records in `sessions/` with signal counts, routing stats, and domain coverage.
+- **57 tests**: schemas (10), stores (12), engines (19), tools (10), integration (6).
+
+### Changed
+
+- **Skill protocol**: `skills/claude-code/SKILL.md` rewritten from v1 file-operation protocol (274 lines) to v2 MCP tool protocol (~150 lines). Sections: session start (cairn_context), during work (cairn_signal), planning (cairn_plan), session end (cairn_session_end), diagnostics, constraint processing, degraded mode, language continuity.
+- **8 skill adapters updated**: All adapters (`cline.md`, `cursor.mdc`, `codex.md`, `copilot-instructions.md`, `gemini-cli.md`, `opencode.md`, `windsurf.md`) updated with v2 guide block referencing 3 MCP tools.
+- **Spec documents rewritten**: FORMAT.md (YAML schema reference), DESIGN.md (dual-ear + trust router + stage engine design), TASK-COMPLETION-PROTOCOL.md (MCP signal protocol), adoption-guide.md (install + daily usage + v1 migration), vs-adr.md (v2 comparison).
+- **Glossary expanded**: ~25 new v2 terms added. v1-only terms marked as legacy.
+- **README rewritten**: Project description updated from "AI path-dependency constraint system" to "AI-maintained project memory engine". Architecture section shows dual-ear → trust router → memory → views → constraint injection flow.
+
 ## [0.1.2] - 2026-04-30
 
 ### Added

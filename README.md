@@ -12,7 +12,6 @@
   <a href="https://github.com/zzf2333/Cairn/stargazers"><img src="https://img.shields.io/github/stars/zzf2333/Cairn?style=flat-square&color=f59e0b" alt="GitHub Stars"/></a>
   <a href="https://www.npmjs.com/package/cairn-mcp-server"><img src="https://img.shields.io/npm/v/cairn-mcp-server?style=flat-square&label=mcp%20server&color=2563eb" alt="npm version"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-16a34a?style=flat-square" alt="License MIT"/></a>
-  <img src="https://img.shields.io/badge/bash-3.2%2B-6b7280?style=flat-square" alt="Bash 3.2+"/>
   <img src="https://img.shields.io/badge/node-18%2B-6b7280?style=flat-square" alt="Node 18+"/>
 </p>
 
@@ -20,9 +19,10 @@
 
 ---
 
-Cairn structures your project's historical decisions, rejected paths, and accepted trade-offs
-into a three-layer format that AI coding assistants read automatically — so they work within
-your project's real constraints instead of suggesting in a vacuum.
+Cairn is an AI-maintained project memory engine. It automatically captures project
+decisions, rejected paths, and accepted trade-offs from Git history and AI conversations,
+then routes them through a trust system into structured memory that AI coding assistants
+consume as behavioral constraints.
 
 ---
 
@@ -53,16 +53,12 @@ memory of a colleague who's been here from the start.
 
 ## What is Cairn
 
-Cairn is an **AI path-dependency constraint system** — a structured format for recording
-what your project has decided, what it has rejected, and what trade-offs it has accepted.
+Cairn is a **dynamic memory engine for AI coding assistants** — it captures, routes, stores,
+and serves project constraints so that AI works within your project's real history instead
+of suggesting in a vacuum.
 
-It is **not** a documentation system. Every entry must change what AI suggests. If a piece
-of information doesn't alter AI behavior, it doesn't belong in Cairn.
-
-Cairn fills the gap between what AI tools already handle well:
-
-| What tools handle today | What Cairn adds |
-|------------------------|-----------------|
+| What AI tools handle today | What Cairn adds |
+|---------------------------|-----------------|
 | Coding style, naming conventions | Rejected directions and why |
 | Current tech stack and architecture | Stage-aware constraints (MVP vs growth) |
 | What's being built now | Accepted debt that should not be touched |
@@ -72,87 +68,44 @@ Cairn fills the gap between what AI tools already handle well:
 
 ## How It Works
 
-Cairn uses a three-layer directory at your repository root:
+Cairn captures project signals from two sources, routes them through a trust system,
+and serves the results as structured constraints.
 
 ```
-.cairn/
-├── output.md          # Layer 1: global constraints, read every session
-├── SKILL.md           # Operating protocol; AI reads this to know how to maintain .cairn/
-├── domains/           # Layer 2: domain design context, read during planning
-│   ├── api-layer.md
-│   └── auth.md
-└── history/           # Layer 3: structured source events, queried on demand
-    ├── 2023-09_trpc-experiment-rejection.md
-    └── 2024-01_auth-debt-accepted.md
+  Git history ──→ Git Ear ──→ signals ──┐
+                                        ├──→ Trust Router ──→ memory/ ──→ Views Engine ──→ views/
+  AI conversation ──→ cairn_signal() ──┘         │                                          │
+                                            L0: drop                                   cairn_context()
+                                            L1: candidate (signals/)                        │
+                                            L2: staged (human review)               AI reads constraints
+                                            L3: auto-write (memory/)
 ```
 
-![Three-Layer Architecture](docs/diagrams/02-three-layer-architecture.png)
+**Dual-ear signal capture:**
+- **Git Ear** detects reverts, dependency changes, large refactors, commit patterns
+- **Conversation Ear** captures user rejections, decisions, constraints, debt acceptance
 
-| Layer | File | When AI Reads | Token Budget |
-|-------|------|---------------|--------------|
-| Global Constraints | `.cairn/output.md` | Every session, always | 500 target / 800 max |
-| Domain Context | `.cairn/domains/*.md` | During planning & design | 200–400 per file |
-| Decision History | `.cairn/history/*.md` | On-demand precise queries | Unlimited |
+**Trust Router (L0–L3):**
+- **L0 Drop** — noise or duplicates, discarded
+- **L1 Candidate** — saved to `signals/`, accumulates toward L2
+- **L2 Staged** — awaits human review via `cairn review`
+- **L3 Auto-write** — strict conditions met, written to `memory/` automatically
 
-**Runtime flow:**
-1. AI reads `output.md` at session start — establishes what's off-limits and the current project stage
-2. When planning a feature, AI reads the relevant domain file — understands that area's evolution and pitfalls
-3. When full historical detail is needed, AI queries `history/` — structured source events with rejected alternatives
+**Memory → Views → Constraints:**
+- `memory/` is the source of truth (structured YAML, git-diff-friendly)
+- `views/` is auto-generated (token-budget-aware Markdown for AI consumption)
+- AI calls `cairn_context()` to get filtered constraints for the current task
 
-### Three Constraint Types
+### Four Constraint Behaviors
 
-Three concepts produce distinct AI behavior changes:
+Every memory entry declares a `behavior_effect`:
 
-| Concept | What It Means | AI Behavior |
-|---------|---------------|-------------|
-| **no-go** | A direction evaluated and excluded | Never suggest it |
-| **accepted debt** | A known defect intentionally left in place | Never attempt to fix it |
-| **known pitfalls** | An operational trap in a specific domain | Actively avoid trigger conditions |
-
----
-
-## Implementation
-
-Cairn is a **pure file format** — no runtime, no background process, no external service required.
-The `.cairn/` directory is plain Markdown with a defined structure, versioned alongside your code.
-
-**Layer 1 (`output.md`):** Six required YAML-headlined sections (`stage`, `no-go`, `hooks`,
-`stack`, `debt`, `open questions`). Hard-limited to 800 tokens. AI reads this before every response.
-
-**Layer 2 (domain files):** YAML frontmatter with `hooks` keyword lists for intent detection,
-followed by Markdown sections for no-go rules, known pitfalls, and evolution history. Written
-to be **replaced wholesale**, not appended — the source events stay in `history/`.
-
-**Layer 3 (history files):** Bare `key: value` format (no YAML fences). Each file is a
-structured source event with `scope`, `status`, `behavior_effect`, and `confidence`,
-plus decision fields such as `summary`, `rejected`, `chosen`, `reason`, and
-`revisit_when`. `output.md` and domain files are runtime projections of this source
-layer. The `rejected` field remains the most critical — it's what AI is most likely
-to re-propose.
-
-**Protocol layer (`.cairn/SKILL.md`):** The full operating protocol — when to read each
-layer, how to interpret constraints, when and how to write back to history/domains/output.
-Copied from `skills/claude-code/SKILL.md` by `cairn init`. AI reads this once per session.
-
-**Adapter guide blocks:** Each AI tool's config file gets a 12-line block pointing to
-`.cairn/SKILL.md`. Installed by `cairn init`. Regenerated by `cairn init --refresh-skills`.
-
-**Language support (v0.0.2):** `.cairn/` content can be maintained in any language.
-The CLI and init script follow `CAIRN_LANG` (auto-detected from `$LANG`). AI skill
-adapters include language-continuity rules so new entries match existing file language.
-Format contracts (section headers, field names) remain English ASCII regardless of
-content language.
-
----
-
-## Quality Guarantees
-
-**Specification-driven:** `spec/FORMAT.md` is the authoritative reference for all three layers.
-Every tool, script, and example must conform to it. When in doubt, the spec wins.
-
-**Test coverage:**
-- Shell test suite: **600+ assertions** across 8 test files (CLI, init script, format validation, protocol conformance)
-- MCP Server test suite: **270+ assertions** across 15 Vitest test files (parsers, all 6 tools)
+| Type | AI Behavior |
+|------|-------------|
+| `avoid_suggestion` | AI MUST NOT suggest this direction |
+| `prefer_approach` | AI should prefer this approach |
+| `warn_before` | AI should warn before touching this area |
+| `require_review` | Changes need human sign-off |
 
 ---
 
@@ -160,234 +113,149 @@ Every tool, script, and example must conform to it. When in doubt, the spec wins
 
 ### Install
 
-**Option A: Interactive init script (recommended)**
-
 ```bash
-curl -sL https://raw.githubusercontent.com/zzf2333/Cairn/main/scripts/cairn-init.sh -o cairn-init.sh
-chmod +x cairn-init.sh
-./cairn-init.sh
-```
-
-The script guides you through 5 steps (~30 minutes):
-1. Choose your project's domains (11 standard options)
-2. Fill in `output.md` (stage, no-go, stack, accepted debt)
-3. Initialize `history/` with an entry template
-4. Initialize `domains/` (empty to start — this is normal)
-5. Install the guide block for your AI tool(s) (points to `.cairn/SKILL.md` for the full protocol)
-
-**Option B: CLI**
-
-```bash
-git clone https://github.com/zzf2333/Cairn ~/.cairn
-echo 'export PATH="$HOME/.cairn/cli:$PATH"' >> ~/.zshrc   # or ~/.bashrc
-source ~/.zshrc
-cairn init    # interactive, delegates to cairn-init.sh
-```
-
-Requires Bash 3.2+ (macOS system bash is sufficient). Symlinks are also supported — the script resolves its real path via `readlink`.
-
-**Option C: MCP Server only**
-
-```bash
-# From npm
 npm install -g cairn-mcp-server
+```
 
-# Or from source
+Or from source:
+
+```bash
 git clone https://github.com/zzf2333/Cairn
 cd Cairn/mcp && npm install && npm run build
 ```
 
 Requires Node.js 18+.
 
----
-
-### Daily Usage
-
-After `cairn init`, the AI handles ongoing `.cairn/` maintenance automatically. No daily
-CLI commands needed — the AI reads `output.md` and `SKILL.md` at session start, loads
-domain files when planning, and writes history entries directly after task completion.
+### Initialize a Project
 
 ```bash
-# Check health (after onboarding a new dev, or when something seems off)
-cairn doctor
-
-# Refresh guide blocks and .cairn/SKILL.md after updating Cairn
-cairn init --refresh-skills
-
-# Install guide blocks globally (covers projects without per-project init)
-cairn init --global
+cd my-project
+cairn init
 ```
 
-#### Task completion protocol
+Interactive flow: project name → start date → domain selection → Git history scan → directory generation.
 
-After every non-trivial task, the AI produces a structured `Cairn reflection` block:
-
-```
-Task completion summary
-- Completed work: switched internal services from REST to tRPC
-- Changed files / domains: src/api/, api-layer
-- Risk level: medium
-
-Cairn reflection
-- Result: memory-updated
-- Impacted domains: api-layer
-- History recorded: history/2026-04_trpc-adoption.md
-- Output updated: no
-- Domains updated: api-layer
-- Audit required: no
-- Next action: none
-
-cairn: recorded 1 event: history/2026-04_trpc-adoption.md
-```
-
-`Result` is one of `no-op` (nothing written), `memory-updated` (write-back occurred), or
-`audit-required` (migration risk — follow-up needed). See
-[spec/TASK-COMPLETION-PROTOCOL.md](spec/TASK-COMPLETION-PROTOCOL.md) for the normative definition.
-
-Review with `git diff .cairn/`. Edit the file directly if anything needs adjusting.
-
-**Stale detection:** `cairn doctor` compares each domain file's `updated:` frontmatter
-against the `recorded_date` of its history entries:
+After init:
 
 ```
-$ cairn doctor
-
-⚠  api-layer  stale: 2 new history entries since 2024-03
-⚠  .cairn/SKILL.md not found — run: cairn init
-✓  auth        up to date (2024-06)
+.cairn/
+├── config.yaml          # Project configuration (domains, trust policy)
+├── state.yaml           # Server runtime state
+├── signals/             # L1 candidate signal pool
+├── staged/              # L2 entries awaiting human review
+├── memory/              # Confirmed memories (source of truth)
+├── views/               # Auto-generated constraint views
+│   ├── output.md        # Global constraints
+│   ├── stage.md         # Stage advisory
+│   └── domains/         # Per-domain summaries
+└── sessions/            # Session audit records
 ```
 
----
+### Configure MCP
 
-### Update
+**Claude Code** — `~/.claude/mcp.json` (global) or `.claude/mcp.json` (project):
 
-**Init script / CLI:**
-```bash
-cd ~/.cairn && git pull
-# PATH stays valid — no re-install needed
-```
-
-**MCP Server (npm):**
-```bash
-npm install -g cairn-mcp-server@latest
-```
-
-**MCP Server (from source):**
-```bash
-cd /path/to/Cairn && git pull
-cd mcp && npm install && npm run build
-# Running server picks up the new build automatically on next restart
-```
-
-**Guide blocks / SKILL.md:** Run `cairn init --refresh-skills` to refresh guide blocks
-and `.cairn/SKILL.md` without touching `output.md`, `domains/`, or `history/`.
-See the [upgrade guide](spec/adoption-guide.md#upgrading-to-v0012) for details.
-
----
-
-### Uninstall
-
-**CLI:**
-```bash
-# Remove the PATH export line from ~/.zshrc (or ~/.bashrc), then:
-rm -rf ~/.cairn
-```
-
-**MCP Server:**
-```bash
-npm uninstall -g cairn-mcp-server
-# Remove the "cairn" block from your MCP settings file
-# (Claude Code: ~/.claude/settings.json or .claude/settings.json)
-```
-
-**Skill adapters:**  
-Delete the adapter file you copied during setup (see table in Supported AI Tools below).
-
-**Project data (`.cairn/`):**  
-The `.cairn/` directory belongs to your project repository. Removing Cairn tooling
-does not delete it — remove it manually if desired, or leave it as documentation.
-
----
-
-## MCP Server
-
-The MCP Server (Phase 3) upgrades Cairn from file-injection to typed tool calls.
-Instead of relying on AI tools to infer when to load context, it exposes six precise
-tools that match AI intent against domain frontmatter `hooks` fields.
-
-![Integration Overview](docs/diagrams/03-integration-overview.png)
-
-### Tools
-
-| Tool | Description |
-|------|-------------|
-| `cairn_output` | Read `.cairn/output.md` — Layer 1 global constraints |
-| `cairn_domain` | Read `.cairn/domains/<name>.md` — Layer 2 domain context |
-| `cairn_query` | Search `.cairn/history/` — Layer 3 events, with domain/type filters |
-| `cairn_match` | Match keywords (and optional `files` paths) against domain `hooks` — returns confidence levels (`high`/`medium`/`low`) and related domain advisory |
-| `cairn_write_history` | Write a history entry directly to `.cairn/history/` (for pure-MCP clients) |
-| `cairn_doctor` | Run `cairn doctor --json` and return structured health check results |
-
-### Configuration
-
-**Claude Code** — add to `~/.claude/mcp.json` (global) or `.claude/mcp.json` (project):
 ```json
 {
     "mcpServers": {
-        "cairn": {
-            "command": "cairn-mcp-server"
-        }
+        "cairn": { "command": "cairn-mcp-server" }
     }
 }
 ```
 
-**Cursor** — add to `.cursor/mcp.json` in your project:
+**Cursor** — `.cursor/mcp.json`:
+
 ```json
 {
     "mcpServers": {
-        "cairn": {
-            "command": "cairn-mcp-server"
-        }
+        "cairn": { "command": "cairn-mcp-server" }
     }
 }
 ```
 
-The server resolves `.cairn/` by walking up from `process.cwd()`, or via the
-`CAIRN_ROOT` environment variable if you need to pin to a specific project.
+### Verify
 
-See [`mcp/README.md`](mcp/README.md) for full configuration options and the recommended AI workflow.
+```bash
+cairn status    # System state overview
+cairn doctor    # Health diagnostics
+```
+
+---
+
+## Daily Usage
+
+After init and MCP configuration, daily operation is fully automatic:
+
+1. **Session start** — AI calls `cairn_context()` to load constraints
+2. **During work** — AI calls `cairn_signal()` when it detects decisions, rejections, or constraints
+3. **Session end** — AI calls `cairn_session_end()` to process signals and regenerate views
+
+The only human action: periodically run `cairn review` to approve staged entries.
+
+---
+
+## MCP Tools
+
+| Tool | Purpose | Stability |
+|------|---------|-----------|
+| `cairn_context` | Get constraints before working | Stable |
+| `cairn_signal` | Report decisions, rejections, constraints | Stable |
+| `cairn_session_end` | End-of-session batch processing | Stable |
+| `cairn_status` | System status overview | Stable |
+| `cairn_plan` | History-aware planning framework | Experimental |
+| `cairn_doctor` | Health diagnostics | Experimental |
+
+See [`mcp/README.md`](mcp/README.md) for full tool schemas and recommended workflow.
 
 ---
 
 ## Supported AI Tools
 
-| Tool | Guide block file | Install Location |
-|------|-----------------|-----------------|
-| Claude Code | `skills/claude-code/SKILL.md` (canonical) | `.cairn/SKILL.md` + `.claude/CLAUDE.md` |
-| Cursor | `skills/cursor.mdc` | `.cairn/SKILL.md` + `.cursor/rules/cairn.mdc` |
-| Cline / Roo Code | `skills/cline.md` | `.cairn/SKILL.md` + `.clinerules` |
-| Windsurf | `skills/windsurf.md` | `.cairn/SKILL.md` + `.windsurfrules` |
-| GitHub Copilot | `skills/copilot-instructions.md` | `.cairn/SKILL.md` + `.github/copilot-instructions.md` |
-| Codex CLI | `skills/codex.md` | `.cairn/SKILL.md` + `AGENTS.md` |
-| Gemini CLI | `skills/gemini-cli.md` | `.cairn/SKILL.md` + `GEMINI.md` |
-| OpenCode | `skills/opencode.md` | `.cairn/SKILL.md` + `AGENTS.md` |
+### MCP (primary path)
 
-`cairn init` handles installation for all eight tools automatically. The full protocol lives
-in `.cairn/SKILL.md` (copied from `skills/claude-code/SKILL.md`); each tool's config file
-gets a 12-line guide block that points to it.
+| Tool | Config Location |
+|------|----------------|
+| Claude Code | `~/.claude/mcp.json` or `.claude/mcp.json` |
+| Cursor | `.cursor/mcp.json` |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+
+### Skill Adapters (fallback path)
+
+For tools without MCP support, skill adapter files read `views/` directly:
+
+| Tool | Adapter File | Install Location |
+|------|-------------|-----------------|
+| Claude Code | `skills/claude-code/SKILL.md` (canonical) | `.claude/CLAUDE.md` (append) |
+| Cursor | `skills/cursor.mdc` | `.cursor/rules/cairn.mdc` |
+| Cline / Roo Code | `skills/cline.md` | `.clinerules` (append) |
+| Windsurf | `skills/windsurf.md` | `.windsurfrules` (append) |
+| GitHub Copilot | `skills/copilot-instructions.md` | `.github/copilot-instructions.md` (append) |
+| Codex CLI | `skills/codex.md` | `AGENTS.md` (append) |
+| Gemini CLI | `skills/gemini-cli.md` | `GEMINI.md` (append) |
+| OpenCode | `skills/opencode.md` | `AGENTS.md` (append) |
 
 The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repository.
 
 ---
 
-## Example
+## CLI
 
-[`examples/saas-18mo/`](examples/saas-18mo/) is a complete three-layer example from an
-18-month SaaS project — the same project from the story at the top of this document:
+| Command | Description |
+|---------|-------------|
+| `cairn init` | Interactive project initialization |
+| `cairn status` | System state overview |
+| `cairn review` | Review staged entries (accept / edit / skip / delete) |
+| `cairn doctor` | Health diagnostics |
+| `cairn stage confirm` | Confirm stage advisory |
+| `cairn memory show <id>` | View a memory entry |
+| `cairn memory archive <id>` | Archive a memory entry |
 
-- `output.md` — stage `early-growth`, no-go rules (tRPC, Redux, Kubernetes), active stack, accepted debts
-- Three domain files: `api-layer`, `auth`, `state-management`
-- Four history events: state management migration, tRPC rejection, auth debt acceptance, growth stage transition
+---
+
+## Examples
+
+- [`examples/saas-18mo/`](examples/saas-18mo/) — v1 format, 18-month SaaS project
+  (stage `early-growth`, no-go: tRPC/Redux/Kubernetes, 3 domains, 4 history events)
 
 ---
 
@@ -395,12 +263,13 @@ The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repos
 
 | Document | Contents |
 |----------|----------|
-| [`spec/FORMAT.md`](spec/FORMAT.md) | Complete format reference for all three layers (authoritative) |
-| [`spec/TASK-COMPLETION-PROTOCOL.md`](spec/TASK-COMPLETION-PROTOCOL.md) | Task completion protocol: reflection block format and doctor signals |
-| [`spec/DESIGN.md`](spec/DESIGN.md) | Why Cairn is designed the way it is |
+| [`spec/FORMAT.md`](spec/FORMAT.md) | Complete schema reference for all `.cairn/` data files |
+| [`spec/DESIGN.md`](spec/DESIGN.md) | Design rationale: dual-ear, Trust Router, stage engine, memory/views separation |
+| [`spec/TASK-COMPLETION-PROTOCOL.md`](spec/TASK-COMPLETION-PROTOCOL.md) | v2 task completion: MCP signal protocol |
 | [`spec/vs-adr.md`](spec/vs-adr.md) | How Cairn relates to Architecture Decision Records |
-| [`spec/adoption-guide.md`](spec/adoption-guide.md) | Step-by-step Init and Reactive adoption guide |
-| [`mcp/README.md`](mcp/README.md) | MCP Server configuration and tool reference |
+| [`spec/adoption-guide.md`](spec/adoption-guide.md) | Install, daily usage, and v1 migration guide |
+| [`spec/glossary.md`](spec/glossary.md) | Terminology reference |
+| [`mcp/README.md`](mcp/README.md) | MCP Server tool schemas and configuration |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 
 ---

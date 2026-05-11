@@ -1,0 +1,44 @@
+id: mem_2023_09_trpc_rejection
+type: rejection
+domain: api-layer
+scope: local
+status: active
+health:
+  state: ok
+  reason: null
+confidence:
+  level: high
+source:
+  kind: git-revert
+  refs:
+    - type: commit
+      id: abc123def
+  captured_at: "2023-09-15T00:00:00Z"
+subject:
+  name: tRPC
+  category: api-framework
+summary: Tried tRPC for 2 weeks; rolled back due to REST client integration issues
+rejected:
+  what: tRPC
+  reason: >
+    Existing REST clients (mobile app, third-party integrations) could not
+    consume tRPC endpoints without a translation layer. The translation layer
+    negated tRPC's type-safety benefits.
+chosen:
+  what: REST (Express + Zod validation)
+  reason: >
+    Existing REST infrastructure works. Zod schemas provide runtime validation
+    without requiring client-side changes.
+behavior_effect:
+  type: avoid_suggestion
+  instruction: Do not suggest tRPC for API layer
+revisit:
+  when:
+    - All API consumers are TypeScript
+    - Mobile app is retired or rebuilt
+  status: not_met
+relations:
+  related: []
+  conflicts: []
+created_at: "2023-09-15T00:00:00Z"
+updated_at: "2023-09-15T00:00:00Z"

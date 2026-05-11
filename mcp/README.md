@@ -2,29 +2,114 @@
 
 # Cairn MCP Server
 
-An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that exposes structured tool access to the Cairn three-layer memory system (`.cairn/` directory).
+An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that provides
+AI tools with typed access to Cairn's dynamic memory engine — signal capture, trust-routed
+memory, and constraint views.
 
 ## Why
 
-The MCP server upgrades the precision of Cairn's domain injection from the behavior layer (AI reads skill files and infers when to load context) to the tool layer (machine-precise keyword matching against domain frontmatter `hooks` fields). This removes the need for each AI tool to handle raw file injection manually.
+v2 Cairn is a dynamic memory engine: project signals are captured automatically from
+Git history and AI conversations, routed through a Trust Router (L0–L3), and consolidated
+into structured memory. The MCP Server is the primary interface — AI tools call typed
+tools instead of reading raw files.
+
+For tools that don't support MCP, `views/` provides a read-only fallback (see
+[Degraded Mode](#degraded-mode)).
 
 ## Tools
 
-| Tool | Description |
-|------|-------------|
-| `cairn_output` | Read `.cairn/output.md` — Layer 1 global constraints (stage, no-go, hooks, stack, debt) |
-| `cairn_domain` | Read `.cairn/domains/<name>.md` — Layer 2 domain design context |
-| `cairn_query` | Search `.cairn/history/` — Layer 3 structured source events, with domain/type filters |
-| `cairn_write_history` | Write a new decision event directly to `.cairn/history/` after a task crystallizes |
-| `cairn_doctor` | Run `cairn doctor --json` and return structured health check results |
-| `cairn_match` | Match keywords (and optional `files` paths) against domain `hooks` — returns confidence levels (`high`/`medium`/`low`) and related domain advisory |
+Six MCP tools, four stable and two experimental:
 
-## Resources
+### Stable
 
-| URI | Description |
-|-----|-------------|
-| `cairn://output` | Static read of `output.md` |
-| `cairn://domain/{name}` | Template read of any domain file |
+| Tool | Description | Writes Memory? |
+|------|-------------|---------------|
+| `cairn_context` | Get project constraints before working. Returns: stage advisory, no-go list, relevant domains, active debt, warnings. | No (read-only) |
+| `cairn_signal` | Report a project signal from conversation: user rejection, decision, constraint, historical reference, debt acceptance. Routed through Trust Router. | Indirect (via Trust Router) |
+| `cairn_session_end` | End-of-session processing: batch L1 signals, create session record, regenerate views. | Indirect (via Trust Router) |
+| `cairn_status` | System status: memory count, staged count, signals count, conflicts, stale domains, stage advisory. | No (read-only) |
+
+### Experimental
+
+| Tool | Description | Writes Memory? |
+|------|-------------|---------------|
+| `cairn_plan` | History-aware planning framework. Returns historical constraints and recommended direction for a task. | No (read-only) |
+| `cairn_doctor` | Health diagnostics: token budget check, orphan no-gos, stale domains, conflicts, staged backlog. | No (read-only) |
+
+### Input Schemas
+
+**`cairn_context`**
+```json
+{
+    "task": "string (optional) — current task description",
+    "files": "string[] (optional) — files being worked on"
+}
+```
+
+**`cairn_signal`**
+```json
+{
+    "type": "enum — user-rejection | user-constraint | historical-reference | decision | debt-acceptance | ...",
+    "domain": "string (optional) — affected domain",
+    "details": {
+        "what": "string — what happened",
+        "reason": "string (optional) — why",
+        "rejected_alternatives": "string[] (optional)",
+        "revisit_when": "string[] (optional)"
+    },
+    "evidence": {
+        "user_said": "string (optional)",
+        "files": "string[] (optional)",
+        "commit": "string (optional)"
+    }
+}
+```
+
+**`cairn_session_end`**
+```json
+{
+    "summary": "string — session summary",
+    "changed_domains": "string[] (optional)",
+    "decisions_made": "string[] (optional)",
+    "unresolved": "string[] (optional)"
+}
+```
+
+**`cairn_plan`**
+```json
+{
+    "task": "string — task to plan for"
+}
+```
+
+`cairn_status` and `cairn_doctor` take no input.
+
+## Recommended Workflow
+
+```
+Session start:
+  cairn_context({ task: "refactor auth module" })
+  → Returns constraints: no-go list, relevant domains, active debt
+
+During work:
+  cairn_signal({ type: "user-rejection", domain: "auth", details: { what: "OAuth2 PKCE", reason: "too complex for current team size" } })
+  → Trust Router routes: L1 candidate / L2 staged / L3 auto-write
+
+  cairn_signal({ type: "decision", domain: "api-layer", details: { what: "REST stays", rejected_alternatives: ["GraphQL"] } })
+  → Routed based on trust policy
+
+Before design tasks:
+  cairn_plan({ task: "redesign notification system" })
+  → Returns historical constraints and recommended direction
+
+Session end:
+  cairn_session_end({ summary: "Refactored auth, rejected OAuth2 PKCE", changed_domains: ["auth"] })
+  → Batch processes signals, regenerates views, creates session record
+
+Diagnostics (any time):
+  cairn_status()
+  cairn_doctor()
+```
 
 ## Installation
 
@@ -41,6 +126,8 @@ cd mcp/
 npm install
 npm run build
 ```
+
+Requires Node.js 18+.
 
 ### Configuration
 
@@ -122,53 +209,33 @@ To pin the server to a specific project:
 }
 ```
 
-## Recommended AI workflow
+## CLI
 
-```
-# At the start of every session:
-cairn_output()
+The same package provides a `cairn` CLI for initialization and maintenance:
 
-# When the user's request touches a domain:
-cairn_match(["api", "endpoint", "design"])
-→ returns: "api-layer (matched: api, endpoint)"
+| Command | Description |
+|---------|-------------|
+| `cairn init` | Interactive project initialization (creates `.cairn/` with config, state, and directory structure) |
+| `cairn status` | System state overview (memory count, staged count, stage, conflicts) |
+| `cairn review` | Review staged entries: accept / edit / skip / delete |
+| `cairn doctor` | Health diagnostics |
+| `cairn stage confirm` | Confirm stage advisory as official |
+| `cairn memory show <id>` | View a single memory entry |
+| `cairn memory archive <id>` | Archive a memory entry |
 
-cairn_domain("api-layer")
-→ returns full domain context with rejected paths + known pitfalls
+## Degraded Mode
 
-# When you need full historical detail:
-cairn_query(domain="api-layer", type="rejection")
+For AI tools that don't support MCP, `views/` provides read-only access:
 
-# After a task produces a recordable decision:
-cairn_write_history(
-  type="rejection",
-  domain="api-layer",
-  scope="domain",
-  status="active",
-  behavior_effect="never_suggest",
-  confidence="high",
-  ...
-)
-→ writes a canonical entry to .cairn/history/
+- `views/output.md` — global constraints (same format as v1 `output.md`)
+- `views/domains/*.md` — per-domain summaries
+- `views/stage.md` — stage advisory details
 
-# After writing memory or before finishing a session:
-cairn_doctor()
-→ returns JSON health checks and write-back drift signals
-```
+Views are auto-generated from memory whenever memory changes. They are always
+a consistent snapshot of the last known state.
 
-## Write-back Workflow
-
-For v0.0.12+, there is no MCP staging ceremony. AI assistants maintain `.cairn/`
-directly using either their native file tools or the `cairn_write_history` MCP tool.
-After writing memory, run `cairn_doctor` to verify the structure and surface stale
-domains or write-back drift.
-
-```text
-1. Read cairn_output at session start.
-2. Use cairn_match and cairn_domain before planning in a matched domain.
-3. Use cairn_query when full historical reasoning is needed.
-4. Use cairn_write_history only after a real decision, rejection, transition, debt, or experiment crystallizes. New entries include structured memory fields; omitted values are inferred conservatively from the entry type.
-5. Run cairn_doctor before final response when memory was changed.
-```
+Skill adapter files for non-MCP tools read `views/` directly. See each adapter
+in the `skills/` directory.
 
 ## Development
 
@@ -182,28 +249,43 @@ npm run dev           # Run server directly (tsx, no build needed)
 ## Architecture
 
 ```
-mcp/
-├── src/
-│   ├── index.ts              # stdio entry point
-│   ├── server.ts             # McpServer factory: registers all tools + resources
-│   ├── paths.ts              # .cairn/ root detection
-│   ├── hooks.ts              # Frontmatter hooks index for cairn_match
-│   ├── staging.ts            # History-entry serialization and filename helpers
-│   ├── errors.ts             # Typed error codes
-│   ├── parsers/
-│   │   ├── frontmatter.ts    # YAML frontmatter extraction (domain files)
-│   │   ├── output.ts         # output.md section parser
-│   │   ├── domain.ts         # Domain file parser
-│   │   └── history.ts        # History file parser (bare key:value format)
-│   └── tools/
-│       ├── cairn-output.ts
-│       ├── cairn-domain.ts
-│       ├── cairn-query.ts
-│       ├── cairn-write-history.ts
-│       ├── cairn-doctor.ts
-│       └── cairn-match.ts
-└── tests/
-    ├── fixtures/.cairn/      # Real example data from examples/saas-18mo/
-    ├── parsers/
-    └── tools/
+mcp/src/
+├── index.ts              # MCP stdio entry point
+├── cli.ts                # CLI entry point
+├── server.ts             # McpServer factory: registers 6 tools
+├── paths.ts              # .cairn/ root detection + path resolution
+├── tokens.ts             # Token counting utilities
+├── errors.ts             # Typed error codes
+├── schemas/              # Zod schemas for all data types
+│   ├── memory-entry.ts   # MemoryEntry (decision, rejection, transition, debt, experiment)
+│   ├── signal.ts         # Signal (10 signal types, L0-L3 routing)
+│   ├── staged-entry.ts   # StagedEntry (pending human review)
+│   ├── config.ts         # Config (domains, trust_policy)
+│   ├── stage-snapshot.ts # StageSnapshot (exploration/growth/maturity/maintenance)
+│   └── session-record.ts # SessionRecord
+├── stores/               # YAML file read/write layer
+│   ├── memory-store.ts   # memory/*.yaml CRUD
+│   ├── signal-store.ts   # signals/*.yaml CRUD
+│   ├── staged-store.ts   # staged/*.yaml CRUD + accept/reject
+│   └── state-store.ts    # state.yaml read/write
+├── engines/              # Core processing engines
+│   ├── views-engine.ts   # Generates views/ from memory (token-budget-aware)
+│   ├── trust-router.ts   # L0-L3 signal routing with hard rules
+│   ├── git-ear.ts        # Git history signal detection
+│   ├── stage-engine.ts   # Project stage inference (rule-based)
+│   └── memory-engine.ts  # Memory health + conflict detection
+├── tools/                # MCP tool implementations
+│   ├── cairn-context.ts
+│   ├── cairn-signal.ts
+│   ├── cairn-session-end.ts
+│   ├── cairn-status.ts
+│   ├── cairn-plan.ts
+│   └── cairn-doctor.ts
+└── cli/                  # CLI subcommands
+    ├── init.ts
+    ├── status.ts
+    ├── review.ts
+    ├── doctor.ts
+    ├── stage.ts
+    └── memory.ts
 ```

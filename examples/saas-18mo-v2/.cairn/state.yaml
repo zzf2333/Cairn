@@ -1,0 +1,14 @@
+last_git_scan: "a1b2c3d4"
+last_session_commit: "e5f6g7h8"
+
+stage:
+  phase: growth
+  confidence: 0.65
+  status: advisory
+  evidence:
+    - "commitTrend > 1.2 in recent 90 days"
+    - "dependency change rate < 0.15"
+  guidance:
+    - "Focus on feature velocity over architecture cleanup"
+    - "Resist major stack changes unless blocking growth"
+  last_updated: "2024-09-15T00:00:00Z"

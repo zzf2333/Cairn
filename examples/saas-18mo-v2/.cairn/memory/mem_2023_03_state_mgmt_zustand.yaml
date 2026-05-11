@@ -1,0 +1,43 @@
+id: mem_2023_03_state_mgmt_zustand
+type: transition
+domain: state-management
+scope: local
+status: active
+health:
+  state: ok
+  reason: null
+confidence:
+  level: high
+source:
+  kind: conversation
+  refs:
+    - type: session
+      id: sess_2023_03_20
+  captured_at: "2023-03-20T00:00:00Z"
+subject:
+  name: Zustand
+  category: state-management
+summary: Migrated from Redux to Zustand; boilerplate cost too high for 2-person team
+rejected:
+  what: Redux, Redux Toolkit
+  reason: >
+    Redux boilerplate overhead unsustainable for a 2-person team.
+    RTK improved ergonomics but still too heavy for our use case.
+chosen:
+  what: Zustand
+  reason: >
+    Minimal API, zero boilerplate, sufficient for current state complexity.
+    Team can maintain without dedicated state management expertise.
+behavior_effect:
+  type: avoid_suggestion
+  instruction: Do not suggest Redux or Redux Toolkit for state management
+revisit:
+  when:
+    - Team grows beyond 5 engineers
+    - State complexity requires normalized stores with relationships
+  status: not_met
+relations:
+  related: []
+  conflicts: []
+created_at: "2023-03-20T00:00:00Z"
+updated_at: "2023-03-20T00:00:00Z"

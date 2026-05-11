@@ -2,29 +2,111 @@ English | [中文](README.zh.md)
 
 # Cairn MCP Server
 
-一个 [MCP（Model Context Protocol）](https://modelcontextprotocol.io) 服务器，提供对 Cairn 三层记忆系统（`.cairn/` 目录）的结构化工具访问。
+一个 [MCP（Model Context Protocol）](https://modelcontextprotocol.io) 服务器，为 AI 工具
+提供对 Cairn 动态记忆引擎的类型化访问——信号捕获、信任路由记忆和约束视图。
 
 ## 为什么需要 MCP Server
 
-MCP Server 将 Cairn 域注入的精度从行为层（AI 读取 Skill 文件并推断何时加载上下文）升级到工具层（机器精确地将关键词与域前置元数据的 `hooks` 字段匹配）。这消除了每个 AI 工具手动处理原始文件注入的需要。
+v2 Cairn 是一个动态记忆引擎：项目信号从 Git 历史和 AI 对话中自动捕获，经过 Trust Router
+（L0–L3）路由，整合为结构化记忆。MCP Server 是主要接口——AI 工具调用类型化工具，而非读取
+原始文件。
+
+不支持 MCP 的工具可通过 `views/` 目录获取只读降级访问（见[降级模式](#降级模式)）。
 
 ## 工具列表
 
-| 工具 | 描述 |
-|------|------|
-| `cairn_output` | 读取 `.cairn/output.md`——第一层全局约束（stage、no-go、hooks、stack、debt） |
-| `cairn_domain` | 读取 `.cairn/domains/<name>.md`——第二层域上下文 |
-| `cairn_query` | 搜索 `.cairn/history/`——第三层原始决策事件，支持域/类型过滤 |
-| `cairn_write_history` | 在任务形成明确决策后，直接写入新的 `.cairn/history/` 条目 |
-| `cairn_doctor` | 运行 `cairn doctor --json` 并返回结构化健康检查结果 |
-| `cairn_match` | 将关键词和可选文件路径与域 `hooks` 匹配，返回置信度和相关域建议 |
+六个 MCP 工具，四个稳定版，两个实验版：
 
-## Resources（资源）
+### 稳定版
 
-| URI | 描述 |
-|-----|------|
-| `cairn://output` | 静态读取 `output.md` |
-| `cairn://domain/{name}` | 模板读取任意域文件 |
+| 工具 | 描述 | 是否写入记忆？ |
+|------|------|-------------|
+| `cairn_context` | 获取项目约束。返回：阶段建议、no-go 列表、相关域、活跃债务、警告。 | 否（只读） |
+| `cairn_signal` | 报告对话中的项目信号：用户否决、决策、约束、历史引用、债务接受。经 Trust Router 路由。 | 间接（经 Trust Router） |
+| `cairn_session_end` | 会话结束处理：批量处理 L1 信号、创建会话记录、重新生成视图。 | 间接（经 Trust Router） |
+| `cairn_status` | 系统状态：记忆数、待审数、信号数、冲突、过期域、阶段建议。 | 否（只读） |
+
+### 实验版
+
+| 工具 | 描述 | 是否写入记忆？ |
+|------|------|-------------|
+| `cairn_plan` | 历史感知规划框架。返回任务的历史约束和推荐方向。 | 否（只读） |
+| `cairn_doctor` | 健康诊断：token 预算检查、孤立 no-go、过期域、冲突、待审积压。 | 否（只读） |
+
+### 输入 Schema
+
+**`cairn_context`**
+```json
+{
+    "task": "string（可选）— 当前任务描述",
+    "files": "string[]（可选）— 正在处理的文件"
+}
+```
+
+**`cairn_signal`**
+```json
+{
+    "type": "enum — user-rejection | user-constraint | historical-reference | decision | debt-acceptance | ...",
+    "domain": "string（可选）— 受影响的域",
+    "details": {
+        "what": "string — 发生了什么",
+        "reason": "string（可选）— 为什么",
+        "rejected_alternatives": "string[]（可选）",
+        "revisit_when": "string[]（可选）"
+    },
+    "evidence": {
+        "user_said": "string（可选）",
+        "files": "string[]（可选）",
+        "commit": "string（可选）"
+    }
+}
+```
+
+**`cairn_session_end`**
+```json
+{
+    "summary": "string — 会话摘要",
+    "changed_domains": "string[]（可选）",
+    "decisions_made": "string[]（可选）",
+    "unresolved": "string[]（可选）"
+}
+```
+
+**`cairn_plan`**
+```json
+{
+    "task": "string — 要规划的任务"
+}
+```
+
+`cairn_status` 和 `cairn_doctor` 无需输入参数。
+
+## 推荐工作流程
+
+```
+会话开始：
+  cairn_context({ task: "重构认证模块" })
+  → 返回约束：no-go 列表、相关域、活跃债务
+
+工作过程中：
+  cairn_signal({ type: "user-rejection", domain: "auth", details: { what: "OAuth2 PKCE", reason: "团队规模太小，太复杂" } })
+  → Trust Router 路由：L1 候选 / L2 待审 / L3 自动写入
+
+  cairn_signal({ type: "decision", domain: "api-layer", details: { what: "继续使用 REST", rejected_alternatives: ["GraphQL"] } })
+  → 根据信任策略路由
+
+设计任务前：
+  cairn_plan({ task: "重新设计通知系统" })
+  → 返回历史约束和推荐方向
+
+会话结束：
+  cairn_session_end({ summary: "重构认证，拒绝 OAuth2 PKCE", changed_domains: ["auth"] })
+  → 批量处理信号，重新生成视图，创建会话记录
+
+诊断（任何时候）：
+  cairn_status()
+  cairn_doctor()
+```
 
 ## 安装
 
@@ -41,6 +123,8 @@ cd mcp/
 npm install
 npm run build
 ```
+
+需要 Node.js 18+。
 
 ### 配置
 
@@ -59,7 +143,6 @@ npm run build
 ```
 
 源码方式：
-
 ```json
 {
     "mcpServers": {
@@ -106,7 +189,7 @@ npm run build
 1. `CAIRN_ROOT` 环境变量（如需固定到特定项目，在 MCP 配置中设置）
 2. 从 `process.cwd()` 向上遍历直到找到 `.cairn/`
 
-如果两者都找不到 `.cairn/` 目录，所有工具调用都会返回可操作的错误信息。
+如果两者都找不到 `.cairn/` 目录，所有工具调用返回可操作的错误信息。
 
 要将服务器固定到特定项目：
 
@@ -123,52 +206,31 @@ npm run build
 }
 ```
 
-## 推荐 AI 工作流程
+## CLI
 
-```
-# 在每次会话开始时：
-cairn_output()
+同一个包提供 `cairn` CLI 用于初始化和维护：
 
-# 当用户请求涉及某个域时：
-cairn_match(["api", "endpoint", "design"])
-→ 返回："api-layer (matched: api, endpoint)"
+| 命令 | 描述 |
+|------|------|
+| `cairn init` | 交互式项目初始化（创建 `.cairn/` 目录结构、配置和状态） |
+| `cairn status` | 系统状态概览（记忆数、待审数、阶段、冲突） |
+| `cairn review` | 审核待审条目：接受 / 编辑 / 跳过 / 删除 |
+| `cairn doctor` | 健康诊断 |
+| `cairn stage confirm` | 确认阶段建议为正式状态 |
+| `cairn memory show <id>` | 查看单条记忆 |
+| `cairn memory archive <id>` | 归档一条记忆 |
 
-cairn_domain("api-layer")
-→ 返回包含被拒路径和已知陷阱的完整域上下文
+## 降级模式
 
-# 当你需要完整的历史细节时：
-cairn_query(domain="api-layer", type="rejection")
+不支持 MCP 的 AI 工具可通过 `views/` 获取只读访问：
 
-# 当任务形成可记录的决策时：
-cairn_write_history(
-  type="rejection",
-  domain="api-layer",
-  scope="domain",
-  status="active",
-  behavior_effect="never_suggest",
-  confidence="high",
-  ...
-)
-→ 写入正式 .cairn/history/ 条目
+- `views/output.md` — 全局约束（格式兼容 v1 `output.md`）
+- `views/domains/*.md` — 按域摘要
+- `views/stage.md` — 阶段建议详情
 
-# 写入记忆后或会话结束前：
-cairn_doctor()
-→ 返回 JSON 健康检查和写回漂移信号
-```
+Views 在记忆变更时自动重新生成，始终是最后已知状态的一致快照。
 
-## 写回工作流
-
-v0.0.12 起不再使用 MCP 暂存流程。AI 助手使用原生文件工具或
-`cairn_write_history` 直接维护 `.cairn/`。写入记忆后，运行
-`cairn_doctor` 验证结构，并发现过期域或写回漂移。
-
-```text
-1. 会话开始读取 cairn_output。
-2. 规划某个域前使用 cairn_match 与 cairn_domain。
-3. 需要完整历史原因时使用 cairn_query。
-4. 只有在真实 decision / rejection / transition / debt / experiment 形成后，才使用 cairn_write_history。新条目包含结构化记忆字段；省略时会按条目类型保守推断。
-5. 改动记忆后，在最终回复前运行 cairn_doctor。
-```
+非 MCP 工具的 Skill 适配文件直接读取 `views/`。参见 `skills/` 目录中的各适配文件。
 
 ## 开发
 
@@ -182,28 +244,43 @@ npm run dev           # 直接运行服务器（使用 tsx，无需构建）
 ## 架构
 
 ```
-mcp/
-├── src/
-│   ├── index.ts              # stdio 入口点
-│   ├── server.ts             # McpServer 工厂：注册所有工具和资源
-│   ├── paths.ts              # .cairn/ 根目录检测
-│   ├── hooks.ts              # 用于 cairn_match 的前置元数据 hooks 索引
-│   ├── staging.ts            # 历史条目序列化与文件名辅助逻辑
-│   ├── errors.ts             # 类型化错误码
-│   ├── parsers/
-│   │   ├── frontmatter.ts    # YAML 前置元数据提取（域文件）
-│   │   ├── output.ts         # output.md 章节解析器
-│   │   ├── domain.ts         # 域文件解析器
-│   │   └── history.ts        # 历史文件解析器（裸 key:value 格式）
-│   └── tools/
-│       ├── cairn-output.ts
-│       ├── cairn-domain.ts
-│       ├── cairn-query.ts
-│       ├── cairn-write-history.ts
-│       ├── cairn-doctor.ts
-│       └── cairn-match.ts
-└── tests/
-    ├── fixtures/.cairn/      # 来自 examples/saas-18mo/ 的真实示例数据
-    ├── parsers/
-    └── tools/
+mcp/src/
+├── index.ts              # MCP stdio 入口
+├── cli.ts                # CLI 入口
+├── server.ts             # McpServer 工厂：注册 6 个工具
+├── paths.ts              # .cairn/ 根目录检测 + 路径解析
+├── tokens.ts             # Token 计数工具
+├── errors.ts             # 类型化错误码
+├── schemas/              # 所有数据类型的 Zod schemas
+│   ├── memory-entry.ts   # MemoryEntry（decision, rejection, transition, debt, experiment）
+│   ├── signal.ts         # Signal（10 种信号类型，L0-L3 路由）
+│   ├── staged-entry.ts   # StagedEntry（待人工审核）
+│   ├── config.ts         # Config（domains, trust_policy）
+│   ├── stage-snapshot.ts # StageSnapshot（exploration/growth/maturity/maintenance）
+│   └── session-record.ts # SessionRecord
+├── stores/               # YAML 文件读写层
+│   ├── memory-store.ts   # memory/*.yaml 增删改查
+│   ├── signal-store.ts   # signals/*.yaml 增删改查
+│   ├── staged-store.ts   # staged/*.yaml 增删改查 + 接受/拒绝
+│   └── state-store.ts    # state.yaml 读写
+├── engines/              # 核心处理引擎
+│   ├── views-engine.ts   # 从 memory 生成 views/（token 预算感知）
+│   ├── trust-router.ts   # L0-L3 信号路由 + 硬规则
+│   ├── git-ear.ts        # Git 历史信号检测
+│   ├── stage-engine.ts   # 项目阶段推断（规则版）
+│   └── memory-engine.ts  # 记忆健康检查 + 冲突检测
+├── tools/                # MCP 工具实现
+│   ├── cairn-context.ts
+│   ├── cairn-signal.ts
+│   ├── cairn-session-end.ts
+│   ├── cairn-status.ts
+│   ├── cairn-plan.ts
+│   └── cairn-doctor.ts
+└── cli/                  # CLI 子命令
+    ├── init.ts
+    ├── status.ts
+    ├── review.ts
+    ├── doctor.ts
+    ├── stage.ts
+    └── memory.ts
 ```
