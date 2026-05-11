@@ -1,7 +1,7 @@
 {
     "name": "cairn-mcp-server",
-    "version": "0.1.2",
-    "description": "MCP server for Cairn — AI path-dependency constraint system",
+    "version": "2.0.0-alpha.0",
+    "description": "Cairn — AI-maintained project memory engine via MCP",
     "type": "module",
     "license": "MIT",
     "author": "Cairn Contributors",
@@ -18,7 +18,7 @@
         "mcp",
         "cairn",
         "ai",
-        "constraints",
+        "memory",
         "model-context-protocol"
     ],
     "files": [
@@ -30,6 +30,7 @@
         "access": "public"
     },
     "bin": {
+        "cairn": "dist/cli.js",
         "cairn-mcp-server": "dist/index.js"
     },
     "scripts": {
@@ -40,6 +41,7 @@
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.10.0",
+        "simple-git": "^3.27.0",
         "yaml": "^2.7.0",
         "zod": "^3.25.0"
     },

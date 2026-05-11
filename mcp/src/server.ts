@@ -1,343 +1,232 @@
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { handleCairnOutput } from "./tools/cairn-output.js";
-import { handleCairnDomain } from "./tools/cairn-domain.js";
-import { handleCairnQuery } from "./tools/cairn-query.js";
-import { handleCairnWriteHistory } from "./tools/cairn-write-history.js";
+import { resolvePaths, type CairnPaths } from "./paths.js";
+import { formatToolError, toolResult } from "./errors.js";
+import { MemoryStore } from "./stores/memory-store.js";
+import { SignalStore } from "./stores/signal-store.js";
+import { StagedStore } from "./stores/staged-store.js";
+import { StateStore } from "./stores/state-store.js";
+import { ViewsEngine } from "./engines/views-engine.js";
+import { TrustRouter } from "./engines/trust-router.js";
+import { GitEar } from "./engines/git-ear.js";
+import { StageEngine } from "./engines/stage-engine.js";
+import { MemoryEngine } from "./engines/memory-engine.js";
+import { handleCairnContext } from "./tools/cairn-context.js";
+import { handleCairnSignal } from "./tools/cairn-signal.js";
+import { handleCairnSessionEnd } from "./tools/cairn-session-end.js";
+import { handleCairnStatus } from "./tools/cairn-status.js";
+import { handleCairnPlan } from "./tools/cairn-plan.js";
 import { handleCairnDoctor } from "./tools/cairn-doctor.js";
-import { handleCairnMatch } from "./tools/cairn-match.js";
-import { resolvePaths, findCairnRoot } from "./paths.js";
+import {
+    SIGNAL_TYPES,
+    MEMORY_TYPES,
+    BEHAVIOR_EFFECT_TYPES,
+} from "./schemas/index.js";
 
-const VALID_ENTRY_TYPES = [
-    "decision",
-    "rejection",
-    "transition",
-    "debt",
-    "experiment",
-] as const;
+export interface CairnContext {
+    paths: CairnPaths;
+    memoryStore: MemoryStore;
+    signalStore: SignalStore;
+    stagedStore: StagedStore;
+    stateStore: StateStore;
+    viewsEngine: ViewsEngine;
+    trustRouter: TrustRouter;
+    gitEar: GitEar;
+    stageEngine: StageEngine;
+    memoryEngine: MemoryEngine;
+}
 
-/**
- * Create and configure the Cairn MCP server.
- *
- * Registers 6 tools + 2 resources:
- *
- * Tools:
- *   cairn_output         — Read Layer 1 global constraints (output.md)
- *   cairn_domain         — Read a Layer 2 domain design context file
- *   cairn_query          — Search Layer 3 history entries
- *   cairn_write_history  — Write a history entry directly to .cairn/history/
- *   cairn_doctor         — Run health checks, return JSON results
- *   cairn_match          — Match keywords against domain hooks (precise intent detection)
- *
- * Resources:
- *   cairn://output               — Static read of output.md
- *   cairn://domain/{name}        — Template read of a domain file
- */
-export function createCairnServer(): McpServer {
+export function createCairnContext(startDir?: string): CairnContext {
+    const paths = resolvePaths(startDir);
+    const memoryStore = new MemoryStore(paths.memoryDir);
+    const signalStore = new SignalStore(paths.signalsDir);
+    const stagedStore = new StagedStore(paths.stagedDir);
+    const stateStore = new StateStore(paths.stateYaml);
+    const viewsEngine = new ViewsEngine(paths, memoryStore, stateStore);
+    const memoryEngine = new MemoryEngine(memoryStore, viewsEngine);
+    const trustRouter = new TrustRouter(
+        memoryStore,
+        signalStore,
+        stagedStore,
+        memoryEngine,
+        stateStore,
+    );
+    const gitEar = new GitEar(paths.root);
+    const stageEngine = new StageEngine();
+
+    return {
+        paths,
+        memoryStore,
+        signalStore,
+        stagedStore,
+        stateStore,
+        viewsEngine,
+        trustRouter,
+        gitEar,
+        stageEngine,
+        memoryEngine,
+    };
+}
+
+export function createCairnServer(startDir?: string): McpServer {
     const server = new McpServer({
         name: "cairn",
-        version: "0.1.2",
+        version: "2.0.0-alpha.0",
     });
 
-    // =========================================================================
-    // Tools
-    // =========================================================================
+    let ctx: CairnContext | null = null;
 
-    server.registerTool(
-        "cairn_output",
-        {
-            title: "Read Cairn Global Constraints",
-            description:
-                "Read .cairn/output.md — the Layer 1 global constraint file. " +
-                "Contains: stage (project phase), no-go (banned directions), " +
-                "hooks (domain keywords), stack (active tech), debt (accepted debts). " +
-                "Read this at the start of every session.",
-        },
-        () => handleCairnOutput(),
-    );
+    function getCtx(): CairnContext {
+        if (!ctx) {
+            ctx = createCairnContext(startDir);
+        }
+        return ctx;
+    }
 
+    // cairn_context — stable
     server.registerTool(
-        "cairn_domain",
+        "cairn_context",
         {
-            title: "Read Cairn Domain Context",
+            title: "Get Cairn Constraint Context",
             description:
-                "Read a specific .cairn/domains/<name>.md file — Layer 2 domain design context. " +
-                "Contains: current design, trajectory, rejected paths (with re-evaluate conditions), " +
-                "known pitfalls, and open questions. " +
-                "Read this when the user's request matches a domain's hook keywords.",
+                "Get project memory constraints before working. " +
+                "Returns: stage advisory, no-go list, relevant domain summaries, active debts, warnings.",
             inputSchema: {
-                name: z
-                    .string()
-                    .describe(
-                        "Domain name in kebab-case (e.g., 'api-layer', 'auth', 'state-management')",
-                    ),
-            },
-        },
-        (args) => handleCairnDomain(args),
-    );
-
-    server.registerTool(
-        "cairn_query",
-        {
-            title: "Search Cairn History Entries",
-            description:
-                "Search .cairn/history/ entries — Layer 3 raw decision events. " +
-                "Returns full history entries sorted chronologically by decision_date. " +
-                "Use this to look up specific past decisions, rejected alternatives, or accepted debts.",
-            inputSchema: {
-                domain: z
-                    .string()
-                    .optional()
-                    .describe("Filter by domain name (e.g., 'api-layer')"),
-                type: z
-                    .enum(VALID_ENTRY_TYPES)
-                    .optional()
-                    .describe(
-                        "Filter by entry type: decision, rejection, transition, debt, or experiment",
-                    ),
-            },
-        },
-        (args) => handleCairnQuery(args),
-    );
-
-    server.registerTool(
-        "cairn_write_history",
-        {
-            title: "Write a Cairn History Entry",
-            description:
-                "Write a new history entry directly to .cairn/history/ — no staging, no gate. " +
-                "Use this after completing a task that produced a recordable event: " +
-                "significant decision, rejected direction, accepted debt, or tried-and-abandoned approach. " +
-                "The 'rejected' field is the most critical — it records what alternatives were considered " +
-                "and not chosen, preventing AI from re-proposing already-evaluated paths.",
-            inputSchema: {
-                type: z
-                    .enum(VALID_ENTRY_TYPES)
-                    .describe("Entry type: decision, rejection, transition, debt, or experiment"),
-                domain: z
-                    .string()
-                    .describe("Domain name from the project's locked domain list"),
-                scope: z
-                    .enum(["global", "domain", "module"])
-                    .optional()
-                    .describe("Memory scope. Defaults to domain."),
-                status: z
-                    .enum(["active", "superseded", "stale"])
-                    .optional()
-                    .describe("Current validity of this memory. Defaults to active."),
-                behavior_effect: z
-                    .enum(["never_suggest", "avoid", "preserve", "prefer", "revisit"])
-                    .optional()
-                    .describe(
-                        "How this memory should change AI behavior. Defaults are inferred from entry type.",
-                    ),
-                confidence: z
-                    .enum(["high", "medium", "low"])
-                    .optional()
-                    .describe("How strongly this memory is supported. Defaults to high."),
-                decision_date: z
-                    .string()
-                    .regex(/^\d{4}-\d{2}$/)
-                    .describe("When the decision happened (YYYY-MM format)"),
-                summary: z.string().describe("One-sentence summary of what happened"),
-                rejected: z
-                    .string()
-                    .describe(
-                        "MOST CRITICAL: What alternatives were considered and not chosen. " +
-                        "Even for 'decision' types, record what was evaluated and discarded.",
-                    ),
-                chosen: z
-                    .string()
-                    .optional()
-                    .describe("What was chosen instead, when applicable"),
-                reason: z.string().describe("Why this path was taken"),
-                revisit_when: z
-                    .string()
-                    .optional()
-                    .describe("Condition under which this decision should be reconsidered"),
-            },
-        },
-        (args) => handleCairnWriteHistory(args),
-    );
-
-    server.registerTool(
-        "cairn_doctor",
-        {
-            title: "Run Cairn Health Checks",
-            description:
-                "Run 'cairn doctor --json' and return structured health check results. " +
-                "Use at session start or after writing history/domain files to verify .cairn/ is healthy. " +
-                "Returns JSON with: issues (count), output.status, output.tokens, " +
-                "domains_stale[], skill_guide, skill_md, v0011_residue[].",
-        },
-        () => handleCairnDoctor(),
-    );
-
-    server.registerTool(
-        "cairn_match",
-        {
-            title: "Match Keywords to Cairn Domains",
-            description:
-                "Match keywords from the user's request against domain file hooks — " +
-                "precise machine-level intent detection without AI inference. " +
-                "Call this with keywords from the user's request, then call cairn_domain() " +
-                "for each matched domain to load relevant design context.",
-            inputSchema: {
-                keywords: z
-                    .array(z.string())
-                    .describe(
-                        "Keywords from the user's request (e.g., ['api', 'endpoint', 'design'])",
-                    ),
+                task: z.string().optional().describe("Current task description"),
                 files: z
                     .array(z.string())
                     .optional()
-                    .describe(
-                        "File paths currently being edited (repo-relative preferred; absolute paths accepted). " +
-                        "Used for file-path-based confidence scoring alongside keyword matching.",
-                    ),
+                    .describe("Files being worked on"),
             },
         },
-        (args) => handleCairnMatch(args),
-    );
-
-    // =========================================================================
-    // Resources
-    // =========================================================================
-
-    // Static resource: cairn://output → output.md
-    server.registerResource(
-        "cairn-output",
-        "cairn://output",
-        {
-            title: "Cairn Global Constraints",
-            description:
-                "Layer 1: global constraints from .cairn/output.md. " +
-                "Should be loaded at the start of every AI session.",
-            mimeType: "text/markdown",
-        },
-        () => {
+        (args) => {
             try {
-                const paths = resolvePaths();
-                if (!existsSync(paths.outputMd)) {
-                    return {
-                        contents: [
-                            {
-                                uri: "cairn://output",
-                                mimeType: "text/markdown",
-                                text: "# output.md not found\n\nRun `cairn init` to initialize.",
-                            },
-                        ],
-                    };
-                }
-                const content = readFileSync(paths.outputMd, "utf-8");
-                return {
-                    contents: [
-                        {
-                            uri: "cairn://output",
-                            mimeType: "text/markdown",
-                            text: content,
-                        },
-                    ],
-                };
-            } catch {
-                return {
-                    contents: [
-                        {
-                            uri: "cairn://output",
-                            mimeType: "text/markdown",
-                            text: "# Error\n\nNo .cairn/ directory found.",
-                        },
-                    ],
-                };
+                return handleCairnContext(getCtx(), args);
+            } catch (e) {
+                return formatToolError(e);
             }
         },
     );
 
-    // Template resource: cairn://domain/{name} → domains/<name>.md
-    server.registerResource(
-        "cairn-domain",
-        new ResourceTemplate("cairn://domain/{name}", {
-            list: () => {
-                try {
-                    const root = findCairnRoot();
-                    if (!root) return { resources: [] };
-
-                    const domainsDir = join(root, ".cairn", "domains");
-                    const files = existsSync(domainsDir)
-                        ? readdirSync(domainsDir).filter((f) => f.endsWith(".md"))
-                        : [];
-
-                    return {
-                        resources: files.map((f) => {
-                            const name = f.replace(/\.md$/, "");
-                            return {
-                                uri: `cairn://domain/${name}`,
-                                name: `Cairn domain: ${name}`,
-                                mimeType: "text/markdown",
-                            };
-                        }),
-                    };
-                } catch {
-                    return { resources: [] };
-                }
-            },
-        }),
+    // cairn_signal — stable
+    server.registerTool(
+        "cairn_signal",
         {
-            title: "Cairn Domain Context",
+            title: "Report a Signal to Cairn",
             description:
-                "Layer 2: domain design context from .cairn/domains/<name>.md",
-            mimeType: "text/markdown",
+                "Report a project signal from conversation. " +
+                "Use when: user rejects a suggestion, references past decisions, " +
+                "states constraints, or makes a significant decision.",
+            inputSchema: {
+                type: z
+                    .enum(SIGNAL_TYPES)
+                    .describe("Signal type"),
+                domain: z.string().optional().describe("Affected domain"),
+                details: z.object({
+                    what: z.string().describe("What happened"),
+                    reason: z.string().optional().describe("Why"),
+                    rejected_alternatives: z
+                        .array(z.string())
+                        .optional()
+                        .describe("Alternatives considered and rejected"),
+                    revisit_when: z
+                        .array(z.string())
+                        .optional()
+                        .describe("Conditions to revisit"),
+                }),
+                evidence: z.object({
+                    user_said: z.string().optional(),
+                    files: z.array(z.string()).optional(),
+                    commit: z.string().optional(),
+                }),
+            },
         },
-        (uri, { name }) => {
+        (args) => {
             try {
-                const root = findCairnRoot();
-                if (!root) {
-                    return {
-                        contents: [
-                            {
-                                uri: uri.href,
-                                mimeType: "text/markdown",
-                                text: "# Error\n\nNo .cairn/ directory found.",
-                            },
-                        ],
-                    };
-                }
+                return handleCairnSignal(getCtx(), args);
+            } catch (e) {
+                return formatToolError(e);
+            }
+        },
+    );
 
-                const domainFile = join(root, ".cairn", "domains", `${name}.md`);
-                if (!existsSync(domainFile)) {
-                    return {
-                        contents: [
-                            {
-                                uri: uri.href,
-                                mimeType: "text/markdown",
-                                text: `# Domain '${name}' not found\n\nThis domain file has not been created yet.`,
-                            },
-                        ],
-                    };
-                }
+    // cairn_session_end — stable
+    server.registerTool(
+        "cairn_session_end",
+        {
+            title: "End Cairn Session",
+            description:
+                "Call at session end. Processes pending signals, " +
+                "generates session record, regenerates views.",
+            inputSchema: {
+                summary: z.string().describe("Session summary"),
+                changed_domains: z.array(z.string()).optional(),
+                decisions_made: z.array(z.string()).optional(),
+                unresolved: z.array(z.string()).optional(),
+            },
+        },
+        (args) => {
+            try {
+                return handleCairnSessionEnd(getCtx(), args);
+            } catch (e) {
+                return formatToolError(e);
+            }
+        },
+    );
 
-                const content = readFileSync(domainFile, "utf-8");
-                return {
-                    contents: [
-                        {
-                            uri: uri.href,
-                            mimeType: "text/markdown",
-                            text: content,
-                        },
-                    ],
-                };
-            } catch {
-                return {
-                    contents: [
-                        {
-                            uri: uri.href,
-                            mimeType: "text/markdown",
-                            text: `# Error reading domain '${name}'`,
-                        },
-                    ],
-                };
+    // cairn_status — stable
+    server.registerTool(
+        "cairn_status",
+        {
+            title: "Cairn System Status",
+            description:
+                "Get system status: memory count, staged count, signals count, " +
+                "conflicts, stale domains, stage advisory.",
+        },
+        () => {
+            try {
+                return handleCairnStatus(getCtx());
+            } catch (e) {
+                return formatToolError(e);
+            }
+        },
+    );
+
+    // cairn_plan — experimental
+    server.registerTool(
+        "cairn_plan",
+        {
+            title: "Cairn History-Aware Planning (Experimental)",
+            description:
+                "Get historical constraints for a task. Read-only — " +
+                "never writes signals, staged, or memory.",
+            inputSchema: {
+                task: z.string().describe("Task to plan for"),
+            },
+        },
+        (args) => {
+            try {
+                return handleCairnPlan(getCtx(), args);
+            } catch (e) {
+                return formatToolError(e);
+            }
+        },
+    );
+
+    // cairn_doctor — experimental
+    server.registerTool(
+        "cairn_doctor",
+        {
+            title: "Cairn Health Check (Experimental)",
+            description:
+                "Run health diagnostics: token budget, orphan no-gos, " +
+                "stale domains, conflicts, staged backlog.",
+        },
+        () => {
+            try {
+                return handleCairnDoctor(getCtx());
+            } catch (e) {
+                return formatToolError(e);
             }
         },
     );

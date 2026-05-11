@@ -1,11 +1,14 @@
 export enum CairnErrorCode {
     NO_CAIRN_DIR = "NO_CAIRN_DIR",
-    NO_OUTPUT_MD = "NO_OUTPUT_MD",
+    NO_CONFIG = "NO_CONFIG",
+    NO_STATE = "NO_STATE",
+    SCHEMA_VALIDATION = "SCHEMA_VALIDATION",
     DOMAIN_NOT_FOUND = "DOMAIN_NOT_FOUND",
-    INVALID_DOMAIN_NAME = "INVALID_DOMAIN_NAME",
-    NO_HISTORY_ENTRIES = "NO_HISTORY_ENTRIES",
-    STAGING_CONFLICT = "STAGING_CONFLICT",
+    MEMORY_NOT_FOUND = "MEMORY_NOT_FOUND",
+    SIGNAL_NOT_FOUND = "SIGNAL_NOT_FOUND",
+    STAGED_NOT_FOUND = "STAGED_NOT_FOUND",
     INVALID_INPUT = "INVALID_INPUT",
+    FILE_IO = "FILE_IO",
 }
 
 export class CairnError extends Error {
@@ -31,8 +34,6 @@ export function formatToolError(error: unknown): {
     };
 }
 
-export const NO_CAIRN_DIR_MSG =
-    "No .cairn/ directory found in this directory or any parent.\n\n" +
-    "This project has not been initialized with Cairn. To set up:\n" +
-    "  1. Run `cairn init` for interactive setup, or\n" +
-    "  2. Create .cairn/ manually (see spec/FORMAT.md)";
+export function toolResult(text: string): { content: TextContent[] } {
+    return { content: [{ type: "text", text }] };
+}
