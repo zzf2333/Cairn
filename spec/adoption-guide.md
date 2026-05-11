@@ -1,35 +1,71 @@
 [中文](adoption-guide.zh.md) | English
 
-# Cairn Adoption Guide
+# Cairn v2 Adoption Guide
 
-This guide covers two phases of adopting Cairn:
+Cairn v2 is a dynamic memory engine. The v1 workflow of manual init scripts and
+hand-written `output.md` is replaced by a TypeScript CLI with automatic initialization
+and an MCP Server that captures, routes, and consolidates project memory.
 
-- **Phase 1 — Init:** A one-time historical inventory. Target: 30 minutes to a working
-  initial state.
-- **Phase 2 — Reactive:** Long-term operation. Core principle: don't maintain proactively;
-  let AI mistakes tell you what to record.
+This guide covers three phases:
 
----
-
-## Phase 1: Init — One-Time Historical Inventory
-
-### Goal
-
-Establish a working `.cairn/` directory in 30 minutes or less. The goal is a constraint
-system that is good enough to change AI behavior today — not a complete archive of
-every decision the project has ever made.
-
-**Principle: incomplete is fine, wrong is not.**
-
-An empty `## no-go` section is correct if you haven't identified any forbidden directions
-yet. A `## no-go` section filled with guesses is worse than useless — the AI will treat
-those entries as real constraints. Only record what you know to be true.
+1. **Install & Init** — one-time setup per machine + per project
+2. **Daily Usage** — fully automatic, driven by AI tool calls
+3. **Migration from v1** — how to transition existing `.cairn/` directories
 
 ---
 
-### Step 1: Choose Your Domains
+## Phase 1: Install & Init
 
-The 11 standard domains available at init time:
+### Step 1: Install
+
+**From npm (recommended):**
+
+```bash
+npm install -g cairn-mcp-server
+```
+
+**From source:**
+
+```bash
+git clone https://github.com/zzf2333/Cairn
+cd Cairn/mcp && npm install && npm run build
+```
+
+Requires Node.js 18+.
+
+### Step 2: Initialize a Project
+
+```bash
+cd my-project
+cairn init
+```
+
+The interactive flow walks you through:
+
+1. **Project name** — identifier used in config and views
+2. **Project start date** — used by the Stage Advisory Engine to infer project age
+3. **Domain selection** — pick from 11 standard domains, add custom ones in `kebab-case`
+4. **Git history scan** — detects reverts, dependency changes, large file movements, and
+   other candidate signals from your commit history
+5. **Directory generation** — creates the complete `.cairn/` structure
+
+After init, your project has:
+
+```
+.cairn/
+├── config.yaml          # Project configuration (domains, trust policy)
+├── state.yaml           # Server runtime state
+├── signals/             # L1 candidate signal pool
+├── staged/              # L2 entries awaiting human review
+├── memory/              # Confirmed memories (source of truth)
+├── views/               # Auto-generated AI-consumable views
+│   ├── output.md        # Global constraints snapshot
+│   ├── stage.md         # Stage advisory details
+│   └── domains/         # Per-domain summaries
+└── sessions/            # Session audit records
+```
+
+### The 11 Standard Domains
 
 | Key | Area |
 |-----|------|
@@ -45,509 +81,301 @@ The 11 standard domains available at init time:
 | `performance` | Performance optimization |
 | `security` | Security strategy |
 
-**Select 3–7 domains that apply to your project.** You can also add custom domains in
-`kebab-case` (e.g., `payments`, `data-pipeline`, `ml-inference`).
-
-Once selected, the domain list is locked. The AI MUST NOT invent new domain keys when
-writing history entries — it must use the keys you chose at init.
+Add custom domains in `kebab-case` (e.g. `payments`, `data-pipeline`, `ml-inference`).
+Once locked in `config.yaml`, the domain list is the canonical set — the AI uses these
+keys when capturing signals.
 
 **Choosing guidance:**
 
-For an early-stage project (solo developer, pre-product-market-fit), start with:
-`api-layer`, `database`, `auth`, `deployment`
+- Early-stage (solo, pre-PMF): `api-layer`, `database`, `auth`, `deployment`
+- Full-stack team (2-5 engineers): add `state-management`, `frontend-framework`, `testing`
+- When in doubt, pick fewer. You can always expand later.
 
-For a full-stack product team (2–5 engineers, established codebase), consider:
-`api-layer`, `database`, `auth`, `state-management`, `frontend-framework`, `deployment`,
-`testing`
+### Step 3: Configure MCP
 
-When in doubt, pick fewer. You can always expand the list before the next `cairn init`
-run. Unused domains add noise to the `## hooks` section.
+MCP is the primary integration path for AI tools that support it. Add the Cairn
+server to your tool's MCP configuration.
 
----
+**Claude Code** — `~/.claude/mcp.json` (global) or `.claude/mcp.json` (project):
 
-### Step 2: Fill `output.md`
-
-Create `.cairn/output.md` with the five required sections in order. Fill each section
-based on what you know today.
-
-**`## stage`** — describe the current project phase and how the AI should prioritize:
-
-```
-## stage
-
-phase: early-growth (2024-09+)
-mode: stability > speed > elegance
-team: 2, no-ops
-reject-if: migration > 1 week
+```json
+{
+    "mcpServers": {
+        "cairn": { "command": "cairn-mcp-server" }
+    }
+}
 ```
 
-The `mode:` field directly shapes AI trade-off decisions. Be honest about where the
-project is. "speed > stability" during an MVP sprint is a valid constraint.
+**Cursor** — `.cursor/mcp.json`:
 
-**`## no-go`** — list technology directions the AI MUST NOT suggest:
-
-```
-## no-go
-
-- tRPC (REST integration cost, see domains/api-layer.md)
-- Redux (boilerplate overhead at team-2)
+```json
+{
+    "mcpServers": {
+        "cairn": { "command": "cairn-mcp-server" }
+    }
+}
 ```
 
-If you haven't identified any firm exclusions yet, leave this section empty. Do not
-fill it with things you're merely skeptical about — add entries only when you have
-a concrete reason a direction is off the table.
+**Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
-**`## hooks`** — keyword mappings that trigger domain file injection. This section
-can be auto-generated based on your selected domains:
-
-```
-## hooks
-
-planning / designing / suggesting for:
-
-- api / endpoint / REST / GraphQL → read domains/api-layer.md first
-- auth / login / JWT / session → read domains/auth.md first
-- db / migration / ORM / schema → read domains/database.md first
-- deploy / infra / CI → read domains/deployment.md first
+```json
+{
+    "mcpServers": {
+        "cairn": { "command": "cairn-mcp-server" }
+    }
+}
 ```
 
-Include one line per domain. Add any project-specific keywords the AI would use when
-discussing that area.
+**From source** — use the built entry point:
 
-**`## stack`** — your active technology choices:
-
-```
-## stack
-
-api: REST
-db: PostgreSQL
-auth: JWT + Refresh Token
-deploy: Railway
-```
-
-One `key: value` pair per layer. Only list what's real and in use today.
-
-**`## debt`** — formally accepted technical debts the AI MUST NOT attempt to fix:
-
-```
-## debt
-
-AUTH-COUPLING: accepted | fix when team>4 or MAU>100k | no refactor now
+```json
+{
+    "mcpServers": {
+        "cairn": {
+            "command": "node",
+            "args": ["/path/to/cairn/mcp/dist/index.js"]
+        }
+    }
+}
 ```
 
-Format: `<ID>: accepted | <revisit_when condition> | <constraint>`.
+The server resolves `.cairn/` by walking up from `process.cwd()`, or via the
+`CAIRN_ROOT` environment variable.
 
-If you have no formally accepted debts yet, leave this section empty. The distinction
-matters: this section is not for "things that could be better" — it's for deficiencies
-you have consciously decided to carry for now.
-
----
-
-### Step 3: Initialize `history/`
-
-Create the `.cairn/history/` directory.
-
-```
-mkdir -p .cairn/history/
-```
-
-**Optionally, back-fill 1–3 entries for the most important historical decisions.**
-Focus on decisions that would cause the most damage if an AI re-proposed the discarded
-alternative — typically: a technology the team trialed and abandoned, a direction that
-was firmly ruled out, or a significant architectural choice with non-obvious constraints.
-
-You do not need to reconstruct the full history. Leave gaps where you're uncertain.
-An absent entry causes no harm. A wrong entry (incorrect rejection reason, wrong date,
-fabricated context) corrupts the AI's constraint model.
-
-For back-filled entries, the dual timestamp matters: set `decision_date` to when the
-decision actually happened, and `recorded_date` to today. The AI uses `decision_date`
-to assess time-sensitivity.
-
----
-
-### Step 4: Initialize `domains/`
-
-Create the `.cairn/domains/` directory.
-
-```
-mkdir -p .cairn/domains/
-```
-
-**Leave it empty. This is correct.**
-
-Domain files are compressed summaries of accumulated history. Without history, there
-is nothing to compress. Writing domain files by hand at init time — before any history
-exists — produces guesswork that looks authoritative. Wait until each domain has 2–3
-history entries, then generate the domain file from those entries (see Phase 2).
-
----
-
-### Step 5: Install Skill Adapter
-
-Copy the Cairn skill file for the AI tool(s) your team uses:
-
-| Tool | File to install | Location |
-|------|-----------------|----------|
-| Claude Code | `skills/claude-code/SKILL.md` | `.claude/CLAUDE.md` (append) |
-| Cursor | `skills/cursor.mdc` | `.cursor/rules/cairn.mdc` |
-| Windsurf | `skills/windsurf.md` | Append to `.windsurfrules` |
-| Cline / Roo Code | `skills/cline.md` | Append to `.clinerules` |
-| GitHub Copilot | `skills/copilot-instructions.md` | Append to `.github/copilot-instructions.md` |
-| Codex CLI | `skills/codex.md` | Append to `AGENTS.md` |
-| Gemini CLI | `skills/gemini-cli.md` | Append to `GEMINI.md` |
-| OpenCode | `skills/opencode.md` | Append to `AGENTS.md` |
-
-The skill file teaches the AI the three-layer protocol: always read `output.md`, read
-`domains/*.md` when planning, query `history/` for precise lookups. Without the skill
-file, the AI does not know the `.cairn/` directory exists.
-
----
-
-## Phase 2: Reactive — Long-Term Operation
-
-### Core Principle
-
-Do not maintain Cairn proactively. Do not schedule reviews, do not periodically
-audit domain files, do not try to keep history exhaustive. Let AI mistakes tell
-you what to record.
-
-The system grows in response to real friction. Each time an AI proposes a direction
-you've already ruled out, that's a signal: record the rejection. Each time you make
-a decision the AI should know about, record it. Over time, the history builds up
-naturally around the decisions that actually matter for AI alignment.
-
----
-
-### Five Trigger Events
-
-#### Event A: AI suggests a direction you already rejected
-
-The AI just proposed something — a technology, an architecture pattern, an approach —
-that you've already evaluated and decided against.
-
-1. Record the rejection in `history/` as type `rejection`:
-   ```
-   type: rejection
-   domain: <domain>
-   decision_date: <when you originally made the call>
-   recorded_date: <today>
-   summary: <one sentence>
-   rejected: <the direction> — <why it was ruled out>
-   reason: <what made you certain>
-   revisit_when: <what would need to change>
-   ```
-2. Consider adding the direction to `output.md`'s `## no-go` section, especially if
-   the AI is likely to propose it again. Add it if the direction is a common AI
-   recommendation in your technology space.
-3. Update the corresponding `domains/*.md`'s `## rejected paths` section if the domain
-   file already exists.
-
-This event is the most common trigger. The AI re-proposes rejected directions frequently
-because, without a record, it has no way to know a direction was tried. Each rejection
-entry directly prevents the same mistake next session.
-
----
-
-#### Event B: You make an important technical decision
-
-Your team chose a new technology, changed an architectural approach, or made a
-significant trade-off that will shape future work.
-
-1. Ask the AI to draft the history entry based on your description:
-   > "We just decided to use Zod for request validation instead of Joi. Draft a Cairn
-   > history entry for this."
-   Review the draft, correct anything wrong, and write it to `history/` as type
-   `decision` or `transition`.
-2. If the decision changes what's in your active stack, update `output.md`'s `## stack`
-   section.
-3. Update the corresponding `domains/*.md` trajectory and rejected paths if the domain
-   file exists.
-
-The `rejected` field in this entry is critical: record what was considered and not
-chosen. Even if the decision felt obvious, document the alternatives. The AI will
-otherwise not know why the alternative was passed over.
-
----
-
-#### Event C: You tried a direction and abandoned it
-
-You ran a spike, built a prototype, or started down a path — and stopped. The direction
-didn't work out.
-
-1. Record the conclusion in `history/` as type `experiment`:
-   ```
-   type: experiment
-   domain: <domain>
-   decision_date: <when you started/stopped>
-   recorded_date: <today>
-   summary: <what was tried and what happened>
-   rejected: <the direction> — <why it was abandoned>
-   reason: <the specific failure mode or incompatibility discovered>
-   revisit_when: <what would need to be different>
-   ```
-2. Update the domain file's `## rejected paths` section if the domain file exists.
-
-**Focus on WHY you abandoned it.** This is the most valuable part of the record. The
-AI can infer that something was tried from the `experiment` type. What it cannot infer
-is the specific failure mode — the reason this direction was wrong for this project.
-A tRPC experiment that failed because of multi-client migration complexity is a
-different signal than one that failed because of TypeScript version incompatibility.
-Both suggest avoiding tRPC, but for different reasons, and the `revisit_when` condition
-differs.
-
-Abandoned experiments are often the most valuable history entries. The paths that
-don't work are exactly what the AI needs to avoid re-walking.
-
----
-
-#### Event D: You accept a known deficiency
-
-You identified a problem in the codebase — a design flaw, a scaling limit, an
-architectural coupling — and decided to leave it in place for now.
-
-1. Record the acceptance in `history/` as type `debt-accepted`:
-   ```
-   type: debt
-   domain: <domain>
-   decision_date: <today>
-   recorded_date: <today>
-   summary: Accepted <ID> as known debt; will revisit when <condition>
-   rejected: Immediate fix — cost/risk not justified at current scale
-   reason: <why this is tolerable now>
-   revisit_when: <the specific condition that changes the calculus>
-   ```
-2. Add the entry to `output.md`'s `## debt` section:
-   ```
-   <ID>: accepted | <revisit_when condition> | no refactor now
-   ```
-3. Add a corresponding `## known pitfalls` entry in the domain file, describing what
-   engineers (human or AI) should avoid triggering while the debt exists.
-
-The `revisit_when` condition is required for accepted debt. Without it, the debt
-becomes permanent by default. Make the condition specific and measurable: "team > 4"
-or "MAU > 100k" or "CDN migration complete" — not "when we have time."
-
----
-
-#### Event E: Project enters a new phase
-
-The project's priorities shifted. You moved from MVP to growth, from growth to
-stability, or from stability to a new product surface. The `mode:` and `reject-if:`
-conditions in `output.md` no longer reflect reality.
-
-1. Update `output.md`'s `## stage` section with the new phase and reasoning mode.
-2. Write a `transition` type history entry marking the end of the previous phase:
-   ```
-   type: transition
-   domain: architecture
-   decision_date: <today>
-   recorded_date: <today>
-   summary: Project transitioned from <old phase> to <new phase>
-   rejected: Continuing prior mode — <why the old priorities no longer apply>
-   reason: <what changed: team size, user scale, product maturity>
-   revisit_when: n/a — transition is a point-in-time event
-   ```
-
-Phase transitions are high-leverage history entries. The AI's `mode:` constraint
-shapes every trade-off decision it makes. An AI operating with `mode: speed > stability`
-will give different suggestions than one operating with `mode: stability > speed > elegance`.
-Keeping the stage section current is one of the highest-value maintenance tasks
-in Cairn.
-
----
-
-### The Positive Feedback Loop
-
-Reactive operation creates a compounding return. As history accumulates:
-
-- Domain files become more accurate representations of each area's real constraints
-- The AI's suggestions align more closely with project reality
-- The AI makes fewer proposals that need to be rejected or corrected
-- Fewer mistakes means fewer new history entries needed
-- Maintenance cost drops as the system matures
-
-The system does not require ongoing effort to improve. It improves automatically as
-a byproduct of using it. Each correction generates a record; each record reduces future
-corrections. Projects with 18 months of Cairn history typically generate fewer than
-one new history entry per week — not because the team stopped recording, but because
-the AI stopped making mistakes that needed correction.
-
----
-
-## When to Generate Domain Files
-
-Domain files are the middle layer of Cairn — pre-compressed context that gives the AI
-the right amount of detail for planning work without requiring it to read raw history.
-They should be generated thoughtfully, not pre-emptively.
-
-**Do not write domain files at init time.** An empty `domains/` directory is correct
-initial state. A hand-written domain file based on memory rather than documented
-history is a liability: it looks authoritative but reflects the author's recollection
-rather than the actual record.
-
-**Wait until a domain has 2–3 history entries.** At that point, the domain has enough
-recorded context to compress. Ask the AI to generate a domain file from the raw
-history entries:
-
-> "Read these three history entries for the `api-layer` domain and generate a
-> `domains/api-layer.md` file following the Cairn domain format."
-
-Review the generated file. Correct any misinterpretations. Confirm and write it to
-`domains/api-layer.md`.
-
-**After that, use overwrite-mode updates.** Domain files are not append logs — they
-represent the current state of a domain. When a new history entry changes a domain's
-constraints, regenerate the domain file from all relevant history entries. The old
-file is replaced, not edited. Raw events are preserved in `history/`; the domain file
-is a re-derivable summary.
-
-This pattern keeps domain files accurate without manual line-by-line editing. The AI
-does the compression; the human does the confirmation.
-
----
-
-## Using the CLI
-
-The Cairn CLI has four commands. All ongoing memory maintenance is done by the AI
-directly — no CLI ceremony required after `cairn init`.
-
-### `cairn init`
-
-Bootstrap command. Creates the `.cairn/` directory skeleton, copies
-`skills/claude-code/SKILL.md` to `.cairn/SKILL.md`, and installs 12-line guide
-blocks into AI tool config files (`.claude/CLAUDE.md`, `.cursor/rules/cairn.mdc`,
-etc.) that point the AI to `.cairn/SKILL.md`.
+### Step 4: Verify
 
 ```bash
-# Full bootstrap (interactive)
+cairn status    # System state overview
+cairn doctor    # Health diagnostics
+```
+
+`cairn doctor` checks config integrity, memory consistency, view freshness, and
+reports any conflicts or stale entries.
+
+---
+
+## Phase 2: Daily Usage
+
+After init and MCP configuration, daily operation is fully automatic. No manual
+file editing, no CLI ceremonies.
+
+### How It Works
+
+```
+AI opens project
+  → MCP Server starts (stdio, per-project instance)
+  → Git Ear scans commits since last session
+  → Memory and state loaded
+
+AI calls cairn_context()
+  → Returns: stage advisory, no-go list, relevant domains, active debt, warnings
+  → AI works within these constraints
+
+AI calls cairn_signal() during work
+  → Captures decisions, rejections, experiments, constraints
+  → Trust Router routes each signal: L0 drop / L1 candidate / L2 staged / L3 auto-write
+
+AI calls cairn_session_end()
+  → Batch processes accumulated signals
+  → Regenerates views from memory
+
+AI closes project → Server exits
+```
+
+### MCP Tools
+
+| Tool | Purpose | Writes Memory? |
+|------|---------|---------------|
+| `cairn_context` | Get constraints before working | No (read-only) |
+| `cairn_signal` | Capture a decision/rejection/constraint | Indirect (via Trust Router) |
+| `cairn_session_end` | End-of-session batch processing | Indirect (via Trust Router) |
+| `cairn_status` | System state overview | No (read-only) |
+| `cairn_plan` | History-aware planning framework | No (read-only, experimental) |
+| `cairn_doctor` | Health diagnostics | No (read-only, experimental) |
+
+### Trust Router: How Signals Become Memory
+
+Every signal passes through the Trust Router. No signal bypasses it.
+
+| Level | Name | Destination | Behavior |
+|-------|------|-------------|----------|
+| L0 | Drop | Discarded | Noise, duplicates, low confidence |
+| L1 | Candidate | `signals/` | Accumulates; upgrades to L2 when threshold met |
+| L2 | Staged | `staged/` | Awaits human review via `cairn review` |
+| L3 | Auto-write | `memory/` | Strict conditions met; written automatically |
+
+**Hard rules (never overridden):**
+
+- New global no-go → always L2
+- Stage change → always L2
+- Global-scope behavior_effect → always L2
+- Items in `config.yaml` `never_auto` list → always L2
+
+### Periodic Review
+
+```bash
+cairn review    # Walk through staged entries: accept / edit / skip / delete
+cairn doctor    # Health check: stale domains, conflicts, orphan no-go entries
+```
+
+`cairn review` is the only human-in-the-loop step. Run it when you have staged
+entries to process. Accepted entries move to `memory/` and trigger view regeneration.
+
+---
+
+## AI Tools Without MCP Support (Fallback Path)
+
+For tools that do not support MCP, Cairn provides skill adapter files that read
+the `views/` directory directly. Views are v1-compatible Markdown — the same format
+that v1 skill adapters already consume.
+
+| Tool | Adapter location |
+|------|-----------------|
+| Cline / Roo Code | `.clinerules` (append) |
+| Windsurf | `.windsurfrules` (append) |
+| GitHub Copilot | `.github/copilot-instructions.md` (append) |
+| Codex CLI | `AGENTS.md` (append) |
+| Gemini CLI | `GEMINI.md` (append) |
+| OpenCode | `AGENTS.md` (append) |
+
+**MCP tools vs. fallback adapters:**
+
+| Capability | MCP (primary) | Skill adapter (fallback) |
+|-----------|--------------|------------------------|
+| Read constraints | `cairn_context()` — filtered by task | Reads `views/output.md` in full |
+| Capture signals | `cairn_signal()` — routed automatically | Not available |
+| Session lifecycle | `cairn_session_end()` — batch processing | Not available |
+| Diagnostics | `cairn_doctor()` — structured results | `cairn doctor` CLI |
+
+The fallback path provides read-only access to the latest view snapshot. Signal
+capture and memory evolution require MCP.
+
+---
+
+## Phase 3: Migration from v1
+
+### What Changed
+
+| v1 | v2 |
+|----|----|
+| `.cairn/output.md` (hand-written) | `.cairn/views/output.md` (auto-generated from memory) |
+| `.cairn/domains/*.md` (hand-written) | `.cairn/views/domains/*.md` (auto-generated) |
+| `.cairn/history/*.md` (Markdown) | `.cairn/memory/*.yaml` (structured YAML) |
+| `.cairn/SKILL.md` | `skills/claude-code/SKILL.md` (v2 version) |
+| `.cairn/staged/` (v1 format) | `.cairn/staged/` (v2 YAML format) |
+| No config file | `.cairn/config.yaml` |
+| No state tracking | `.cairn/state.yaml` |
+| No signal pipeline | `.cairn/signals/` |
+| No session records | `.cairn/sessions/` |
+| Manual file writing | Automatic via MCP + Trust Router |
+
+### How to Migrate
+
+**Recommended: fresh start with seed signals.**
+
+```bash
+cd my-project
 cairn init
-
-# Refresh guide blocks and .cairn/SKILL.md without touching output.md or history/
-cairn init --refresh-skills
-
-# Also install guide blocks in global AI config files (~/CLAUDE.md etc.)
-cairn init --global
-
-# Check for v0.0.11 residue (staged/, audits/, reflections/) and refresh SKILL.md
-cairn init --upgrade
 ```
 
-### `cairn doctor`
+Then manually import key v1 history entries as seed signals using `cairn_signal()`.
+Your v1 `output.md` and `domains/` serve as reference during this process — read them,
+extract the important decisions, and feed them through the signal pipeline.
 
-Read-only health check. Verifies `output.md` structure, domain frontmatter,
-stale domain detection, guide block format, `.cairn/SKILL.md` consistency,
-and v0.0.11 residue.
+**What you can reuse:**
 
-```bash
-cairn doctor
+- v1 `output.md` → reference for initial domain selection and no-go entries
+- v1 `domains/*.md` → reference for rejected paths and known pitfalls
+- v1 `history/*.md` → import via `cairn_signal()` one entry at a time
 
-# Machine-readable output (for AI self-check)
-cairn doctor --json
-```
+**What you do not need to migrate manually:**
 
-Use `cairn doctor` after `cairn init`, when onboarding a new team member, or
-when something seems off. The AI can call `cairn doctor --json` at session start
-to self-verify before beginning work.
+- `views/` files are auto-generated from memory — do not copy v1 output/domain files into views
+- v1 SKILL.md is superseded by the v2 protocol
+
+### Parallel Operation
+
+During migration, you can keep v1 files alongside v2:
+
+- v2 views are in `.cairn/views/` — they do not conflict with v1's `.cairn/output.md`
+- Once v2 memory has enough entries, remove v1 files and let views take over
+- Skill adapters for non-MCP tools will read `views/` automatically
 
 ---
 
-## After-Task Write-Back
+## Architecture Overview
 
-After completing a meaningful task, the AI decides whether a recordable event occurred
-and, if so, writes directly to `.cairn/` using its native file tools. No CLI ceremony,
-no staging gate, no human relay step.
+### Memory / Views Separation
 
-**The AI is responsible for this judgment.** The protocol is described in `.cairn/SKILL.md`.
+v2 strictly separates source data from AI-consumable views:
 
-### What the AI does
+**`memory/`** is the source of truth. Each entry is a structured YAML file with
+full provenance, confidence scores, and behavior_effect declarations. Humans
+review memory.
 
-At task completion the AI evaluates the event type and writes the appropriate file(s):
+**`views/`** is auto-generated. `output.md`, `domains/*.md`, and `stage.md` are
+projections of memory — regenerated whenever memory changes. AI consumes views.
 
-| Event | AI action |
-|-------|-----------|
-| Significant technical decision | Write `.cairn/history/YYYY-MM_<slug>.md` (type: decision) |
-| Approach tried and abandoned | Write `.cairn/history/YYYY-MM_<slug>.md` (type: experiment) |
-| Direction explicitly rejected | Write history entry + add `## no-go` entry to `output.md` |
-| Deficiency accepted as debt | Write history entry + `## debt` entry in `output.md` + `## known pitfalls` in domain |
-| Migration / phase transition | Write history entry + overwrite affected domain file |
-| Routine bug fix / docs / refactor | No action — not a recordable event |
+This separation means:
+- Memory edits propagate to views automatically
+- Views can be regenerated at any time from memory
+- Git diffs show whether a change is a fact change (memory) or a projection change (views)
 
-### What you see
+### Dual-Ear Signal Capture
 
-The AI ends its response with one of:
+Cairn captures signals from two sources:
 
-```
-cairn: recorded 1 event: history/2026-04-22_added-dep-X.md
-cairn: no event recorded
-```
+**Git Ear** (startup scan): reverts, dependency changes, large file movements,
+commit frequency, new contributors. Provides "what happened."
 
-This is a verification handshake — not a CLI command. `git diff .cairn/` shows exactly
-what was written. If the event was wrong or incomplete, edit the file directly.
+**Conversation Ear** (real-time MCP): user rejections, historical references,
+constraints, decisions, debt acceptance. Provides "why."
 
-For the normative definition of reflection results and the required end-of-task format,
-see [spec/TASK-COMPLETION-PROTOCOL.md](TASK-COMPLETION-PROTOCOL.md).
+Both ears produce signals. Neither writes memory directly. The Trust Router
+decides what becomes memory.
 
-### What to do if the AI missed an event
+### Stage Advisory Engine
 
-Write the history entry yourself:
+Infers project phase (exploration / growth / maturity / maintenance) from
+multi-dimensional signals: project age, commit trends, dependency change rate,
+new file ratio.
 
-```markdown
-type: decision
-domain: api-layer
-decision_date: 2026-04
-recorded_date: 2026-04
-summary: Switched from REST to tRPC for internal services
-rejected: REST: too much boilerplate for internal services without consumers
-reason: tRPC removes manual API layer for full-stack TypeScript services
-revisit_when: If external consumers need a REST interface
-```
-
-Save to `.cairn/history/2026-04_trpc-adoption.md`. Then update the domain file if the
-current design changed.
+- Outputs advisory only — no hard constraints unless human-confirmed
+- Confidence < 0.7 → no constraints generated
+- Stage changes → always L2 (requires human review)
 
 ---
 
-## Upgrading to v0.0.12
+## CLI Reference
 
-### From v0.0.11
+| Command | Description |
+|---------|-------------|
+| `cairn init` | Interactive project initialization |
+| `cairn status` | System state (memory count, staged count, stage, conflicts) |
+| `cairn review` | Review staged entries (accept / edit / skip / delete) |
+| `cairn doctor` | Health diagnostics |
+| `cairn stage confirm` | Confirm stage advisory as official |
+| `cairn memory show <id>` | View a single memory entry |
+| `cairn memory archive <id>` | Archive a memory entry |
 
-v0.0.12 replaces the staging/reflect/audit CLI workflow with AI-direct file operations.
-Your `.cairn/output.md`, `domains/`, and `history/` are fully compatible — no data migration needed.
+---
 
-```bash
-cd <your-project>
-cairn init --upgrade
-```
+## Troubleshooting
 
-`--upgrade` will:
-- Create or refresh `.cairn/SKILL.md` from the latest protocol
-- Refresh guide blocks in AI tool config files to the v0.0.12 12-line format
-- Warn if `.cairn/staged/`, `.cairn/audits/`, or `.cairn/reflections/` exist
+**`cairn doctor` reports stale domains:**
+Stale domains have new memory entries that haven't been reflected in views.
+Run `cairn_session_end()` or trigger a view regeneration.
 
-The upgrade does **not** delete old directories. Review their contents manually:
-- `.cairn/staged/`: move useful candidates to `history/` (strip `history-candidate_` prefix first) or delete
-- `.cairn/audits/`: merge useful pitfalls into domain `## known pitfalls` sections, then delete
-- `.cairn/reflections/`: safe to delete (replaced by the `cairn: recorded …` verification line)
+**Staged backlog growing:**
+Run `cairn review` to process pending entries. Unreviewed staged entries do not
+affect AI behavior — they are waiting for human confirmation.
 
-### From v0.0.9 or earlier
+**MCP server not connecting:**
+1. Verify installation: `which cairn-mcp-server` or `node /path/to/dist/index.js`
+2. Check MCP config file location matches your AI tool
+3. Ensure `.cairn/` exists in the project (run `cairn init` if not)
 
-In v0.0.9 and earlier, the skill was at `.claude/skills/cairn/SKILL.md` (loaded on-demand).
-From v0.0.10 onward the guide block goes to `.claude/CLAUDE.md` (always loaded at session start),
-and from v0.0.12 the full protocol is at `.cairn/SKILL.md`.
-
-```bash
-cd <your-project>
-cairn init --upgrade
-```
-
-Verify with `cairn doctor` — the Skill Guide and SKILL.md sections should show ✓.
-
-### Enabling global scope
-
-To install the guide block in global AI config files (`~/CLAUDE.md` etc.) so
-Cairn activates in any project that has a `.cairn/` directory:
-
-```bash
-cairn init --global
-```
+**Conflicts in memory:**
+`cairn doctor` reports conflicting behavior_effects within the same domain.
+Review the conflicting entries with `cairn memory show <id>` and archive or
+edit the outdated one.
