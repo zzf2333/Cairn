@@ -1,665 +1,527 @@
-English | [中文](FORMAT.zh.md)
+[English](FORMAT.md) | 中文
 
-# Cairn 格式规范
+# Cairn v2 格式规范
 
-本文档定义了 `.cairn/` 目录三层的完整格式。它是编写、验证和工具化 Cairn 文件的权威参考。
+`.cairn/` 目录 YAML schema 格式的权威参考文档，适用于 Cairn v2 动态记忆引擎。v1 的三层 Markdown 格式（output.md / domains/ / history/）已被 YAML schema + 自动生成 Markdown 视图完全替代。
 
 ---
 
 ## 目录结构
 
-每个使用 Cairn 的项目在其仓库根目录放置一个 `.cairn/` 目录：
-
 ```
 .cairn/
-├── output.md          # 第一层：全局约束，始终注入
-├── SKILL.md           # 操作协议；由 cairn init 复制
-├── domains/           # 第二层：域上下文，按需注入
-│   ├── api-layer.md
-│   ├── auth.md
-│   └── state-management.md
-└── history/           # 第三层：原始决策事件，按需查询
-│   ├── 2023-03_state-mgmt-transition.md
-│   ├── 2023-09_trpc-experiment-rejection.md
-│   └── 2024-01_auth-debt-accepted.md
+├── config.yaml          # 项目配置
+├── state.yaml           # 运行状态（含阶段快照）
+├── signals/             # L1 候选信号（YAML）
+├── staged/              # L2 待审条目（YAML）
+├── memory/              # 正式记忆（YAML）— 数据源
+├── views/               # 自动生成的视图（Markdown，只读）
+│   ├── output.md        # 全局约束视图
+│   ├── stage.md         # 阶段建议
+│   └── domains/         # 域视图
+│       └── <name>.md
+└── sessions/            # 会话记录（YAML）
 ```
+
+| 目录 | 写入者 | 读取者 | 生命周期 |
+|------|--------|--------|---------|
+| config.yaml | 人类（init 时 + 手动调整） | Server | 长期稳定 |
+| state.yaml | Server | Server | 每次启动更新 |
+| signals/ | 双耳经 Trust Router | Trust Router | 积累后升级或过期丢弃 |
+| staged/ | Trust Router | 人类（`cairn review` 时） | 审核后写入 memory 或丢弃 |
+| memory/ | `cairn review` / L3 自动写入 | Views Engine、MCP Tools | 长期持久 |
+| views/ | Views Engine（自动） | AI（MCP 或 Skill） | memory 变更后重新生成 |
+| sessions/ | Server（session_end 时） | 审计 / 回溯 | 可定期清理 |
 
 ---
 
-## 第一层：`output.md` — 全局约束
-
-### 目的
-
-`output.md` 在每次 AI 会话开始时注入。它建立了所有 AI 建议必须在其中运行的约束框架。
-
-### 注入时机
-
-**每次会话，始终注入。** AI 在任何回复前必须读取 `.cairn/output.md`。
-
-### Token 预算
-
-| 目标 | 硬限制 |
-|------|--------|
-| 500 tokens | 800 tokens |
-
-如果 `output.md` 超过 800 tokens，内容应移至 `domains/` 或 `history/`。500–800 tokens 之间是可接受的。500 以下是理想的。
-
-### 必需章节
-
-`output.md` **必须**按此顺序包含以下六个章节：
-
-```markdown
-## stage
-## no-go
-## hooks
-## stack
-## debt
-## open questions
-```
-
-#### `## stage`
-
-项目阶段和推理模式。
-
-```
-## stage
-
-phase: <name> (<YYYY-MM>+)
-mode: <priority-1> > <priority-2> > <priority-3>
-team: <size>, <constraint>
-reject-if: <condition>
-```
-
-| 字段 | 是否必需 | 格式 | 示例 |
-|------|---------|------|------|
-| `phase:` | 必须 | `name (YYYY-MM+)` | `early-growth (2024-09+)` |
-| `mode:` | 必须 | 用 `>` 分隔的优先级 | `stability > speed > elegance` |
-| `team:` | 建议 | 规模 + 约束 | `2, no-ops` |
-| `reject-if:` | 建议 | 纯粹条件 | `migration > 1 week` |
-
-#### `## no-go`
-
-AI **不得**建议的技术方向（禁区方向）。
-
-```
-## no-go
-
-- <direction> (<one-line hint>)
-- <direction> (<one-line hint>, see domains/<domain>.md)
-```
-
-规则：
-- 每条记录是一个单行项目符号
-- 括号是提示——完整理由属于 `domains/` 或 `history/`
-- 如果尚未排除任何方向，可以为空
-
-#### `## hooks`
-
-触发域文件注入的关键词到域的映射（关键词触发）。
-
-```
-## hooks
-
-planning / designing / suggesting for:
-
-- <keyword list> → read domains/<domain>.md first
-- <keyword list> → read domains/<domain>.md first
-```
-
-规则：
-- 每个域一行
-- 关键词用逗号或斜杠分隔
-- 应覆盖项目域列表中的所有域
-- 可由 `cairn-init.sh` 根据所选域自动生成
-
-#### `## stack`
-
-当前活跃的技术选择。仅使用 `key: value` 键值对。
-
-```
-## stack
-
-<layer>: <technology>
-<layer>: <technology>
-```
-
-示例：`state: Zustand`、`api: REST`、`db: PostgreSQL`、`auth: JWT + Refresh`、`deploy: Railway`
-
-#### `## debt`
-
-AI **不得**尝试修复的已接受技术债。
-
-```
-## debt
-
-<ID>: accepted | <revisit_when condition> | <constraint>
-```
-
-| 部分 | 是否必需 | 示例 |
-|------|---------|------|
-| `<ID>` | 必须 | `AUTH-COUPLING` |
-| `accepted` | 必须 | 字面字符串 |
-| `revisit_when condition` | 必须 | `fix when team>4 or MAU>100k` |
-| `<constraint>` | 必须 | `no refactor now` |
-
-如果尚未正式接受任何技术债，可以为空。
-
-#### `## open questions`
-
-影响未来 AI 建议的全局未解决问题。
-
-```
-## open questions
-
-- <尚未决定的全局问题>
-```
-
-规则：
-- 仅用于**全局**未解决问题——不是域级问题（那些放在 `domains/` 中）
-- 不是 no-go，不是技术债清单，不是设计提案积压
-- 已解决的条目必须移除；解决后的记录属于 `history/`
-- 可以为空
-
-### 编写规则
-
-1. **只写约束，不写解释。** 括号是提示。完整理由进入 `domains/` 和 `history/`。
-2. **结构优于散文。** 使用 `key: value` 键值对和简短列表。不写完整句子。
-3. **每行必须改变 AI 行为。** 删去一行后问：AI 的回复会有所不同吗？如果不会，删掉它。
-4. **执行 Token 预算。** 超过 800 tokens 的内容属于更深的层级。
-
-### 完整示例
-
-```markdown
-## stage
-
-phase: early-growth (2024-09+)
-mode: stability > speed > elegance
-team: 2, no-ops
-reject-if: migration > 1 week
-
-## no-go
-
-- tRPC (REST integration cost, see domains/api-layer.md)
-- Redux (boilerplate overhead at team-2)
-- kubernetes (no ops capacity)
-- microservices (no B2B product)
-
-## hooks
-
-planning / designing / suggesting for:
-
-- api / endpoint / tRPC / GraphQL → read domains/api-layer.md first
-- auth / login / JWT / session → read domains/auth.md first
-- state / store / Zustand → read domains/state-management.md first
-- db / migration / ORM → read domains/database.md first
-
-## stack
-
-state: Zustand
-api: REST
-db: PostgreSQL
-auth: JWT + Refresh
-deploy: Railway
-
-## debt
-
-AUTH-COUPLING: accepted | fix when team>4 or MAU>100k | no refactor now
-WS-CONCURRENCY: accepted | CDN migration resolves | no polling fallback
-
-## open questions
-
-- Whether billing should remain in the monolith for the next 2 quarters
-- Whether auth session storage should be unified this cycle
-```
-
----
-
-## 第二层：`domains/*.md` — 域上下文
-
-### 目的
-
-域文件为代码库特定领域提供预压缩的设计上下文。它们是始终开启的全局约束（`output.md`）和无限制的原始历史（`history/`）之间的关键中间层。
-
-### 注入时机
-
-在规划、架构设计、技术选型或迁移评估期间。当用户请求与 `output.md` 的 `## hooks` 章节中的关键词匹配时，AI 应读取对应的域文件。
-
-### Token 预算
-
-| 每个文件 |
-|---------|
-| 200–400 tokens |
-
-### 前置元数据
-
-域文件必须在 `# <domain-name>` 标题行之前包含 YAML 前置元数据：
+## config.yaml
+
+项目级配置。`cairn init` 时创建，之后极少变动。
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| version | string | `"2.0"` | Schema 版本 |
+| project.name | string | 必填 | 项目名称 |
+| project.created | string | 必填 | 项目创建时间（YYYY-MM） |
+| domains.locked | string[] | `[]` | 锁定的域列表 |
+| trust_policy.L3_auto_write | string[] | 见下方 | 自动写入 memory 的规则 |
+| trust_policy.L2_staged | string[] | 见下方 | 强制进入待审的规则 |
+| trust_policy.never_auto | string[] | 见下方 | 永远需要人工审核的硬规则 |
+| stage.override | string \| null | `null` | 手动覆盖阶段 |
+| stage.auto_constraint | boolean | `false` | 阶段是否产生硬约束 |
+
+### 示例
 
 ```yaml
----
-domain: <domain-key>
-hooks: ["keyword1", "keyword2", "..."]
-updated: <YYYY-MM>
-status: <active | stable>
-related: ["domain-name"]   # 可选
----
-```
+version: "2.0"
 
-| 字段 | 是否必需 | 格式 | 用途 |
-|------|---------|------|------|
-| `domain` | 必须 | kebab-case | 必须与文件名主干和 `# title` 标题匹配 |
-| `hooks` | 必须 | 字符串 JSON 数组 | 触发注入的关键词。被 `output.md` hooks 章节引用。Phase 3 MCP Server 使用此字段进行精确匹配而无需 AI 推断。 |
-| `updated` | 必须 | `YYYY-MM` | 最后实质性更新日期。被 `cairn doctor` 用于过期检测。 |
-| `status` | 建议 | `active` 或 `stable` | `active`——设计仍在演进；`stable`——设计已稳定。过期状态始终根据 `updated` 与历史日期计算，绝不手动声明。 |
-| `related` | 可选 | YAML flow-style 字符串数组 | 声明与该 domain 相关的其他 domain 名称。MCP `cairn_match` 使用该字段为匹配的主 domain 推荐加载相关 domain 的 `## trajectory` 章节。展开规则：BFS 仅展开 1 跳（不做传递展开）；最多展开 2 个；按作者声明顺序取前 2；引用不存在的 domain 时静默丢弃并返回 warning；禁止循环引用（主 domain 自身不展开）。 |
+project:
+  name: "my-saas"
+  created: "2023-01"
 
-### 必需章节
+domains:
+  locked:
+    - api-layer
+    - auth
+    - state-management
 
-```markdown
-# <domain-name>
+trust_policy:
+  L3_auto_write:
+    - "source.kind == 'git-revert' AND scope == 'local'"
+    - "source.kind == 'git-dependency' AND type == 'rejection' AND scope == 'local'"
+  L2_staged:
+    - "scope == 'global'"
+    - "type == 'transition' AND affects_output == true"
+  never_auto:
+    - "新增全局 no-go"
+    - "阶段变更"
+    - "output 级别 stack 变更"
+    - "scope == 'global' 的 behavior_effect"
 
-## current design
-## trajectory
-## rejected paths
-## known pitfalls
-## open questions
-```
-
-#### `# <domain-name>`
-
-文件标题。必须与域键匹配（例如 `# api-layer`）。
-
-#### `## current design`（当前设计）
-
-一到三句话描述当前状态。必须包含：
-- 正在使用的主要设计选择
-- 任何值得了解的未解决边界或约束
-
-#### `## trajectory`（发展轨迹）
-
-按时间顺序排列的设计变化列表。每个事件一行。
-
-```
-## trajectory
-
-[YYYY-MM] <initial state>
-[YYYY-MM] <change> → <one-line reason>
-[YYYY-MM] <current state>
-```
-
-#### `## rejected paths`（被拒路径）
-
-已评估并排除的方向。
-
-```
-## rejected paths
-
-- <option>: <rejection reason, one sentence>
-  Re-evaluate when: <condition under which this direction is worth reconsidering>
-```
-
-每条被拒路径记录**必须**包含 `Re-evaluate when:`（重新评估时机）注释。
-
-#### `## known pitfalls`（已知陷阱）
-
-AI 在该域工作时必须主动考虑的操作陷阱。
-
-```
-## known pitfalls
-
-- <pitfall name>: <trigger condition> / <why it happens> / <what NOT to do>
-```
-
-这些**不是**技术债，**不是**拒绝记录。它们是在该域工作时的持续警告。
-
-#### `## open questions`（开放问题）
-
-影响该域未来工作的未解决设计决策。
-
-```
-## open questions
-
-- <question that has not been decided yet>
-```
-
-可以为空。
-
-#### `## residue checklist`（残留清单，可选）
-
-该域的迁移清理义务。仅在重大迁移或架构变更后添加，需要明确的清理追踪。
-
-```
-## residue checklist
-
-- [ ] <清理项——需要删除或更新的内容>
-- [x] <已完成的项目>
-```
-
-规则：
-- 可选——仅在迁移产生明确清理债务时添加
-- 条目使用复选框；已完成的条目可以保留为 `[x]` 作为历史记录
-- 所有项目都勾选后，应从域文件中删除
-- 直接在 domain 文件中跨会话追踪，直到清单完成
-
-### 生命周期
-
-- **创建：** 当某个域积累了 2–3 条 `history/` 记录后。从历史条目用 AI 生成，并经过人工确认。在历史记录存在之前，不要手动编写。
-- **更新：** 覆盖整个文件（绝不追加）。文件只反映当前状态。原始事件保留在 `history/`。
-- **长度：** 文件不得随时间增长。内容被替换，而不是积累。
-
-### 完整示例
-
-```markdown
----
-domain: api-layer
-hooks: ["api", "endpoint", "tRPC", "GraphQL", "REST", "OpenAPI"]
-updated: 2024-03
-status: stable
-related: ["auth"]
----
-
-# api-layer
-
-## current design
-
-REST + OpenAPI. No GraphQL, no tRPC. All endpoints follow /v1/ prefix,
-but versioning strategy is not formally defined. Error format partially
-inconsistent — new endpoints MUST use { code, message, data } structure.
-
-## trajectory
-
-2023-01 Express bare routes, no validation
-2023-05 Added Zod request validation
-2023-09 Trialed tRPC for 2 weeks → reverted, integration cost too high
-2024-03 Added OpenAPI doc generation, current state
-
-## rejected paths
-
-- tRPC: 2-week trial in 2023-09; existing REST clients cost too much to migrate
-  Re-evaluate when: existing clients have a defined migration path
-- GraphQL: not formally evaluated; current team size and data complexity don't need it
-  Re-evaluate when: frontend needs cross-resource aggregation queries
-
-## known pitfalls
-
-- Rate limiting not implemented: when adding it, do not break existing client retry
-  logic (clients use exponential backoff)
-- File uploads: auth method undefined, do not reuse existing JWT approach directly
-- Error format inconsistent: legacy endpoints return { error: string }, handle
-  both formats during migration
-
-## open questions
-
-- v2 versioning strategy not decided (URL versioning vs. header versioning)
-- File upload endpoint auth design not started
+stage:
+  override: null
+  auto_constraint: false
 ```
 
 ---
 
-## 第三层：`history/*.md` — 原始决策事件
+## Signal
 
-### 目的
+双耳（Git / 对话）捕获的原始信号，路由前的原始形态。
 
-`history/` 存储所有带完整上下文的原始决策事件。它是 `domains/*.md` 的数据来源，并支持精确的历史查询。
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| id | string | 必填 | 信号唯一 ID |
+| source_ear | `"git"` \| `"conversation"` | 必填 | 信号来源 |
+| signal_type | enum | 必填 | `dependency-removed`、`dependency-replaced`、`revert`、`large-refactor`、`user-rejection`、`user-constraint`、`historical-reference`、`stage-signal`、`decision`、`debt-acceptance` |
+| raw_data | Record<string, unknown> | `{}` | 原始证据数据 |
+| inferred.probable_type | string | 可选 | 推断的记忆类型 |
+| inferred.probable_domain | string | 可选 | 推断的目标域 |
+| inferred.confidence | `"high"` \| `"medium"` \| `"low"` | `"medium"` | 推断置信度 |
+| routing.level | `"L0"` \| `"L1"` \| `"L2"` \| `"L3"` | 可选 | 分配的路由级别 |
+| routing.reason | string | 可选 | 路由原因 |
+| captured_at | string (ISO 8601) | 必填 | 捕获时间戳 |
 
-### 注入时机
+### 示例
 
-按需注入，当 AI 需要查找特定的历史决策或拒绝记录时。
+```yaml
+# .cairn/signals/sig_2026_05_11_001.yaml
 
-### Token 预算
-
-**无限制。** 历史条目应尽可能详细。
-
-### 文件命名
-
+id: sig_2026_05_11_001
+source_ear: git
+signal_type: dependency-removed
+raw_data:
+  package: tRPC
+  appeared: "2024-02-15"
+  disappeared: "2024-03-02"
+  related_commits:
+    - a1b2c3d
+    - e4f5g6h
+inferred:
+  probable_type: rejection
+  probable_domain: api-layer
+  confidence: high
+routing:
+  level: L3
+  reason: "git-revert + local scope -> auto-write eligible"
+captured_at: "2026-05-11T08:00:00Z"
 ```
-YYYY-MM_<short-slug>.md
+
+---
+
+## StagedEntry
+
+等待人工审核的条目。Trust Router 分配 L2 时创建。
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| id | string | 必填 | 待审条目唯一 ID |
+| origin_signal | string | 必填 | 来源信号 ID |
+| draft_memory | DraftMemory | 必填 | 草拟的记忆内容（见下方） |
+| review_status | `"pending"` \| `"accepted"` \| `"rejected"` \| `"expired"` | `"pending"` | 审核状态 |
+| routing_reason | string | 必填 | 路由到 staged 的原因 |
+| created_at | string (ISO 8601) | 必填 | 创建时间戳 |
+
+### DraftMemory
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| type | enum | 必填 | `MEMORY_TYPES` 之一 |
+| domain | string | 必填 | 目标域 |
+| scope | `"local"` \| `"global"` | `"local"` | 影响范围 |
+| subject.name | string | 必填 | 主题标识 |
+| subject.category | string | 可选 | 主题分类 |
+| summary | string | 必填 | 一句话摘要 |
+| behavior_effect.type | enum | 必填 | `BEHAVIOR_EFFECT_TYPES` 之一 |
+| behavior_effect.instruction | string | 必填 | AI 应做的行为改变 |
+| confidence.level | `"high"` \| `"medium"` \| `"low"` | `"medium"` | 置信度 |
+
+### 示例
+
+```yaml
+# .cairn/staged/staged_2026_05_11_api_trpc.yaml
+
+id: staged_2026_05_11_api_trpc
+origin_signal: sig_2026_05_11_001
+draft_memory:
+  type: rejection
+  domain: api-layer
+  scope: local
+  subject:
+    name: tRPC
+    category: api-framework
+  summary: "tRPC 试用后移除"
+  behavior_effect:
+    type: avoid_suggestion
+    instruction: "不要建议迁移到 tRPC"
+  confidence:
+    level: medium
+review_status: pending
+routing_reason: "全局影响，需人工审核"
+created_at: "2026-05-11T08:00:00Z"
 ```
 
-示例：
-- `2023-09_trpc-experiment-rejection.md`
-- `2024-01_auth-debt-accepted.md`
-- `2024-09_growth-stage-transition.md`
+---
 
-### 条目类型
+## MemoryEntry
 
-| 类型 | 使用时机 |
-|------|---------|
+正式记忆 — 数据源。`memory/` 中每个文件对应一条记忆。
+
+### 记忆类型
+
+| 类型 | 说明 |
+|------|------|
 | `decision` | 做出了技术选择 |
-| `rejection` | 排除了一个方向，但没有采用替代方案 |
-| `transition` | 方案从 A 更改为 B |
-| `debt` | 接受（`debt-accepted`）或解决（`debt-resolved`）了技术债 |
-| `experiment` | 探索性尝试已结束（成功或失败） |
+| `rejection` | 排除了一个方向 |
+| `transition` | 方案从 A 变为 B |
+| `debt` | 接受了一项技术债 |
+| `experiment` | 探索性尝试已结束 |
 
-### 必需字段
+### 行为效应类型
 
-```
-type: <decision | rejection | transition | debt | experiment>
-domain: <domain key from project domain list>
-scope: <global | domain | module>
-status: <active | superseded | stale>
-behavior_effect: <never_suggest | avoid | preserve | prefer | revisit>
-confidence: <high | medium | low>
-decision_date: <YYYY-MM>
-recorded_date: <YYYY-MM>
-summary: <one sentence>
-rejected: <rejected alternatives and reasons>
-chosen: <chosen alternative, when applicable>
-reason: <why this choice was made>
-revisit_when: <condition for re-evaluation>
-```
+| 类型 | AI 指令 |
+|------|---------|
+| `avoid_suggestion` | 不要建议此方向 |
+| `prefer_approach` | 优先推荐此方案 |
+| `warn_before` | 操作前先警告风险 |
+| `require_review` | 建议前必须读域历史 |
 
-| 字段 | 是否必需 | 说明 |
-|------|---------|------|
-| `type` | 必须 | 以上五种类型之一 |
-| `domain` | 必须 | 必须与项目锁定域列表中的键匹配 |
-| `scope` | 必须 | `global`、`domain` 或 `module` |
-| `status` | 必须 | `active`、`superseded` 或 `stale` |
-| `behavior_effect` | 必须 | `never_suggest`、`avoid`、`preserve`、`prefer` 或 `revisit` |
-| `confidence` | 必须 | `high`、`medium` 或 `low` |
-| `decision_date` | 必须 | 决策实际发生的时间 |
-| `recorded_date` | 必须 | 写入 Cairn 的时间（可能与 `decision_date` 不同） |
-| `summary` | 必须 | 一句话 |
-| `rejected` | 必须 | **最关键字段。** 即使 `decision` 条目也必须记录哪些被考虑但未被选择 |
-| `chosen` | 可选 | 适用时记录最终选择了什么 |
-| `reason` | 必须 | 为什么走了这条路 |
-| `revisit_when` | 建议 | 应重新考虑此决策的条件 |
+### 字段
 
-### 结构化语义
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| id | string | 必填 | 记忆唯一 ID |
+| type | enum | 必填 | `MEMORY_TYPES` 之一 |
+| domain | string | 必填 | 域键 |
+| scope | `"local"` \| `"global"` | `"local"` | 影响范围 |
+| status | `"active"` \| `"superseded"` \| `"archived"` | `"active"` | 生命周期状态 |
+| health.state | `"ok"` \| `"stale"` \| `"conflicted"` | `"ok"` | 当前健康度 |
+| health.reason | string \| null | `null` | 不健康时的原因 |
+| confidence.level | `"high"` \| `"medium"` \| `"low"` | `"high"` | 置信度 |
+| confidence.score | number (0-1) | 可选 | 数值分数 |
+| confidence.reason | string | 可选 | 置信度理由 |
+| source.kind | `"git-revert"` \| `"git-dependency"` \| `"conversation"` \| `"manual"` | 必填 | 来源类型 |
+| source.refs | Array<{type, id}> | 必填 | 引用列表；type 为 `"commit"` \| `"session"` \| `"file"` \| `"manual"` |
+| source.captured_at | string (ISO 8601) | 必填 | 捕获时间 |
+| subject.name | string | 必填 | 主题标识 |
+| subject.category | string | 可选 | 主题分类 |
+| summary | string | 必填 | 一句话摘要 |
+| rejected | {what, reason} | 可选 | 被拒绝的内容及原因 |
+| chosen | {what, reason} | 可选 | 被选择的内容及原因 |
+| behavior_effect.type | enum | 必填 | `BEHAVIOR_EFFECT_TYPES` 之一 |
+| behavior_effect.instruction | string | 必填 | 具体的 AI 行为指令 |
+| revisit.when | string[] | `[]` | 重新评估条件 |
+| revisit.status | `"not_met"` \| `"possibly_met"` \| `"met"` | `"not_met"` | 当前重评状态 |
+| relations.related | string[] | `[]` | 关联的记忆 ID |
+| relations.conflicts | string[] | `[]` | 冲突的记忆 ID |
+| created_at | string (ISO 8601) | 必填 | 创建时间戳 |
+| updated_at | string (ISO 8601) | 必填 | 最后更新时间戳 |
 
-四个结构化记忆字段回答 AI 应用记忆前必须判断的问题：
+### 示例
 
-| 字段 | 回答的问题 |
-|------|-----------|
-| `scope` | 这条记忆适用于哪里？ |
-| `status` | 它仍然有效，还是已经被替代 / 过期？ |
-| `behavior_effect` | AI 因为这条记忆应该改变什么行为？ |
-| `confidence` | 它是否足够可靠，可以投影到 `output.md`？ |
+```yaml
+# .cairn/memory/mem_2024_03_api_tRPC_rejection.yaml
 
-默认 `behavior_effect`：
-
-| 类型 | 默认值 |
-|------|--------|
-| `rejection` | `never_suggest` |
-| `debt` | `preserve` |
-| `transition` | `prefer` |
-| `decision` | `prefer` |
-| `experiment` | `avoid` |
-
-`status: stale` 或 `status: superseded` 的条目不得继续投影到 `output.md`。
-`confidence: low` 的条目可以留在 `history/` 或域上下文中，但不得提升为常驻全局约束。
-
-### 双时间戳
-
-`decision_date` 和 `recorded_date` 可以不同。2022 年的决策可以在 2025 年记录。AI 必须使用 `decision_date` 来评估时效性，而不是 `recorded_date`。
-
-### `rejected` 字段
-
-`rejected` 字段是任何历史条目中最关键的字段。它记录了被考虑但未被选择的内容——AI 最可能重新建议的路径。即使对于 `decision` 和 `transition` 类型，该字段也必须捕获被评估但被放弃的替代方案。
-
-### 必须记录的事件
-
-| 事件 | 条目类型 | 同时更新 |
-|------|---------|---------|
-| 技术方案已更改 | `transition` | `output.md` stack + `domains/*.md` |
-| 实验失败，已回滚 | `experiment` 或 `rejection` | `output.md` no-go（如果高频出现）+ `domains/*.md` |
-| 已知缺陷被接受 | `debt`（`debt-accepted`）| `output.md` debt + `domains/*.md` |
-| 技术债已解决 | `debt`（`debt-resolved`）| `output.md` debt |
-| 项目进入新阶段 | `transition` | `output.md` stage |
-| 方向被明确拒绝 | `rejection` | `output.md` no-go（如果高频出现）+ `domains/*.md` |
-
-### 完整示例
-
-```
+id: mem_2024_03_api_tRPC_rejection
 type: rejection
 domain: api-layer
-scope: domain
+scope: local
+
 status: active
-behavior_effect: never_suggest
-confidence: high
-decision_date: 2023-09
-recorded_date: 2025-01
-summary: Rejected tRPC after a 2-week trial; migration cost for existing REST clients too high
-rejected: tRPC — type-safe RPC layer. Two-week spike showed that migrating existing
-  REST consumers (mobile app, 3 webhook integrations, 2 partner API clients) would
-  require a coordinated multi-client release. No incremental adoption path found.
-chosen: Existing REST clients and REST API surface
-reason: Existing REST API surface consumed by 6+ clients. tRPC's all-or-nothing router
-  model made migration a flag day, not a gradual rollout. A team of 2 could not absorb
-  the coordination cost.
-revisit_when: Greenfield service with no existing REST consumers, or tRPC adds
-  first-class REST compatibility
+
+health:
+  state: ok
+  reason: null
+
+confidence:
+  level: high
+  score: 0.86
+  reason: "用户明确拒绝 + git revert 证据"
+
+source:
+  kind: git-revert
+  refs:
+    - type: commit
+      id: a1b2c3d
+    - type: session
+      id: sess_2024_03_15_001
+  captured_at: "2024-03-15T10:00:00Z"
+
+subject:
+  name: tRPC
+  category: api-framework
+
+summary: "tRPC 试用两周后回退，与现有 REST 客户端集成成本过高"
+
+rejected:
+  what: "tRPC 迁移"
+  reason: "REST 客户端改造代价超过 tRPC 类型安全收益"
+
+chosen:
+  what: "REST + OpenAPI"
+  reason: "适合当前客户端和团队工作流"
+
+behavior_effect:
+  type: avoid_suggestion
+  instruction: "不要建议迁移到 tRPC，除非 revisit 条件满足"
+
+revisit:
+  when:
+    - "现有 REST 客户端全部替换"
+    - "启动全新的 greenfield API 服务"
+  status: not_met
+
+relations:
+  related:
+    - mem_2024_03_api_openapi_decision
+  conflicts: []
+
+created_at: "2024-03-15T10:00:00Z"
+updated_at: "2024-03-15T10:00:00Z"
 ```
 
 ---
 
-## 命名规范
+## StageSnapshot
 
-### 域键
+存储在 `state.yaml` 的 `stage` 键下。表示推断的项目生命周期阶段。
 
-- 格式：`kebab-case`
-- 子域：`<domain>/<scope>`（例如 `api-layer/user-service`、`database/primary`）
-- 域列表必须在 `cairn init` 时锁定
-- AI 在写历史条目时不得自行创造新的域键
+### 阶段类型
 
-### 标准域列表
+| 阶段 | 说明 |
+|------|------|
+| `exploration` | 早期，依赖变动频繁，快速试验 |
+| `growth` | 功能速度提升，架构逐步稳定 |
+| `maturity` | 架构稳定，变更以增量为主 |
+| `maintenance` | 低活跃度，主要是修 bug 和更新依赖 |
 
-以下 11 个域在初始化时可用。项目应选择 3–7 个适用的域。
+### 字段
 
-| 键 | 领域 |
-|----|------|
-| `state-management` | 前端状态管理 |
-| `api-layer` | API 设计与通信 |
-| `database` | 数据存储 |
-| `auth` | 认证与授权 |
-| `frontend-framework` | 前端框架 |
-| `testing` | 测试策略 |
-| `deployment` | 部署与基础设施 |
-| `monitoring` | 监控与告警 |
-| `architecture` | 整体架构模式 |
-| `performance` | 性能优化 |
-| `security` | 安全策略 |
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| phase | enum | 必填 | `STAGE_PHASES` 之一 |
+| confidence | number (0-1) | 必填 | 推断置信度 |
+| status | `"advisory"` \| `"confirmed"` | `"advisory"` | 是否经人工确认 |
+| evidence | Array<{source, signal}> | `[]` | 支撑证据 |
+| guidance | string[] | `[]` | 阶段性建议 |
+| last_updated | string (ISO 8601) | 必填 | 最后更新时间戳 |
 
-允许使用自定义域。它们必须采用 `kebab-case` 格式，并在初始化时锁定。
+### 示例
+
+```yaml
+# .cairn/state.yaml 中
+
+stage:
+  phase: growth
+  confidence: 0.68
+  status: advisory
+  evidence:
+    - source: git
+      signal: "近 3 个月依赖变更减少"
+    - source: git
+      signal: "提交频率稳定在 12 次/周"
+    - source: conversation
+      signal: "用户请求以功能添加为主"
+  guidance:
+    - "平衡速度与稳定性"
+    - "新增依赖需要评估维护成本"
+  last_updated: "2026-05-11T08:00:00Z"
+```
 
 ---
 
-## 概念区分
+## SessionRecord
 
-三个概念容易混淆。它们的区别决定了 AI 的行为。
+每次 AI 会话的审计记录。`sessions/` 中每个文件对应一次会话。
 
-| | `no-go` | `accepted debt` | `known pitfalls` |
-|--|---------|-----------------|-----------------|
-| **性质** | 方向性排除 | 代码库中的已知缺陷 | 操作陷阱 |
-| **AI 反应** | 不建议此方向 | 不尝试修复；在约束内工作 | 主动规避触发条件 |
-| **代码中存在？** | 否（评估结论） | 是（缺陷存在） | 是（副作用存在） |
-| **`revisit_when`** | 可选 | 必需 | 无（持续警告） |
-| **写在** | `output.md` + `domains/` | `output.md` + `history/` + `domains/` | 仅 `domains/` |
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| id | string | 必填 | 会话 ID |
+| started_at | string (ISO 8601) | 必填 | 会话开始时间 |
+| ended_at | string (ISO 8601) | 必填 | 会话结束时间 |
+| summary | string | 必填 | 会话摘要 |
+| signals_captured | number | `0` | 捕获的信号总数 |
+| signals_routed.L0 | number | `0` | 丢弃的信号数 |
+| signals_routed.L1 | number | `0` | 进入候选池的信号数 |
+| signals_routed.L2 | number | `0` | 进入待审的信号数 |
+| signals_routed.L3 | number | `0` | 自动写入的信号数 |
+| domains_touched | string[] | `[]` | 涉及的域 |
+| decisions_made | string[] | `[]` | 记录的决策 |
+| unresolved | string[] | `[]` | 未解决的事项 |
+| context_injections | string[] | `[]` | 执行的上下文注入 |
 
-**no-go** 表示："我们决定不走这条路。"  
-**accepted debt** 表示："我们知道这里有问题，暂时不修复。"  
-**known pitfalls** 表示："在这里工作时要小心。"
+### 示例
 
-同一个底层问题可以同时以多种形式出现。例如，一个被接受为技术债的 WebSocket 并发 bug（在 `output.md` debt 中），同时也可能在 `domains/api-layer.md` 中生成一条已知陷阱，警告未来的工作不要依赖 WebSocket 一致性保证。
+```yaml
+# .cairn/sessions/sess_2026_05_11_001.yaml
+
+id: sess_2026_05_11_001
+started_at: "2026-05-11T10:00:00Z"
+ended_at: "2026-05-11T12:30:00Z"
+summary: "重构用户认证模块，从 session-based 迁移到 JWT"
+signals_captured: 3
+signals_routed:
+  L0: 0
+  L1: 1
+  L2: 1
+  L3: 1
+domains_touched:
+  - auth
+  - api-layer
+decisions_made:
+  - "认证从 session 迁移到 JWT"
+unresolved:
+  - "JWT refresh token 存储位置未决"
+context_injections:
+  - "cairn_context 返回域: auth, api-layer; no-go: tRPC"
+```
 
 ---
 
-## 支持目录（v0.0.11，v0.0.12 起已废弃）
+## Views 生成规则
 
-> **v0.0.12 说明：** `.cairn/staged/`、`.cairn/audits/` 和
-> `.cairn/reflections/` 不再由 Cairn 创建或使用。v0.0.12 起，AI 助手使用原生文件工具直接写入 history 条目并更新 domain 文件，没有暂存门禁或 CLI 仪式。
-> 如果旧项目中仍有这些目录，`cairn doctor` 会提示。请人工审查内容，将有价值的信息迁移到 `history/` 或 `domains/` 后删除旧目录。
-
-`.cairn/staged/` 和 `.cairn/audits/` 是 v0.0.11 的支持目录。它们不构成额外协议层。下面内容仅用于帮助升级旧项目，不应作为新工作流使用。
-
-### `.cairn/staged/` — 候选收件箱
-
-暂存候选曾是等待人工审阅的前缀文件。
-
-#### 候选类型
-
-| 前缀 | 接受时 | 生成来源 |
-|------|--------|---------|
-| `history-candidate_` | 移动到 `history/`（去除前缀） | 旧写回辅助工具 |
-| `domain-update-candidate_` | 合并到目标 `domains/<name>.md` | 旧写回辅助工具 |
-| `output-update-candidate_` | 合并到 `output.md` | 旧写回辅助工具 |
-| `audit-candidate_` | 将有用内容合并到 domain 文件 | 旧写回辅助工具 |
-
-#### 文件命名
-
-```
-<kind>-candidate_YYYY-MM_<slug>.md
-```
-
-示例：
-- `history-candidate_2026-04_trpc-rejection.md`
-- `domain-update-candidate_2026-04_auth-open-question.md`
-- `output-update-candidate_2026-04_stack-drift.md`
-- `audit-candidate_2026-04_state-cleanup.md`
-
-#### 向后兼容
-
-没有已识别前缀的文件（例如 v0.0.8 之前工具产生的 `2024-03_foo.md`）在接受时被视为 `history-candidate` 并移动到 `history/`。不执行重命名。
-
----
-
-### `.cairn/audits/` — 迁移清理追踪
-
-审计文件曾在 v0.0.11 中记录明确的迁移清理义务。
-
-#### 文件命名
-
-```
-YYYY-MM_<domain>-<slug>.md
-```
-
-#### 格式
+Views 是从 `memory/` 自动生成的 Markdown 投影，只读。每个视图文件以如下注释开头：
 
 ```markdown
-# Audit: <description>
-date: YYYY-MM
-domain: <domain-key>
-trigger: <触发此审计的变更>
-status: open|partial|complete
-
-## Expected removals
-- <需要删除的旧依赖、目录或模式>
-
-## Findings
-- <发现结果：仍然存在 / 确认已删除>
-
-## Follow-up
-- <剩余行动项>
+<!--
+Generated by Cairn. Do not edit manually.
+Source: .cairn/memory/*.yaml
+Last generated: <ISO 8601 时间戳>
+-->
 ```
 
-| 字段 | 是否必需 | 说明 |
-|------|---------|------|
-| `date` | 必须 | 审计创建时间 |
-| `domain` | 必须 | 项目域列表中的域键 |
-| `trigger` | 必须 | 需要清理的变更的一行描述 |
-| `status` | 必须 | `open`（未开始）、`partial`（进行中）、`complete`（完成） |
+### views/output.md
 
-#### 生命周期
+全局约束快照，每次 AI 会话开始时注入。
 
-- **审查：** 升级时检查旧 audit 文件。
-- **迁移：** 将有用的清理义务移入 domain 的 `## residue checklist` 或 `## known pitfalls`。
-- **删除：** 有用内容迁移后删除 `.cairn/audits/`。
+| 章节 | 数据源筛选 |
+|------|-----------|
+| no-go | `scope == 'global'` 或 `behavior_effect.type == 'avoid_suggestion'`，status 为 `active` |
+| stack | `type == 'decision'` 且 `status == 'active'` |
+| debt | `type == 'debt'` |
+| hooks | `config.yaml` 的 `domains.locked` + memory 关键词提取 |
+| stage | `state.yaml` 阶段快照 |
+
+**Token 预算：** 目标 500，硬限制 800。超限时优先保留 `behavior_effect.type == 'avoid_suggestion'` 条目。
+
+### views/domains/\<name\>.md
+
+按域的设计上下文，按需注入。
+
+| 章节 | 数据源筛选 |
+|------|-----------|
+| trajectory | 该域所有 active 条目，按 `created_at` 排序 |
+| rejected paths | `type == 'rejection'` |
+| known pitfalls | `behavior_effect.type == 'warn_before'` |
+| open questions | `revisit.status == 'possibly_met'` |
+
+**Token 预算：** 每文件目标 300，硬限制 500。
+
+### views/stage.md
+
+阶段建议详情视图，从 `state.yaml` 阶段快照生成。包含 phase、confidence、status、evidence 列表和 guidance 列表。
+
+---
+
+## Trust Router
+
+所有信号必须经过 Trust Router，无信号可绕过。
+
+### 路由级别
+
+| 级别 | 名称 | 存储位置 | 行为 |
+|------|------|---------|------|
+| L0 | Drop | 不存储 | 噪音、重复、低置信度 — 丢弃 |
+| L1 | Candidate | signals/ | 积累；证据充足后升级 |
+| L2 | Staged | staged/ | 等待人工审核 |
+| L3 | Auto-write | memory/ | 严格条件下自动写入 |
+
+### 路由流程
+
+```
+信号进入 Trust Router
+  |
+  +-> 重复检测？（同 domain + 同 subject）
+  |     是 -> 合并到已有条目的 source.refs -> L0
+  |     否 -> 继续
+  |
+  +-> 命中硬规则 L2？（never_auto 列表）
+  |     是 -> 写入 staged/（无论来源多可靠）
+  |     否 -> 继续
+  |
+  +-> 命中配置 L2？（trust_policy.L2_staged 匹配）
+  |     是 -> 写入 staged/
+  |     否 -> 继续
+  |
+  +-> 命中配置 L3？（trust_policy.L3_auto_write 匹配）
+  |     是 -> 写入 memory/ -> 触发 views 重新生成
+  |     否 -> 继续
+  |
+  +-> 置信度判断
+  |     >= medium -> L1（写入 signals/）
+  |     < medium  -> L0（丢弃）
+  |
+  +-> L1 积累逻辑
+        同 domain + 同 subject 的 L1 信号超过阈值
+        -> 自动升级为 L2 staged
+```
+
+**硬规则：L2 安全规则始终优先于 L3 自动写入规则。**
+
+### 硬规则（不可配置）
+
+- 新增全局 no-go -> 永远 L2
+- 阶段变更 -> 永远 L2
+- `scope == 'global'` 的 behavior_effect -> 永远 L2
+- `never_auto` 列表中的任何条目 -> 永远 L2
+
+---
+
+## ID 命名规范
+
+| 实体 | 模式 | 示例 |
+|------|------|------|
+| Signal | `sig_<YYYY_MM_DD>_<seq>` | `sig_2026_05_11_001` |
+| StagedEntry | `staged_<YYYY_MM_DD>_<domain>_<slug>` | `staged_2026_05_11_api_trpc` |
+| MemoryEntry | `mem_<YYYY_MM>_<domain>_<slug>` | `mem_2024_03_api_tRPC_rejection` |
+| Session | `sess_<YYYY_MM_DD>_<seq>` | `sess_2026_05_11_001` |
+
+域键使用 `kebab-case`。域列表在 `cairn init` 时锁定。
+
+---
+
+## 从 v1 迁移
+
+v1 的三层 Markdown 结构已被完全替代：
+
+| v1 | v2 |
+|----|-----|
+| `.cairn/output.md`（手写） | `.cairn/views/output.md`（从 memory/ 自动生成） |
+| `.cairn/domains/*.md`（手写） | `.cairn/views/domains/*.md`（从 memory/ 自动生成） |
+| `.cairn/history/*.md`（手写） | `.cairn/memory/*.yaml`（经信号自动捕获） |
+| `.cairn/SKILL.md` | MCP 工具协议（内置于 Server） |
+| `.cairn/staged/`（v0.0.11，Markdown） | `.cairn/staged/*.yaml`（Trust Router 输出） |
+| `.cairn/audits/`（v0.0.11） | 移除；使用 memory 条目的 `health.state` |
+
+views/ 的输出格式与 v1 Skill 文件向后兼容，MCP Server 不可用时可优雅降级。
