@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { stringify as yamlStringify } from "yaml";
@@ -17,6 +17,7 @@ import { handleCairnSignal } from "../src/tools/cairn-signal.js";
 import { handleCairnStatus } from "../src/tools/cairn-status.js";
 import { handleCairnPlan } from "../src/tools/cairn-plan.js";
 import { handleCairnDoctor } from "../src/tools/cairn-doctor.js";
+import { handleCairnSessionEnd } from "../src/tools/cairn-session-end.js";
 import type { CairnContext } from "../src/server.js";
 import type { CairnPaths } from "../src/paths.js";
 import type { MemoryEntry, Config } from "../src/schemas/index.js";
@@ -301,5 +302,338 @@ describe("cairn_doctor", () => {
         const result = handleCairnDoctor(ctx);
         const data = JSON.parse(result.content[0].text);
         expect(data.todos_in_memory).toBe(1);
+    });
+});
+
+describe("cairn_context — edge cases", () => {
+    let ctx: CairnContext;
+    let rootDir: string;
+
+    beforeEach(() => {
+        const env = createTestCtx();
+        ctx = env.ctx;
+        rootDir = env.rootDir;
+    });
+    afterEach(() => rmSync(rootDir, { recursive: true, force: true }));
+
+    it("returns all domains when task matches none", () => {
+        ctx.memoryStore.save(makeMemory("mem_api_ec", { domain: "api-layer" }));
+        ctx.memoryStore.save(
+            makeMemory("mem_auth_ec", { domain: "auth", subject: { name: "JWT" } }),
+        );
+        const result = handleCairnContext(ctx, { task: "unrelated xyz" });
+        const data = JSON.parse(result.content[0].text);
+        const domains = data.relevant_domains.map((d: any) => d.domain);
+        expect(domains).toContain("api-layer");
+        expect(domains).toContain("auth");
+    });
+
+    it("includes conflict warnings", () => {
+        ctx.memoryStore.save(
+            makeMemory("mem_conflict_a", {
+                subject: { name: "REST vs GraphQL" },
+                behavior_effect: { type: "avoid_suggestion", instruction: "Avoid GraphQL" },
+                health: { state: "conflicted", reason: "contradicts mem_conflict_b" },
+            }),
+        );
+        ctx.memoryStore.save(
+            makeMemory("mem_conflict_b", {
+                subject: { name: "REST vs GraphQL" },
+                behavior_effect: { type: "prefer_approach", instruction: "Prefer GraphQL" },
+                health: { state: "conflicted", reason: "contradicts mem_conflict_a" },
+            }),
+        );
+        const result = handleCairnContext(ctx, {});
+        const data = JSON.parse(result.content[0].text);
+        expect(data.warnings.some((w: string) => w.includes("conflict"))).toBe(true);
+    });
+
+    it("includes staged warnings", () => {
+        ctx.stagedStore.save({
+            id: "staged_pending_1",
+            origin_signal: "sig_001",
+            draft_memory: {
+                type: "rejection",
+                domain: "api-layer",
+                summary: "Rejected approach",
+                behavior_effect: { type: "avoid_suggestion", instruction: "Do not suggest" },
+            },
+            review_status: "pending",
+            routing_reason: "test routing",
+            created_at: "2026-01-01T00:00:00Z",
+        });
+        const result = handleCairnContext(ctx, {});
+        const data = JSON.parse(result.content[0].text);
+        expect(data.warnings.some((w: string) => w.includes("staged"))).toBe(true);
+    });
+});
+
+describe("cairn_signal — edge cases", () => {
+    let ctx: CairnContext;
+    let rootDir: string;
+
+    beforeEach(() => {
+        const env = createTestCtx();
+        ctx = env.ctx;
+        rootDir = env.rootDir;
+    });
+    afterEach(() => rmSync(rootDir, { recursive: true, force: true }));
+
+    it("uses default config when config file missing", () => {
+        unlinkSync(ctx.paths.configYaml);
+        const result = handleCairnSignal(ctx, {
+            type: "user-rejection",
+            domain: "api-layer",
+            details: { what: "Some approach" },
+            evidence: { user_said: "No" },
+        });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.accepted).toBe(true);
+    });
+
+    it("routes global constraint to L2", () => {
+        const result = handleCairnSignal(ctx, {
+            type: "user-constraint",
+            domain: "architecture",
+            details: { what: "No microservices" },
+            evidence: { user_said: "We stay monolithic" },
+        });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.level).toBe("L2");
+    });
+});
+
+describe("cairn_status — edge cases", () => {
+    let ctx: CairnContext;
+    let rootDir: string;
+
+    beforeEach(() => {
+        const env = createTestCtx();
+        ctx = env.ctx;
+        rootDir = env.rootDir;
+    });
+    afterEach(() => rmSync(rootDir, { recursive: true, force: true }));
+
+    it("detects conflicted memory in status", () => {
+        ctx.memoryStore.save(
+            makeMemory("mem_conflict_status", {
+                health: { state: "conflicted", reason: "contradicts another entry" },
+            }),
+        );
+        const result = handleCairnStatus(ctx);
+        const data = JSON.parse(result.content[0].text);
+        expect(data.conflicts.length).toBeGreaterThan(0);
+        expect(data.conflicts[0].id).toBe("mem_conflict_status");
+    });
+
+    it("includes conflict details", () => {
+        ctx.memoryStore.save(
+            makeMemory("mem_conflict_detail", {
+                health: { state: "conflicted", reason: "REST vs GraphQL mismatch" },
+            }),
+        );
+        const result = handleCairnStatus(ctx);
+        const data = JSON.parse(result.content[0].text);
+        expect(data.conflicts.length).toBe(1);
+        expect(data.conflicts[0].reason).toBe("REST vs GraphQL mismatch");
+    });
+});
+
+describe("cairn_doctor — edge cases", () => {
+    let ctx: CairnContext;
+    let rootDir: string;
+
+    beforeEach(() => {
+        const env = createTestCtx();
+        ctx = env.ctx;
+        rootDir = env.rootDir;
+    });
+    afterEach(() => rmSync(rootDir, { recursive: true, force: true }));
+
+    it("reports missing output.md", () => {
+        const result = handleCairnDoctor(ctx);
+        const data = JSON.parse(result.content[0].text);
+        expect(data.output_tokens.status).toBe("missing");
+    });
+
+    it("reports warning for 500-800 token output", () => {
+        for (let i = 0; i < 20; i++) {
+            ctx.memoryStore.save(
+                makeMemory(`mem_warn_${i}`, {
+                    subject: { name: `Warning-Subject-${i}` },
+                    summary: `Medium length summary for entry ${i} with some additional context about the decision`,
+                }),
+            );
+        }
+        ctx.viewsEngine.regenerate();
+        const result = handleCairnDoctor(ctx);
+        const data = JSON.parse(result.content[0].text);
+        expect(["warning", "ok"]).toContain(data.output_tokens.status);
+        if (data.output_tokens.count > 500 && data.output_tokens.count <= 800) {
+            expect(data.output_tokens.status).toBe("warning");
+        }
+    });
+
+    it("reports staged backlog when >5 pending", () => {
+        for (let i = 0; i < 6; i++) {
+            ctx.stagedStore.save({
+                id: `staged_backlog_${i}`,
+                origin_signal: `sig_${i}`,
+                draft_memory: {
+                    type: "rejection",
+                    domain: "api-layer",
+                    summary: `Rejected approach ${i}`,
+                    behavior_effect: { type: "avoid_suggestion", instruction: `Do not suggest ${i}` },
+                },
+                review_status: "pending",
+                routing_reason: "test routing",
+                created_at: "2026-01-01T00:00:00Z",
+            });
+        }
+        const result = handleCairnDoctor(ctx);
+        const data = JSON.parse(result.content[0].text);
+        expect(data.staged_backlog).toBe(6);
+        expect(data.issues.some((i: string) => i.includes("backlog"))).toBe(true);
+    });
+
+    it("reports orphan no-go with empty refs", () => {
+        ctx.memoryStore.save(
+            makeMemory("mem_orphan_nogo", {
+                type: "rejection",
+                behavior_effect: { type: "avoid_suggestion", instruction: "Avoid this" },
+                source: {
+                    kind: "conversation",
+                    refs: [],
+                    captured_at: "2026-01-01T00:00:00Z",
+                },
+            }),
+        );
+        const result = handleCairnDoctor(ctx);
+        const data = JSON.parse(result.content[0].text);
+        expect(data.orphan_no_go).toContain("mem_orphan_nogo");
+    });
+});
+
+describe("cairn_plan — edge cases", () => {
+    let ctx: CairnContext;
+    let rootDir: string;
+
+    beforeEach(() => {
+        const env = createTestCtx();
+        ctx = env.ctx;
+        rootDir = env.rootDir;
+    });
+    afterEach(() => rmSync(rootDir, { recursive: true, force: true }));
+
+    it("returns empty constraints for unrelated task", () => {
+        ctx.memoryStore.save(
+            makeMemory("mem_api_plan", {
+                domain: "api-layer",
+                subject: { name: "REST" },
+                behavior_effect: { type: "prefer_approach", instruction: "Use REST" },
+            }),
+        );
+        const result = handleCairnPlan(ctx, { task: "unrelated xyz" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.historical_constraints).toHaveLength(0);
+        expect(data.recommended_direction).toContain("No specific historical preference");
+    });
+
+    it("applies stage guidance when confidence >= 0.5", () => {
+        const state = ctx.stateStore.load();
+        state.stage.confidence = 0.7;
+        state.stage.phase = "maturity";
+        ctx.stateStore.save(state);
+
+        const result = handleCairnPlan(ctx, { task: "refactor something" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.stage_guidance).toContain("maturity");
+    });
+
+    it("does not apply stage guidance when confidence < 0.5", () => {
+        const state = ctx.stateStore.load();
+        state.stage = {
+            phase: "growth",
+            confidence: 0.4,
+            status: "advisory",
+            evidence: [],
+            guidance: [],
+            last_updated: new Date().toISOString(),
+        };
+        ctx.stateStore.save(state);
+
+        const result = handleCairnPlan(ctx, { task: "anything" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.stage_guidance).toContain("too low");
+    });
+
+    it("includes no-go warnings for matching avoid_suggestion", () => {
+        ctx.memoryStore.save(
+            makeMemory("mem_nogo_plan", {
+                type: "rejection",
+                domain: "api-layer",
+                subject: { name: "tRPC" },
+                behavior_effect: { type: "avoid_suggestion", instruction: "Don't use tRPC" },
+            }),
+        );
+        const result = handleCairnPlan(ctx, { task: "api endpoint design" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.warnings.some((w: string) => w.includes("No-go"))).toBe(true);
+        expect(data.warnings.some((w: string) => w.includes("tRPC"))).toBe(true);
+    });
+
+    it("includes revisit warnings for possibly_met entries", () => {
+        ctx.memoryStore.save(
+            makeMemory("mem_revisit_plan", {
+                domain: "api-layer",
+                subject: { name: "REST versioning" },
+                revisit: { when: ["team grows to 10"], status: "possibly_met" },
+            }),
+        );
+        const result = handleCairnPlan(ctx, { task: "api endpoint design" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.warnings.some((w: string) => w.includes("Revisit"))).toBe(true);
+    });
+
+    it("includes both avoid and prefer in historical_constraints", () => {
+        ctx.memoryStore.save(
+            makeMemory("mem_avoid_plan", {
+                type: "rejection",
+                domain: "api-layer",
+                subject: { name: "GraphQL" },
+                behavior_effect: { type: "avoid_suggestion", instruction: "Don't use GraphQL" },
+            }),
+        );
+        ctx.memoryStore.save(
+            makeMemory("mem_prefer_plan", {
+                domain: "api-layer",
+                subject: { name: "REST" },
+                behavior_effect: { type: "prefer_approach", instruction: "Use REST for APIs" },
+            }),
+        );
+        const result = handleCairnPlan(ctx, { task: "api endpoint design" });
+        const data = JSON.parse(result.content[0].text);
+        const constraints = data.historical_constraints.join(" ");
+        expect(constraints).toContain("DO NOT suggest");
+        expect(constraints).toContain("PREFER");
+    });
+});
+
+describe("cairn_session_end — edge cases", () => {
+    let ctx: CairnContext;
+    let rootDir: string;
+
+    beforeEach(() => {
+        const env = createTestCtx();
+        ctx = env.ctx;
+        rootDir = env.rootDir;
+    });
+    afterEach(() => rmSync(rootDir, { recursive: true, force: true }));
+
+    it("handles empty session gracefully", async () => {
+        const result = await handleCairnSessionEnd(ctx, { summary: "empty" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.views_regenerated).toBe(true);
+        expect(data.signals_processed).toBe(0);
     });
 });
