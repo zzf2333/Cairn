@@ -7,7 +7,7 @@ import { runDoctor } from "./cli/doctor.js";
 import { runStage } from "./cli/stage.js";
 import { runMemory } from "./cli/memory.js";
 
-const VERSION = "2.0.0-alpha.0";
+const VERSION = "0.2.0";
 
 const args = process.argv.slice(2);
 const command = args[0];

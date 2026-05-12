@@ -12,6 +12,7 @@
 #   - mcp/package.json        (via npm version --no-git-tag-version)
 #   - mcp/package-lock.json   (updated automatically by npm)
 #   - mcp/src/server.ts       (hardcoded version field in createCairnServer)
+#   - mcp/src/cli.ts          (VERSION constant)
 # =============================================================================
 
 set -euo pipefail
@@ -44,9 +45,16 @@ sed -i.bak "s/version: \"[0-9]*\.[0-9]*\.[0-9]*[^\"]*\"/version: \"$VERSION\"/" 
 rm -f "${SERVER_TS}.bak"
 echo "  [OK] mcp/src/server.ts"
 
+# 3. mcp/src/cli.ts — replace VERSION constant
+CLI_TS="$REPO_ROOT/mcp/src/cli.ts"
+sed -i.bak "s/const VERSION = \"[^\"]*\"/const VERSION = \"$VERSION\"/" "$CLI_TS"
+rm -f "${CLI_TS}.bak"
+echo "  [OK] mcp/src/cli.ts"
+
 echo ""
 echo "Done. All files updated to version $VERSION."
 echo ""
 echo "Verify with:"
 echo "  grep '\"version\"' mcp/package.json"
 echo "  grep 'version:' mcp/src/server.ts"
+echo "  grep 'VERSION' mcp/src/cli.ts"

@@ -33,10 +33,12 @@ jobs:
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           MCP_VERSION=$(node -p "require('./mcp/package.json').version")
           SERVER_VERSION=$(grep 'version:' mcp/src/server.ts | grep -v '"2.0"' | head -1 | grep -oP '"[^"]*"' | tr -d '"')
+          CLI_VERSION=$(grep 'const VERSION' mcp/src/cli.ts | grep -oP '"[^"]*"' | tr -d '"')
 
           echo "Tag version:    $TAG_VERSION"
           echo "MCP version:    $MCP_VERSION"
           echo "Server version: $SERVER_VERSION"
+          echo "CLI version:    $CLI_VERSION"
 
           if [ "$TAG_VERSION" != "$MCP_VERSION" ]; then
             echo "::error::Tag $TAG_VERSION does not match mcp/package.json $MCP_VERSION"
@@ -44,6 +46,10 @@ jobs:
           fi
           if [ "$TAG_VERSION" != "$SERVER_VERSION" ]; then
             echo "::error::Tag $TAG_VERSION does not match mcp/src/server.ts $SERVER_VERSION"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$CLI_VERSION" ]; then
+            echo "::error::Tag $TAG_VERSION does not match mcp/src/cli.ts $CLI_VERSION"
             exit 1
           fi
 
