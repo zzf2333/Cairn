@@ -96,6 +96,8 @@ and serves the results as structured constraints.
 - `views/` is auto-generated (token-budget-aware Markdown for AI consumption)
 - AI calls `cairn_context()` to get filtered constraints for the current task
 
+![Signal Pipeline](docs/diagrams/02-three-layer-architecture.png)
+
 ### Four Constraint Behaviors
 
 Every memory entry declares a `behavior_effect`:
@@ -209,6 +211,8 @@ See [`mcp/README.md`](mcp/README.md) for full tool schemas and recommended workf
 
 ---
 
+![Integration Overview](docs/diagrams/03-integration-overview.png)
+
 ## Supported AI Tools
 
 ### MCP (primary path)
@@ -252,6 +256,27 @@ The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repos
 
 ---
 
+## Stage Advisory Engine
+
+Cairn infers your project's lifecycle phase from Git signals:
+
+| Phase | Typical Signals | Guidance |
+|-------|----------------|----------|
+| `exploration` | Age < 6 months, high dependency churn | New deps OK, experiments OK, prioritize speed |
+| `growth` | Rising commit trend, stable deps | Balance speed and stability |
+| `maturity` | Low new-file ratio, age > 18 months | New deps need strong justification |
+| `maintenance` | Declining commits, age > 24 months | Conservative changes only |
+
+The engine is **advisory only** — it never enforces constraints automatically.
+Stage guidance surfaces in `cairn_context()` when confidence >= 0.5. To confirm
+a stage as official:
+
+```bash
+cairn stage confirm
+```
+
+---
+
 ## Examples
 
 - [`examples/saas-18mo/`](examples/saas-18mo/) — 18-month SaaS project
@@ -265,7 +290,6 @@ The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repos
 |----------|----------|
 | [`spec/FORMAT.md`](spec/FORMAT.md) | Complete schema reference for all `.cairn/` data files |
 | [`spec/DESIGN.md`](spec/DESIGN.md) | Design rationale: dual-ear, Trust Router, stage engine, memory/views separation |
-| [`spec/TASK-COMPLETION-PROTOCOL.md`](spec/TASK-COMPLETION-PROTOCOL.md) | Task completion: MCP signal protocol |
 | [`spec/vs-adr.md`](spec/vs-adr.md) | How Cairn relates to Architecture Decision Records |
 | [`spec/adoption-guide.md`](spec/adoption-guide.md) | Install and daily usage guide |
 | [`spec/glossary.md`](spec/glossary.md) | Terminology reference |
