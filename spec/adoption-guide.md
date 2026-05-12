@@ -170,7 +170,7 @@ AI calls cairn_context()
   → AI works within these constraints
 
 AI calls cairn_signal() during work
-  → Captures decisions, rejections, experiments, constraints
+  → Captures constraint-relevant events (see signal types below)
   → Trust Router routes each signal: L0 drop / L1 candidate / L2 staged / L3 auto-write
 
 AI calls cairn_session_end()
@@ -190,6 +190,31 @@ AI closes project → Server exits
 | `cairn_status` | System state overview | No (read-only) |
 | `cairn_plan` | History-aware planning framework | No (read-only, experimental) |
 | `cairn_doctor` | Health diagnostics | No (read-only, experimental) |
+
+### Signal Types
+
+The AI calls `cairn_signal()` whenever it detects a constraint-relevant event:
+
+| Event | signal_type |
+|---|---|
+| User rejects a suggestion with reason | `user-rejection` |
+| User references a past attempt | `historical-reference` |
+| User states a business or technical constraint | `user-constraint` |
+| A significant technical decision is made | `decision` |
+| A technical debt is discovered and accepted | `debt-acceptance` |
+| Git revert detected | `revert` |
+| Dependency removed from manifest | `dependency-removed` |
+| Dependency replaced with alternative | `dependency-replaced` |
+| Large-scale file movement (>10 files) | `large-refactor` |
+| Commit frequency / project age data | `stage-signal` |
+
+### What AI Does NOT Do
+
+- **Does not** write to `.cairn/` files directly (memory, signals, staged, views)
+- **Does not** produce "Cairn reflection" blocks
+- **Does not** manually track event counts
+- **Does not** update `output.md` or domain files — the Views Engine handles this
+- **Does not** decide trust levels — the Trust Router handles routing
 
 ### Trust Router: How Signals Become Memory
 
@@ -287,7 +312,7 @@ multi-dimensional signals: project age, commit trends, dependency change rate,
 new file ratio.
 
 - Outputs advisory only — no hard constraints unless human-confirmed
-- Confidence < 0.7 → no constraints generated
+- Confidence < 0.5 → no constraints generated
 - Stage changes → always L2 (requires human review)
 
 ---

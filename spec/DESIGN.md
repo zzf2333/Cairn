@@ -177,8 +177,8 @@ Signal enters Trust Router
   └→ Confidence < medium → L0 (drop)
 ```
 
-When L1 candidates sharing the same domain and subject accumulate beyond a threshold,
-they automatically upgrade to L2.
+When L1 candidates sharing the same domain and subject accumulate to 3 or more
+(L1_ACCUMULATION_THRESHOLD), they automatically upgrade to L2.
 
 ### Hard rules: never automatic
 
@@ -238,7 +238,7 @@ The stage engine synthesizes multiple signals:
 ### Advisory only
 
 The stage engine's output is strictly advisory. When confidence is below threshold
-(0.7 in v0.1), no hard constraints are produced. Stage determination only becomes a
+(0.5 in v0.1), no hard constraints are produced. Stage determination only becomes a
 formal constraint after human confirmation via `cairn stage confirm`. Until then,
 guidance uses suggestive language ("consider," "balance") rather than prohibitive
 language ("do not," "never").

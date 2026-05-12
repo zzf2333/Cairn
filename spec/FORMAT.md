@@ -76,7 +76,7 @@ trust_policy:
   never_auto:
     - "New global no-go"
     - "Stage change"
-    - "output-level stack change"
+    - "Output-level stack change"
     - "scope == 'global' behavior_effect"
 
 stage:
@@ -483,7 +483,7 @@ Signal enters Trust Router
   |     < medium  -> L0 (drop)
   |
   +-> L1 accumulation
-        Same domain + same subject L1 signals exceed threshold
+        Same domain + same subject L1 signals >= 3 (L1_ACCUMULATION_THRESHOLD)
         -> Auto-promote to L2 staged
 ```
 

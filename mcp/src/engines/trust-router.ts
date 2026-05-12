@@ -225,6 +225,7 @@ export class TrustRouter {
                 scope:
                     ((signal.raw_data as Record<string, unknown>)["scope"] as "local" | "global") ??
                     "local",
+                subject: { name: subjectName },
                 summary:
                     ((signal.raw_data as Record<string, unknown>)["what"] as string) ??
                     signal.signal_type,
@@ -234,6 +235,9 @@ export class TrustRouter {
                           reason: ((signal.raw_data as Record<string, unknown>)["rejected"] as Record<string, string>)["reason"] ?? "[TODO]",
                       }
                     : undefined,
+                confidence: {
+                    level: (signal.inferred.confidence as "high" | "medium" | "low") ?? "medium",
+                },
                 behavior_effect: {
                     type: this.inferBehaviorType(signal),
                     instruction: `[TODO: review and refine]`,

@@ -165,7 +165,7 @@ AI 调用 cairn_context()
   → AI 在这些约束下工作
 
 AI 工作中调用 cairn_signal()
-  → 捕获决策、否决、实验、约束
+  → 捕获约束相关事件（见下方信号类型表）
   → Trust Router 路由每个信号：L0 丢弃 / L1 候选 / L2 待审 / L3 自动写入
 
 AI 调用 cairn_session_end()
@@ -185,6 +185,31 @@ AI 关闭项目 → Server 退出
 | `cairn_status` | 系统状态概览 | 否（只读） |
 | `cairn_plan` | 历史感知规划框架 | 否（只读，experimental） |
 | `cairn_doctor` | 健康诊断 | 否（只读，experimental） |
+
+### 信号类型
+
+AI 在检测到约束相关事件时调用 `cairn_signal()`：
+
+| 事件 | signal_type |
+|------|-------------|
+| 用户带理由拒绝建议 | `user-rejection` |
+| 用户提及过去的尝试 | `historical-reference` |
+| 用户声明业务或技术约束 | `user-constraint` |
+| 做出重要技术决策 | `decision` |
+| 发现并接受技术债 | `debt-acceptance` |
+| 检测到 Git revert | `revert` |
+| 依赖从 manifest 中移除 | `dependency-removed` |
+| 依赖被替代方案替换 | `dependency-replaced` |
+| 大规模文件移动（>10 个文件） | `large-refactor` |
+| 提交频率 / 项目年龄数据 | `stage-signal` |
+
+### AI 不做的事
+
+- **不** 直接写入 `.cairn/` 文件（memory、signals、staged、views）
+- **不** 输出 "Cairn reflection" 块
+- **不** 手动跟踪事件计数
+- **不** 更新 `output.md` 或域文件 — Views Engine 负责处理
+- **不** 决定信任等级 — Trust Router 负责路由
 
 ### Trust Router：信号如何变成记忆
 
@@ -278,7 +303,7 @@ Cairn 从两个来源捕获信号：
 项目年龄、提交趋势、依赖变更率、新文件占比。
 
 - 只输出 advisory——不产生硬约束，除非人工确认
-- confidence < 0.7 → 不生成任何约束
+- confidence < 0.5 → 不生成任何约束
 - 阶段变更 → 永远 L2（需人工审核）
 
 ---

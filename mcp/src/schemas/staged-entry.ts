@@ -5,7 +5,18 @@ export const DraftMemorySchema = z.object({
     type: z.enum(MEMORY_TYPES),
     domain: z.string(),
     scope: z.enum(["local", "global"]).default("local"),
+    subject: z
+        .object({
+            name: z.string(),
+            category: z.string().optional(),
+        })
+        .optional(),
     summary: z.string(),
+    confidence: z
+        .object({
+            level: z.enum(["high", "medium", "low"]).default("medium"),
+        })
+        .optional(),
     rejected: z
         .object({
             what: z.string(),

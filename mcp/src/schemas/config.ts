@@ -25,10 +25,10 @@ export const ConfigSchema = z.object({
                 "type == 'transition' AND affects_output == true",
             ]),
             never_auto: z.array(z.string()).default([
-                "新增全局 no-go",
-                "阶段变更",
-                "output 级别 stack 变更",
-                "scope == 'global' 的 behavior_effect",
+                "New global no-go",
+                "Stage change",
+                "Output-level stack change",
+                "scope == 'global' behavior_effect",
             ]),
         })
         .default({}),

@@ -9,24 +9,24 @@ interface StageSignals {
 
 const PHASE_GUIDANCE: Record<StagePhase, string[]> = {
     exploration: [
-        "快速验证，允许引入新依赖",
-        "方向可以大幅调整",
-        "关注验证速度而非代码质量",
+        "New dependencies OK, experiments OK",
+        "Direction can shift significantly",
+        "Prioritize validation speed over code quality",
     ],
     growth: [
-        "平衡速度与稳定性",
-        "新增依赖需要评估维护成本",
-        "核心架构决策需要记录",
+        "Balance speed and stability",
+        "New dependencies need maintenance cost assessment",
+        "Core architecture decisions should be recorded",
     ],
     maturity: [
-        "新依赖需要强论证",
-        "大重构需要明确收益",
-        "稳定性优先于新特性",
+        "New dependencies need strong justification",
+        "Large refactors need clear benefits",
+        "Stability first, features second",
     ],
     maintenance: [
-        "只做必要的修复和安全更新",
-        "避免大范围改动",
-        "文档维护优先",
+        "Conservative changes only — necessary fixes and security updates",
+        "Avoid large-scale changes",
+        "Documentation maintenance is a priority",
     ],
 };
 

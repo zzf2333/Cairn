@@ -74,10 +74,10 @@ trust_policy:
     - "scope == 'global'"
     - "type == 'transition' AND affects_output == true"
   never_auto:
-    - "新增全局 no-go"
-    - "阶段变更"
-    - "output 级别 stack 变更"
-    - "scope == 'global' 的 behavior_effect"
+    - "New global no-go"
+    - "Stage change"
+    - "Output-level stack change"
+    - "scope == 'global' behavior_effect"
 
 stage:
   override: null
@@ -483,7 +483,7 @@ Last generated: <ISO 8601 时间戳>
   |     < medium  -> L0（丢弃）
   |
   +-> L1 积累逻辑
-        同 domain + 同 subject 的 L1 信号超过阈值
+        同 domain + 同 subject 的 L1 信号 >= 3（L1_ACCUMULATION_THRESHOLD）
         -> 自动升级为 L2 staged
 ```
 
