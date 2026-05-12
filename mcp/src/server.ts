@@ -116,7 +116,7 @@ export function createCairnServer(
 ): { server: McpServer; runStartupScan: () => Promise<void> } {
     const server = new McpServer({
         name: "cairn",
-        version: "2.0.0-alpha.0",
+        version: "0.2.0",
     });
 
     let ctx: CairnContext | null = null;
