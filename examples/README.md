@@ -1,14 +1,12 @@
 # Cairn Examples
 
-## v2 Examples
-
 | Example | Project type | Memory entries | Stage | Key demo |
 |---|---|---|---|---|
-| [`saas-18mo-v2/`](saas-18mo-v2/) | 18-month SaaS product | 4 entries (YAML) | growth | Full v2 structure: memory, views, config, state, session record |
+| [`saas-18mo/`](saas-18mo/) | 18-month SaaS product | 4 entries (YAML) | growth | Full structure: memory, views, config, state, session record |
 
-### saas-18mo-v2
+### saas-18mo
 
-A 2-person SaaS at the `growth` stage. Complete v2 `.cairn/` directory demonstrating:
+A 2-person SaaS at the `growth` stage. Complete `.cairn/` directory demonstrating:
 
 - **4 structured YAML memory entries**: state management transition (Zustand over Redux), tRPC rejection, auth coupling debt, growth stage transition
 - **Auto-generated views**: `output.md` with no-go/stack/debt, 3 domain summaries, stage advisory
@@ -17,7 +15,7 @@ A 2-person SaaS at the `growth` stage. Complete v2 `.cairn/` directory demonstra
 - **Empty signal/staged pools**: `signals/` and `staged/` with `.gitkeep`
 
 ```
-saas-18mo-v2/.cairn/
+saas-18mo/.cairn/
 ├── config.yaml
 ├── state.yaml
 ├── memory/
@@ -37,16 +35,3 @@ saas-18mo-v2/.cairn/
 └── sessions/
     └── sess_2024_09_15.yaml
 ```
-
----
-
-## v1 Examples (Legacy)
-
-These examples use the v1 three-layer Markdown format. Kept as reference for v1 → v2 migration.
-
-| Example | Project type | History entries | Stage | Key demo |
-|---|---|---|---|---|
-| [`saas-18mo/`](saas-18mo/) | 18-month SaaS product | 4 entries | early-growth | Basic three-layer structure; state management + auth decisions |
-| [`api-service-2yr/`](api-service-2yr/) | 2-year API service | 9 entries | scale | Multiple rejections; accepted debt with `revisit_when`; stale domain |
-
-Each v1 example has a Chinese mirror (`-zh/` suffix).

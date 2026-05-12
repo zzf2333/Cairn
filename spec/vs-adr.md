@@ -81,8 +81,8 @@ considered and not chosen.
 Cairn does not replace ADRs. It adds a structured, AI-targeted constraint layer on top
 of (or alongside) whatever documentation the team already keeps.
 
-**Automatic signal capture (v2).**
-v2 Cairn captures project signals automatically from two sources: the Git ear
+**Automatic signal capture.**
+Cairn captures project signals automatically from two sources: the Git ear
 (reverts, dependency changes, large refactors) and the conversation ear (AI reports
 user rejections, decisions, constraints via `cairn_signal()`). ADRs require a human
 author to write each record. Cairn's dual-ear design means constraint-relevant events
@@ -156,7 +156,7 @@ artifact in each:
 This is the right format for a human reader: narrative, contextual, explains the
 reasoning fully, readable without any tool.
 
-**The Cairn v2 version** (`.cairn/memory/mem_2023_03_database_postgresql.yaml`):
+**The Cairn version** (`.cairn/memory/mem_2023_03_database_postgresql.yaml`):
 
 ```yaml
 id: mem_2023_03_database_postgresql

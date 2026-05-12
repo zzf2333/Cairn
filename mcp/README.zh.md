@@ -7,7 +7,7 @@ English | [中文](README.zh.md)
 
 ## 为什么需要 MCP Server
 
-v2 Cairn 是一个动态记忆引擎：项目信号从 Git 历史和 AI 对话中自动捕获，经过 Trust Router
+Cairn 是一个动态记忆引擎：项目信号从 Git 历史和 AI 对话中自动捕获，经过 Trust Router
 （L0–L3）路由，整合为结构化记忆。MCP Server 是主要接口——AI 工具调用类型化工具，而非读取
 原始文件。
 
@@ -224,7 +224,7 @@ npm run build
 
 不支持 MCP 的 AI 工具可通过 `views/` 获取只读访问：
 
-- `views/output.md` — 全局约束（格式兼容 v1 `output.md`）
+- `views/output.md` — 全局约束
 - `views/domains/*.md` — 按域摘要
 - `views/stage.md` — 阶段建议详情
 

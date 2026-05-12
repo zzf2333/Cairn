@@ -8,7 +8,7 @@ memory, and constraint views.
 
 ## Why
 
-v2 Cairn is a dynamic memory engine: project signals are captured automatically from
+Cairn is a dynamic memory engine: project signals are captured automatically from
 Git history and AI conversations, routed through a Trust Router (L0–L3), and consolidated
 into structured memory. The MCP Server is the primary interface — AI tools call typed
 tools instead of reading raw files.
@@ -227,7 +227,7 @@ The same package provides a `cairn` CLI for initialization and maintenance:
 
 For AI tools that don't support MCP, `views/` provides read-only access:
 
-- `views/output.md` — global constraints (same format as v1 `output.md`)
+- `views/output.md` — global constraints
 - `views/domains/*.md` — per-domain summaries
 - `views/stage.md` — stage advisory details
 

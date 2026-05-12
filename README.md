@@ -254,8 +254,8 @@ The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repos
 
 ## Examples
 
-- [`examples/saas-18mo/`](examples/saas-18mo/) — v1 format, 18-month SaaS project
-  (stage `early-growth`, no-go: tRPC/Redux/Kubernetes, 3 domains, 4 history events)
+- [`examples/saas-18mo/`](examples/saas-18mo/) — 18-month SaaS project
+  (stage `growth`, no-go: tRPC/Redux, 3 domains, 4 memory entries)
 
 ---
 
@@ -265,9 +265,9 @@ The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repos
 |----------|----------|
 | [`spec/FORMAT.md`](spec/FORMAT.md) | Complete schema reference for all `.cairn/` data files |
 | [`spec/DESIGN.md`](spec/DESIGN.md) | Design rationale: dual-ear, Trust Router, stage engine, memory/views separation |
-| [`spec/TASK-COMPLETION-PROTOCOL.md`](spec/TASK-COMPLETION-PROTOCOL.md) | v2 task completion: MCP signal protocol |
+| [`spec/TASK-COMPLETION-PROTOCOL.md`](spec/TASK-COMPLETION-PROTOCOL.md) | Task completion: MCP signal protocol |
 | [`spec/vs-adr.md`](spec/vs-adr.md) | How Cairn relates to Architecture Decision Records |
-| [`spec/adoption-guide.md`](spec/adoption-guide.md) | Install, daily usage, and v1 migration guide |
+| [`spec/adoption-guide.md`](spec/adoption-guide.md) | Install and daily usage guide |
 | [`spec/glossary.md`](spec/glossary.md) | Terminology reference |
 | [`mcp/README.md`](mcp/README.md) | MCP Server tool schemas and configuration |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |

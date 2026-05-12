@@ -1,8 +1,8 @@
 [中文](FORMAT.zh.md) | English
 
-# Cairn v2 Format Specification
+# Cairn Format Specification
 
-Authoritative reference for the `.cairn/` YAML schema format used by the Cairn v2 dynamic memory engine. v1's three-layer Markdown format (output.md / domains/ / history/) is fully replaced by a YAML-based schema with auto-generated Markdown views.
+Authoritative reference for the `.cairn/` YAML schema format used by the Cairn dynamic memory engine.
 
 ---
 
@@ -509,19 +509,3 @@ Signal enters Trust Router
 
 Domain keys use `kebab-case`. The domain list is locked at `cairn init`.
 
----
-
-## Migration from v1
-
-v1's three-layer Markdown structure is fully replaced:
-
-| v1 | v2 |
-|----|-----|
-| `.cairn/output.md` (hand-written) | `.cairn/views/output.md` (auto-generated from memory/) |
-| `.cairn/domains/*.md` (hand-written) | `.cairn/views/domains/*.md` (auto-generated from memory/) |
-| `.cairn/history/*.md` (hand-written) | `.cairn/memory/*.yaml` (auto-captured via signals) |
-| `.cairn/SKILL.md` | MCP tool protocol (built into server) |
-| `.cairn/staged/` (v0.0.11, Markdown) | `.cairn/staged/*.yaml` (Trust Router output) |
-| `.cairn/audits/` (v0.0.11) | Removed; use `health.state` in memory entries |
-
-The views/ output format is backward-compatible with v1 Skill files, enabling graceful degradation when the MCP server is unavailable.

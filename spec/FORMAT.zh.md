@@ -1,8 +1,8 @@
 [English](FORMAT.md) | 中文
 
-# Cairn v2 格式规范
+# Cairn 格式规范
 
-`.cairn/` 目录 YAML schema 格式的权威参考文档，适用于 Cairn v2 动态记忆引擎。v1 的三层 Markdown 格式（output.md / domains/ / history/）已被 YAML schema + 自动生成 Markdown 视图完全替代。
+`.cairn/` 目录 YAML schema 格式的权威参考文档，适用于 Cairn 动态记忆引擎。
 
 ---
 
@@ -509,19 +509,3 @@ Last generated: <ISO 8601 时间戳>
 
 域键使用 `kebab-case`。域列表在 `cairn init` 时锁定。
 
----
-
-## 从 v1 迁移
-
-v1 的三层 Markdown 结构已被完全替代：
-
-| v1 | v2 |
-|----|-----|
-| `.cairn/output.md`（手写） | `.cairn/views/output.md`（从 memory/ 自动生成） |
-| `.cairn/domains/*.md`（手写） | `.cairn/views/domains/*.md`（从 memory/ 自动生成） |
-| `.cairn/history/*.md`（手写） | `.cairn/memory/*.yaml`（经信号自动捕获） |
-| `.cairn/SKILL.md` | MCP 工具协议（内置于 Server） |
-| `.cairn/staged/`（v0.0.11，Markdown） | `.cairn/staged/*.yaml`（Trust Router 输出） |
-| `.cairn/audits/`（v0.0.11） | 移除；使用 memory 条目的 `health.state` |
-
-views/ 的输出格式与 v1 Skill 文件向后兼容，MCP Server 不可用时可优雅降级。

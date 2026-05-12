@@ -1,16 +1,14 @@
 [中文](adoption-guide.zh.md) | English
 
-# Cairn v2 Adoption Guide
+# Cairn Adoption Guide
 
-Cairn v2 is a dynamic memory engine. The v1 workflow of manual init scripts and
-hand-written `output.md` is replaced by a TypeScript CLI with automatic initialization
-and an MCP Server that captures, routes, and consolidates project memory.
+Cairn is a dynamic memory engine. A TypeScript CLI handles automatic initialization,
+and an MCP Server captures, routes, and consolidates project memory.
 
-This guide covers three phases:
+This guide covers two phases:
 
 1. **Install & Init** — one-time setup per machine + per project
 2. **Daily Usage** — fully automatic, driven by AI tool calls
-3. **Migration from v1** — how to transition existing `.cairn/` directories
 
 ---
 
@@ -226,8 +224,7 @@ entries to process. Accepted entries move to `memory/` and trigger view regenera
 ## AI Tools Without MCP Support (Fallback Path)
 
 For tools that do not support MCP, Cairn provides skill adapter files that read
-the `views/` directory directly. Views are v1-compatible Markdown — the same format
-that v1 skill adapters already consume.
+the `views/` directory directly. Views are standard Markdown files.
 
 | Tool | Adapter location |
 |------|-----------------|
@@ -252,62 +249,11 @@ capture and memory evolution require MCP.
 
 ---
 
-## Phase 3: Migration from v1
-
-### What Changed
-
-| v1 | v2 |
-|----|----|
-| `.cairn/output.md` (hand-written) | `.cairn/views/output.md` (auto-generated from memory) |
-| `.cairn/domains/*.md` (hand-written) | `.cairn/views/domains/*.md` (auto-generated) |
-| `.cairn/history/*.md` (Markdown) | `.cairn/memory/*.yaml` (structured YAML) |
-| `.cairn/SKILL.md` | `skills/claude-code/SKILL.md` (v2 version) |
-| `.cairn/staged/` (v1 format) | `.cairn/staged/` (v2 YAML format) |
-| No config file | `.cairn/config.yaml` |
-| No state tracking | `.cairn/state.yaml` |
-| No signal pipeline | `.cairn/signals/` |
-| No session records | `.cairn/sessions/` |
-| Manual file writing | Automatic via MCP + Trust Router |
-
-### How to Migrate
-
-**Recommended: fresh start with seed signals.**
-
-```bash
-cd my-project
-cairn init
-```
-
-Then manually import key v1 history entries as seed signals using `cairn_signal()`.
-Your v1 `output.md` and `domains/` serve as reference during this process — read them,
-extract the important decisions, and feed them through the signal pipeline.
-
-**What you can reuse:**
-
-- v1 `output.md` → reference for initial domain selection and no-go entries
-- v1 `domains/*.md` → reference for rejected paths and known pitfalls
-- v1 `history/*.md` → import via `cairn_signal()` one entry at a time
-
-**What you do not need to migrate manually:**
-
-- `views/` files are auto-generated from memory — do not copy v1 output/domain files into views
-- v1 SKILL.md is superseded by the v2 protocol
-
-### Parallel Operation
-
-During migration, you can keep v1 files alongside v2:
-
-- v2 views are in `.cairn/views/` — they do not conflict with v1's `.cairn/output.md`
-- Once v2 memory has enough entries, remove v1 files and let views take over
-- Skill adapters for non-MCP tools will read `views/` automatically
-
----
-
 ## Architecture Overview
 
 ### Memory / Views Separation
 
-v2 strictly separates source data from AI-consumable views:
+Cairn strictly separates source data from AI-consumable views:
 
 **`memory/`** is the source of truth. Each entry is a structured YAML file with
 full provenance, confidence scores, and behavior_effect declarations. Humans

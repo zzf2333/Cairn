@@ -1,4 +1,4 @@
-# Cairn v2 — Dynamic Project Memory Protocol
+# Cairn — Dynamic Project Memory Protocol
 
 `.cairn/` is an AI-maintained project memory engine. You interact with it
 through 6 MCP tools — not direct file operations. Cairn captures project

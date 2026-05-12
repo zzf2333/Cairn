@@ -1,33 +1,14 @@
 English | [中文](TASK-COMPLETION-PROTOCOL.zh.md)
 
-# Cairn v2 任务完成协议
+# Cairn 任务完成协议
 
-> 状态：v2.0 — 基于 MCP 的信号捕获取代手动反射块。
+> 状态：基于 MCP 的信号捕获取代手动反射块。
 > 与 [spec/FORMAT.md](FORMAT.zh.md)（数据 schema）和
 > `skills/claude-code/SKILL.md`（操作协议）配合使用。
 
 ---
 
-## 相比 v1 的变化
-
-v1 要求 AI 在每个非简单任务结束时输出结构化的"Cairn reflection"块。AI 使用文件工具直接写入
-`history/`、`domains/` 和 `output.md`，然后输出验证行。
-
-v2 用 MCP 工具调用替代了整个流程：
-
-| v1 | v2 |
-|----|----|
-| AI 直接写 `.cairn/history/*.md` | AI 在工作中调用 `cairn_signal()` |
-| AI 更新 `domains/*.md` 和 `output.md` | Views Engine 自动重新生成 `views/` |
-| AI 输出 "Cairn reflection" 块 | AI 在会话结束时调用 `cairn_session_end()` |
-| `cairn: recorded N event(s)` 验证行 | `.cairn/sessions/` 中的会话记录 |
-| 三层手动写回 | Trust Router 自动处理 L0–L3 路由 |
-
-**不再需要也不期望输出 "Cairn reflection" 块。**
-
----
-
-## v2 任务完成行为
+## 任务完成行为
 
 ### 工作过程中
 
@@ -66,7 +47,7 @@ AI 调用 `cairn_session_end()`，传入：
 
 ---
 
-## v2 中 AI 不做的事
+## AI 不做的事
 
 - **不** 直接写入 `.cairn/` 文件（memory、signals、staged、views）
 - **不** 输出 "Cairn reflection" 块

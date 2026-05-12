@@ -249,8 +249,8 @@ cairn doctor    # 健康诊断
 
 ## 示例
 
-- [`examples/saas-18mo/`](examples/saas-18mo/) — v1 格式，18 个月 SaaS 项目
-  （阶段 `early-growth`、no-go：tRPC/Redux/Kubernetes、3 个域、4 个历史事件）
+- [`examples/saas-18mo/`](examples/saas-18mo/) — 18 个月 SaaS 项目
+  （阶段 `growth`、no-go：tRPC/Redux、3 个域、4 条记忆）
 
 ---
 
@@ -260,9 +260,9 @@ cairn doctor    # 健康诊断
 |------|------|
 | [`spec/FORMAT.md`](spec/FORMAT.md) | 所有 `.cairn/` 数据文件的完整 Schema 参考 |
 | [`spec/DESIGN.md`](spec/DESIGN.md) | 设计理念：双耳、Trust Router、阶段引擎、Memory/Views 分离 |
-| [`spec/TASK-COMPLETION-PROTOCOL.md`](spec/TASK-COMPLETION-PROTOCOL.md) | v2 任务完成：MCP 信号协议 |
+| [`spec/TASK-COMPLETION-PROTOCOL.md`](spec/TASK-COMPLETION-PROTOCOL.md) | 任务完成：MCP 信号协议 |
 | [`spec/vs-adr.md`](spec/vs-adr.md) | Cairn 与架构决策记录（ADR）的关系 |
-| [`spec/adoption-guide.md`](spec/adoption-guide.md) | 安装、日常使用和 v1 迁移指南 |
+| [`spec/adoption-guide.md`](spec/adoption-guide.md) | 安装与日常使用指南 |
 | [`spec/glossary.md`](spec/glossary.md) | 术语参考 |
 | [`mcp/README.md`](mcp/README.md) | MCP Server 工具 Schema 和配置 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 版本历史 |

@@ -1,15 +1,14 @@
 [English](adoption-guide.md) | 中文
 
-# Cairn v2 采用指南
+# Cairn 采用指南
 
-Cairn v2 是一个动态记忆引擎。v1 的手动初始化脚本和手写 `output.md` 被替换为
-TypeScript CLI 自动初始化 + MCP Server 信号捕获、路由、整合。
+Cairn 是一个动态记忆引擎。TypeScript CLI 负责自动初始化，
+MCP Server 负责信号捕获、路由、整合。
 
-本指南分三个阶段：
+本指南分两个阶段：
 
 1. **安装与初始化** — 每台机器 + 每个项目各一次
 2. **日常使用** — 完全自动，由 AI 工具调用驱动
-3. **从 v1 迁移** — 如何过渡现有 `.cairn/` 目录
 
 ---
 
@@ -220,7 +219,7 @@ cairn doctor    # 健康检查：过期域、冲突、孤立 no-go
 ## 不支持 MCP 的 AI 工具（降级路径）
 
 对于不支持 MCP 的工具，Cairn 提供 skill adapter 文件，直接读取 `views/` 目录。
-Views 是 v1 兼容的 Markdown 格式——v1 的 skill adapter 可以直接消费。
+Views 是标准 Markdown 格式。
 
 | 工具 | adapter 安装位置 |
 |------|-----------------|
@@ -244,62 +243,11 @@ Views 是 v1 兼容的 Markdown 格式——v1 的 skill adapter 可以直接消
 
 ---
 
-## 阶段三：从 v1 迁移
-
-### 变化对比
-
-| v1 | v2 |
-|----|----|
-| `.cairn/output.md`（手写） | `.cairn/views/output.md`（从 memory 自动生成） |
-| `.cairn/domains/*.md`（手写） | `.cairn/views/domains/*.md`（自动生成） |
-| `.cairn/history/*.md`（Markdown） | `.cairn/memory/*.yaml`（结构化 YAML） |
-| `.cairn/SKILL.md` | `skills/claude-code/SKILL.md`（v2 版本） |
-| `.cairn/staged/`（v1 格式） | `.cairn/staged/`（v2 YAML 格式） |
-| 无配置文件 | `.cairn/config.yaml` |
-| 无状态跟踪 | `.cairn/state.yaml` |
-| 无信号管道 | `.cairn/signals/` |
-| 无会话记录 | `.cairn/sessions/` |
-| 手动编写文件 | MCP + Trust Router 自动化 |
-
-### 迁移方法
-
-**推荐：全新初始化 + 种子信号导入。**
-
-```bash
-cd my-project
-cairn init
-```
-
-然后通过 `cairn_signal()` 手动导入关键的 v1 历史条目作为种子信号。
-你的 v1 `output.md` 和 `domains/` 在此过程中作为参考——读取其中的重要决策，
-通过信号管道输入。
-
-**可以复用的内容：**
-
-- v1 `output.md` → 初始域选择和 no-go 条目的参考
-- v1 `domains/*.md` → rejected paths 和 known pitfalls 的参考
-- v1 `history/*.md` → 通过 `cairn_signal()` 逐条导入
-
-**不需要手动迁移的内容：**
-
-- `views/` 文件从 memory 自动生成——不要把 v1 的 output/domain 文件复制到 views
-- v1 SKILL.md 已被 v2 协议取代
-
-### 并行运行
-
-迁移期间可以保留 v1 文件：
-
-- v2 视图在 `.cairn/views/`——不会和 v1 的 `.cairn/output.md` 冲突
-- v2 memory 积累足够条目后，移除 v1 文件，让 views 接管
-- 非 MCP 工具的 skill adapter 会自动读取 `views/`
-
----
-
 ## 架构概览
 
 ### Memory / Views 分离
 
-v2 严格分离源数据和 AI 可消费视图：
+Cairn 严格分离源数据和 AI 可消费视图：
 
 **`memory/`** 是源数据。每条记忆是结构化 YAML 文件，包含完整的来源追溯、置信度、
 behavior_effect 声明。人类审核 memory。

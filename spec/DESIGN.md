@@ -2,7 +2,7 @@
 
 # Cairn — Design Document
 
-> Status: v2.0 — Dynamic memory engine architecture.
+> Status: Dynamic memory engine architecture.
 
 ---
 
@@ -84,55 +84,6 @@ AI-consumable context.
 **The common problem across all these approaches: they require manual human maintenance.**
 Once the maintenance cost rises even slightly, nobody writes them. Three months later
 the files rot and the system effectively ceases to exist.
-
----
-
-## From v1 to v2: The Evolution
-
-### What v1 built
-
-Cairn v1 delivered a solid protocol layer: a three-layer file format (`output.md` /
-`domains/` / `history/`), a CLI with four commands, an MCP Server with six tools, and
-Skill adapters for eight AI tools. The data was pure Markdown in `.cairn/`, version-
-controlled alongside code, readable by any AI that can open files.
-
-### The fundamental problem with v1
-
-v1 solved "which files should the AI read and how should those files be structured."
-But what we originally set out to build was:
-
-> A system where project memory is **automatically captured, automatically evolved, and
-> automatically constrains future AI behavior.**
-
-v1's fundamental gap: **users still had to hand-write `.cairn/` files.** The AI only
-read passively. There was no signal capture, no memory admission control, no memory
-evolution, no project stage inference, no history-aware planning before suggestions.
-
-v1 was a **static context format**. What we need is a **dynamic memory engine**.
-
-### The v2 shift
-
-v1 information flow:
-
-```
-Human writes → .cairn/ files → AI reads
-```
-
-v2 information flow:
-
-```
-Project events occur naturally
-  → Cairn's dual ears capture signals (git changes + AI conversations)
-  → Trust Router filters and grades signals
-  → Structured memory is generated automatically
-  → AI-consumable constraint views are produced
-  → AI works under those constraints
-  → New interactions continue producing signals
-  → Humans review only at high-risk change points
-```
-
-The user never writes memory. All memory is produced automatically or semi-automatically
-by the server.
 
 ---
 
@@ -301,14 +252,9 @@ Stage transitions always route through L2 — they require human review before u
 
 ### The problem with conflating source and projection
 
-In v1, `output.md` and `domains/*.md` served as both source data and runtime context.
-This created ambiguity: which content was original fact and which was summary? When the
-AI edited a summary, it could inadvertently corrupt historical truth. Git diffs could
-not distinguish between a factual change and a projection change.
+### Data Model
 
-### The v2 data model
-
-v2 strictly separates the two concerns:
+Cairn strictly separates the two concerns:
 
 **`memory/` is source data (Source of Truth).** Each memory is a YAML file containing
 full provenance tracking, confidence scores, and `behavior_effect` declarations. This
@@ -329,10 +275,8 @@ far easier to review than Markdown prose changes. A reviewer can see exactly whi
 field changed (`confidence`, `behavior_effect`, `revisit.status`) rather than parsing
 free-text differences.
 
-**v1 compatibility as degradation path.** The `views/` format is fully compatible with
-v1's `output.md` and `domains/` structure. v1 Skill adapter files can read `views/`
-directly as a fallback when the MCP server is not running. Teams can adopt v2
-incrementally without breaking their existing v1 setup.
+**Degraded mode.** The `views/` format is compatible with Skill adapter files. When the
+MCP server is not running, adapters can read `views/` directly as a fallback.
 
 ### Generation rules
 
@@ -361,7 +305,7 @@ Last generated: 2026-05-11T10:30:00+09:00
 
 ### 1. Every module exists, but depth is controlled
 
-v2 ships all core modules from day one — Git ear, conversation ear, Trust Router,
+Cairn ships all core modules from day one — Git ear, conversation ear, Trust Router,
 Stage Advisory Engine, Memory Engine, Views Engine. But each module's intelligence
 depth in v0.1 uses rules, not LLMs. Git ear does pattern matching. Stage inference
 uses rule-based heuristics. Trust Router uses if-else logic.
@@ -404,8 +348,7 @@ without meeting strict conditions.
 ## The `rejected` Field Remains the Most Important Field
 
 Every memory entry carries a `rejected` field that records what alternatives were
-considered and not chosen. This was the most critical field in v1, and it remains so
-in v2.
+considered and not chosen. This is the most critical field.
 
 AI models are trained to be helpful. When asked for a solution, they produce what looks
 like a good answer given available information. They cannot access the reasoning that
@@ -417,7 +360,7 @@ why we did not adopt it" makes that reasoning available to the AI. The `revisit.
 conditions that accompany each rejection give the AI a model for when a rejection
 should be reconsidered — making constraints time-bounded rather than permanent.
 
-In v2, the `rejected` field gains additional structure: it lives in YAML source data
+The `rejected` field has additional structure: it lives in YAML source data
 with explicit `behavior_effect` declarations, making its constraint role machine-
 verifiable rather than dependent on AI interpretation of prose.
 
@@ -425,15 +368,9 @@ verifiable rather than dependent on AI interpretation of prose.
 
 ## Adoption Model: From Reactive to Continuous
 
-### v1 adoption: init + five trigger events
+### Continuous Capture
 
-v1's adoption model was sound: run `cairn init` once, then update reactively when
-specific events occur (AI re-proposes a rejected direction, a significant decision is
-made, an experiment fails, debt is accepted, the project enters a new phase).
-
-### v2 evolution: continuous capture
-
-v2 retains the reactive model but automates the capture step. Instead of requiring the
+Cairn automates the capture step. Instead of requiring the
 user to notice a trigger event and manually record it, the dual-ear system detects
 signals continuously:
 
@@ -448,7 +385,7 @@ getting from event to memory is now automated rather than manual.
 
 ### The init process
 
-`cairn init` in v2 performs a two-step initialization:
+`cairn init` performs a two-step initialization:
 
 1. **Rule-based Git scan** — analyzes git history for candidate signals (reverts,
    dependency removals, replacements, major restructurings)
@@ -462,16 +399,16 @@ The guiding principle remains: incomplete is better than inaccurate. An entry wi
 
 ## Tool Compatibility
 
-Cairn v2 operates as an MCP server using stdio transport. Any AI tool that supports
+Cairn operates as an MCP server using stdio transport. Any AI tool that supports
 the Model Context Protocol can use Cairn natively through typed tool calls:
 `cairn_context()`, `cairn_signal()`, `cairn_session_end()`, `cairn_status()`,
 `cairn_plan()`, and `cairn_doctor()`.
 
 For AI tools that do not support MCP, the `views/` directory provides a degradation
-path. Because `views/` maintains format compatibility with v1's `output.md` and
-`domains/` structure, v1 Skill adapter files continue to work. The AI reads views as
-static files — it loses real-time signal capture and Trust Router integration but
-retains access to the accumulated constraint context.
+path. Because `views/` provides Markdown projections, Skill adapter files work as a
+fallback when the MCP server is unavailable. The AI reads views as static files — it
+loses real-time signal capture and Trust Router integration but retains access to the
+accumulated constraint context.
 
 Supported tool configurations:
 
@@ -494,13 +431,7 @@ and session-lived.
 
 ## Roadmap
 
-### Phase 1 — Protocol (v1, complete)
-
-Delivered the format specification, Skill adapters for eight tools, the CLI, and the
-MCP Server with six tools. Established `.cairn/` as the data layer and proved that
-structured constraint context improves AI suggestion quality.
-
-### Phase 2 — Dynamic Memory Engine (v2, in progress)
+### Current Phase — Dynamic Memory Engine
 
 Transforms Cairn from a static file format into an active memory system. Core
 deliverables:
@@ -524,5 +455,5 @@ module's capability without changing the architecture.
 - **v0.3** — Stage engine: multi-dimensional signals, confidence improvements
 - **v0.4** — Plan engine: history × stage × domain cross-reasoning
 - **v0.5** — Memory maintenance: stale detection, conflict graphs, archive policies
-- **v1.0** — Autonomous project memory: long-running validation, quantifiable AI
+- **1.0** — Autonomous project memory: long-running validation, quantifiable AI
   improvement, stable API

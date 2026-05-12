@@ -40,7 +40,7 @@ export async function runInit(args: string[]): Promise<void> {
     });
 
     try {
-        console.log("\n🗻 Cairn v2 — Project Memory Engine Initialization\n");
+        console.log("\n🗻 Cairn — Project Memory Engine Initialization\n");
 
         // Step 1: Project info
         const projectName = await ask(rl, "Project name: ");

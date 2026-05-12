@@ -1,34 +1,14 @@
 [中文](TASK-COMPLETION-PROTOCOL.zh.md) | English
 
-# Cairn v2 Task Completion Protocol
+# Cairn Task Completion Protocol
 
-> Status: v2.0 — MCP-based signal capture replaces manual reflection blocks.
+> Status: MCP-based signal capture replaces manual reflection blocks.
 > Pairs with [spec/FORMAT.md](FORMAT.md) (data schemas) and
 > `skills/claude-code/SKILL.md` (operating protocol).
 
 ---
 
-## What Changed from v1
-
-v1 required the AI to produce a structured "Cairn reflection" block at the end of
-every non-trivial task. The AI manually wrote to `history/`, `domains/`, and
-`output.md` using file tools, then emitted a verification line.
-
-v2 replaces this entire ceremony with MCP tool calls:
-
-| v1 | v2 |
-|----|----|
-| AI writes `.cairn/history/*.md` directly | AI calls `cairn_signal()` during work |
-| AI updates `domains/*.md` and `output.md` | Views Engine regenerates `views/` automatically |
-| AI emits "Cairn reflection" block | AI calls `cairn_session_end()` at session end |
-| `cairn: recorded N event(s)` verification line | Session record in `.cairn/sessions/` |
-| Three-layer manual write-back | Trust Router handles L0–L3 routing automatically |
-
-**The "Cairn reflection" block is no longer required or expected.**
-
----
-
-## v2 Task Completion Behavior
+## Task Completion Behavior
 
 ### During Work
 
@@ -68,7 +48,7 @@ This triggers:
 
 ---
 
-## What AI Does NOT Do in v2
+## What AI Does NOT Do
 
 - **Does not** write to `.cairn/` files directly (memory, signals, staged, views)
 - **Does not** produce "Cairn reflection" blocks
