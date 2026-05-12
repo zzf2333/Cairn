@@ -89,7 +89,7 @@ describe("E2E: MCP server via transport", { timeout: 15_000 }, () => {
     it("server identifies as cairn with correct version", () => {
         const info = client.getServerVersion();
         expect(info?.name).toBe("cairn");
-        expect(info?.version).toBe("0.2.0");
+        expect(info?.version).toBe("0.2.1");
     });
 
     it("listTools returns all 6 registered tools", async () => {

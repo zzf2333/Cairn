@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-05-12
+
+### Fixed
+
+- `cli.ts` VERSION was still `2.0.0-alpha.0` after v0.2.0 release; now correctly synced
+- `sync-version.sh` now covers `cli.ts` as a sync target
+- `release.yml` version consistency check now includes `cli.ts`
+
+### Added
+
+- E2E smoke tests: 10 tests covering CLI binary, MCP transport, and full signal→memory→context pipeline
+
 ## [0.2.0] - 2026-05-12
 
 Complete architecture rewrite — from static context files to a dynamic memory engine.
