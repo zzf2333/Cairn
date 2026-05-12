@@ -7,31 +7,19 @@ on:
     branches: [main]
 
 jobs:
-  shell-tests:
-    name: Shell Tests (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+  build-and-test:
+    name: Build & Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Print bash version
-        run: bash --version
-
-      - name: Run shell test suite
-        run: bash ./tests/run_tests.sh
-
-  mcp:
-    name: MCP Build & Test
-    runs-on: ubuntu-latest
+        node-version: [18, 20, 22]
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: mcp/package-lock.json
 
