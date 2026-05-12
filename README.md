@@ -71,15 +71,7 @@ of suggesting in a vacuum.
 Cairn captures project signals from two sources, routes them through a trust system,
 and serves the results as structured constraints.
 
-```
-  Git history ──→ Git Ear ──→ signals ──┐
-                                        ├──→ Trust Router ──→ memory/ ──→ Views Engine ──→ views/
-  AI conversation ──→ cairn_signal() ──┘         │                                          │
-                                            L0: drop                                   cairn_context()
-                                            L1: candidate (signals/)                        │
-                                            L2: staged (human review)               AI reads constraints
-                                            L3: auto-write (memory/)
-```
+![How It Works](docs/diagrams/04-how-it-works.png)
 
 **Dual-ear signal capture:**
 - **Git Ear** detects reverts, dependency changes, large refactors, commit patterns
@@ -97,6 +89,10 @@ and serves the results as structured constraints.
 - AI calls `cairn_context()` to get filtered constraints for the current task
 
 ![Signal Pipeline](docs/diagrams/02-three-layer-architecture.png)
+
+### Trust Router Decision Flow
+
+![Trust Router Flow](docs/diagrams/06-trust-router-flow.png)
 
 ### Four Constraint Behaviors
 
@@ -193,6 +189,8 @@ After init and MCP configuration, daily operation is fully automatic:
 3. **Session end** — AI calls `cairn_session_end()` to process signals and regenerate views
 
 The only human action: periodically run `cairn review` to approve staged entries.
+
+![Daily Usage](docs/diagrams/05-daily-usage.png)
 
 ---
 
