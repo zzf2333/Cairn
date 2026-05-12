@@ -22,6 +22,7 @@ import {
     MEMORY_TYPES,
     BEHAVIOR_EFFECT_TYPES,
 } from "./schemas/index.js";
+import type { Config } from "./schemas/config.js";
 
 export interface CairnContext {
     paths: CairnPaths;
@@ -68,7 +69,51 @@ export function createCairnContext(startDir?: string): CairnContext {
     };
 }
 
-export function createCairnServer(startDir?: string): McpServer {
+export async function runStartupGitScan(ctx: CairnContext): Promise<void> {
+    try {
+        const state = ctx.stateStore.load();
+        const signals = await ctx.gitEar.scanSinceLastSession(
+            state.last_session_commit,
+        );
+
+        if (signals.length > 0) {
+            let config: Config;
+            try {
+                config = ctx.stateStore.loadConfig(ctx.paths.configYaml);
+            } catch {
+                config = {
+                    version: "2.0",
+                    project: {
+                        name: "unknown",
+                        created: new Date().toISOString().slice(0, 7),
+                    },
+                    domains: { locked: [] },
+                    trust_policy: {
+                        L3_auto_write: [],
+                        L2_staged: [],
+                        never_auto: [],
+                    },
+                    stage: { override: null, auto_constraint: false },
+                };
+            }
+
+            for (const signal of signals) {
+                ctx.trustRouter.route(signal, config);
+            }
+        }
+
+        const head = await ctx.gitEar.getHeadCommit();
+        if (head) {
+            ctx.stateStore.updateLastGitScan(head);
+        }
+    } catch {
+        // Non-fatal: server works fine without git scan
+    }
+}
+
+export function createCairnServer(
+    startDir?: string,
+): { server: McpServer; runStartupScan: () => Promise<void> } {
     const server = new McpServer({
         name: "cairn",
         version: "2.0.0-alpha.0",
@@ -165,9 +210,9 @@ export function createCairnServer(startDir?: string): McpServer {
                 unresolved: z.array(z.string()).optional(),
             },
         },
-        (args) => {
+        async (args) => {
             try {
-                return handleCairnSessionEnd(getCtx(), args);
+                return await handleCairnSessionEnd(getCtx(), args);
             } catch (e) {
                 return formatToolError(e);
             }
@@ -231,5 +276,14 @@ export function createCairnServer(startDir?: string): McpServer {
         },
     );
 
-    return server;
+    return {
+        server,
+        runStartupScan: async () => {
+            try {
+                await runStartupGitScan(getCtx());
+            } catch {
+                // No .cairn/ directory or other init failure — silent
+            }
+        },
+    };
 }

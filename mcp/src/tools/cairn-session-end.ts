@@ -12,7 +12,7 @@ interface SessionEndArgs {
     unresolved?: string[];
 }
 
-export function handleCairnSessionEnd(
+export async function handleCairnSessionEnd(
     ctx: CairnContext,
     args: SessionEndArgs,
 ) {
@@ -90,6 +90,10 @@ export function handleCairnSessionEnd(
     // 4. Update state
     const state = ctx.stateStore.load();
     state.last_session_at = now;
+    try {
+        const head = await ctx.gitEar.getHeadCommit();
+        if (head) state.last_session_commit = head;
+    } catch {}
     ctx.stateStore.save(state);
 
     return toolResult(

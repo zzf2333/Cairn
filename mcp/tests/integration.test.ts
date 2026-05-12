@@ -166,7 +166,7 @@ describe("Integration: Full pipeline signal → route → memory → views → c
         expect(context.no_go.length).toBeGreaterThan(0);
     });
 
-    it("session_end processes and records", () => {
+    it("session_end processes and records", async () => {
         // Send some signals
         handleCairnSignal(ctx, {
             type: "decision",
@@ -177,11 +177,11 @@ describe("Integration: Full pipeline signal → route → memory → views → c
 
         // End session
         const endResult = JSON.parse(
-            handleCairnSessionEnd(ctx, {
+            (await handleCairnSessionEnd(ctx, {
                 summary: "Set up database layer",
                 changed_domains: ["database"],
                 decisions_made: ["Chose PostgreSQL"],
-            }).content[0].text,
+            })).content[0].text,
         );
         expect(endResult.views_regenerated).toBe(true);
 

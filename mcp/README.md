@@ -250,9 +250,9 @@ npm run dev           # Run server directly (tsx, no build needed)
 
 ```
 mcp/src/
-├── index.ts              # MCP stdio entry point
+├── index.ts              # MCP stdio entry point + startup git scan trigger
 ├── cli.ts                # CLI entry point
-├── server.ts             # McpServer factory: registers 6 tools
+├── server.ts             # McpServer factory: registers 6 tools + startup git scan
 ├── paths.ts              # .cairn/ root detection + path resolution
 ├── tokens.ts             # Token counting utilities
 ├── errors.ts             # Typed error codes
@@ -271,7 +271,7 @@ mcp/src/
 ├── engines/              # Core processing engines
 │   ├── views-engine.ts   # Generates views/ from memory (token-budget-aware)
 │   ├── trust-router.ts   # L0-L3 signal routing with hard rules
-│   ├── git-ear.ts        # Git history signal detection
+│   ├── git-ear.ts        # Git history signal detection (auto-scans on startup)
 │   ├── stage-engine.ts   # Project stage inference (rule-based)
 │   └── memory-engine.ts  # Memory health + conflict detection
 ├── tools/                # MCP tool implementations

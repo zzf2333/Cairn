@@ -245,9 +245,9 @@ npm run dev           # 直接运行服务器（使用 tsx，无需构建）
 
 ```
 mcp/src/
-├── index.ts              # MCP stdio 入口
+├── index.ts              # MCP stdio 入口 + 启动时触发 Git 扫描
 ├── cli.ts                # CLI 入口
-├── server.ts             # McpServer 工厂：注册 6 个工具
+├── server.ts             # McpServer 工厂：注册 6 个工具 + 启动扫描
 ├── paths.ts              # .cairn/ 根目录检测 + 路径解析
 ├── tokens.ts             # Token 计数工具
 ├── errors.ts             # 类型化错误码
@@ -266,7 +266,7 @@ mcp/src/
 ├── engines/              # 核心处理引擎
 │   ├── views-engine.ts   # 从 memory 生成 views/（token 预算感知）
 │   ├── trust-router.ts   # L0-L3 信号路由 + 硬规则
-│   ├── git-ear.ts        # Git 历史信号检测
+│   ├── git-ear.ts        # Git 历史信号检测（启动时自动扫描）
 │   ├── stage-engine.ts   # 项目阶段推断（规则版）
 │   └── memory-engine.ts  # 记忆健康检查 + 冲突检测
 ├── tools/                # MCP 工具实现
