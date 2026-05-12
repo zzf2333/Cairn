@@ -215,6 +215,9 @@ cairn doctor    # 健康诊断
 | Claude Code | `~/.claude/mcp.json` 或 `.claude/mcp.json` |
 | Cursor | `.cursor/mcp.json` |
 | Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Codex CLI | `~/.codex/config.toml` 或 `.codex/config.toml` |
+| Gemini CLI | `~/.gemini/settings.json` 或 `.gemini/settings.json` |
+| OpenCode | `~/.config/opencode/opencode.json` 或 `opencode.json` |
 
 ### Skill 适配文件（降级路径）
 
@@ -227,9 +230,6 @@ cairn doctor    # 健康诊断
 | Cline / Roo Code | `skills/cline.md` | `.clinerules`（追加） |
 | Windsurf | `skills/windsurf.md` | `.windsurfrules`（追加） |
 | GitHub Copilot | `skills/copilot-instructions.md` | `.github/copilot-instructions.md`（追加） |
-| Codex CLI | `skills/codex.md` | `AGENTS.md`（追加） |
-| Gemini CLI | `skills/gemini-cli.md` | `GEMINI.md`（追加） |
-| OpenCode | `skills/opencode.md` | `AGENTS.md`（追加） |
 
 数据层（`.cairn/`）完全工具无关——随项目仓库一起传递。
 

@@ -220,6 +220,9 @@ See [`mcp/README.md`](mcp/README.md) for full tool schemas and recommended workf
 | Claude Code | `~/.claude/mcp.json` or `.claude/mcp.json` |
 | Cursor | `.cursor/mcp.json` |
 | Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Codex CLI | `~/.codex/config.toml` or `.codex/config.toml` |
+| Gemini CLI | `~/.gemini/settings.json` or `.gemini/settings.json` |
+| OpenCode | `~/.config/opencode/opencode.json` or `opencode.json` |
 
 ### Skill Adapters (fallback path)
 
@@ -232,9 +235,6 @@ For tools without MCP support, skill adapter files read `views/` directly:
 | Cline / Roo Code | `skills/cline.md` | `.clinerules` (append) |
 | Windsurf | `skills/windsurf.md` | `.windsurfrules` (append) |
 | GitHub Copilot | `skills/copilot-instructions.md` | `.github/copilot-instructions.md` (append) |
-| Codex CLI | `skills/codex.md` | `AGENTS.md` (append) |
-| Gemini CLI | `skills/gemini-cli.md` | `GEMINI.md` (append) |
-| OpenCode | `skills/opencode.md` | `AGENTS.md` (append) |
 
 The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repository.
 
