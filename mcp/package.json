@@ -36,6 +36,7 @@
     "scripts": {
         "build": "tsc",
         "dev": "tsx src/index.ts",
+        "postinstall": "node dist/postinstall.js || true",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage"

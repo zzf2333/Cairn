@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { readFileSync, rmSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createCairnServer } from "../src/server.js";
@@ -16,10 +12,6 @@ import { ViewsEngine } from "../src/engines/views-engine.js";
 import { StateStore } from "../src/stores/state-store.js";
 import { resolvePaths } from "../src/paths.js";
 
-const execFileP = promisify(execFile);
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const CLI_BIN = join(__dirname, "..", "dist", "cli.js");
 
 async function callToolJSON(
     client: Client,
@@ -285,19 +277,4 @@ describe("Lifecycle: Multi-session full verification", { timeout: 30_000 }, () =
         }
     });
 
-    // ─── CLI verification ──────────────────────────────────────────────────
-
-    it("CLI: status reflects accumulated state", async () => {
-        const { stdout } = await execFileP("node", [CLI_BIN, "status"], { cwd: root });
-        expect(stdout).toContain("Cairn Status");
-        expect(stdout).toMatch(/Memory entries:\s+2/);
-        expect(stdout).toMatch(/Staged \(pending\):/);
-        expect(stdout).toMatch(/Signals \(L1\):/);
-    });
-
-    it("CLI: doctor runs successfully", async () => {
-        const { stdout } = await execFileP("node", [CLI_BIN, "doctor"], { cwd: root });
-        expect(stdout).toBeDefined();
-        expect(stdout.length).toBeGreaterThan(0);
-    });
 });

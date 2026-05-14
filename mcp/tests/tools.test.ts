@@ -18,9 +18,12 @@ import { handleCairnStatus } from "../src/tools/cairn-status.js";
 import { handleCairnPlan } from "../src/tools/cairn-plan.js";
 import { handleCairnDoctor } from "../src/tools/cairn-doctor.js";
 import { handleCairnSessionEnd } from "../src/tools/cairn-session-end.js";
+import { handleCairnReview } from "../src/tools/cairn-review.js";
+import { handleCairnMemory } from "../src/tools/cairn-memory.js";
 import type { CairnContext } from "../src/server.js";
 import type { CairnPaths } from "../src/paths.js";
 import type { MemoryEntry, Config } from "../src/schemas/index.js";
+import type { BootstrapResult } from "../src/bootstrap.js";
 
 function createTestCtx(): { ctx: CairnContext; rootDir: string } {
     const root = join(tmpdir(), "cairn-test-tools-" + Date.now());
@@ -635,5 +638,274 @@ describe("cairn_session_end — edge cases", () => {
         const data = JSON.parse(result.content[0].text);
         expect(data.views_regenerated).toBe(true);
         expect(data.signals_processed).toBe(0);
+    });
+});
+
+describe("cairn_context — first run", () => {
+    let ctx: CairnContext;
+    let rootDir: string;
+
+    beforeEach(() => {
+        const env = createTestCtx();
+        ctx = env.ctx;
+        rootDir = env.rootDir;
+    });
+    afterEach(() => rmSync(rootDir, { recursive: true, force: true }));
+
+    it("returns first_run fields when bootstrapResult.created is true", () => {
+        ctx.bootstrapResult = {
+            created: true,
+            paths: ctx.paths,
+            projectMeta: { name: "test-project", created: "2024-06", detected_from: "package.json" },
+            gitSummary: {
+                total_commits: 42,
+                first_commit_date: "2024-06-15T00:00:00Z",
+                recent_commits: [
+                    { hash: "abc1234", message: "feat: initial commit", date: "2024-06-15", author: "dev" },
+                ],
+                auto_signals_routed: 0,
+            },
+        };
+
+        const result = handleCairnContext(ctx, {});
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.first_run).toBe(true);
+        expect(data.project.name).toBe("test-project");
+        expect(data.project.detected_from).toBe("package.json");
+        expect(data.git_history_summary.total_commits).toBe(42);
+        expect(data.git_history_summary.recent_commits).toHaveLength(1);
+        expect(data.suggestion).toContain("first run");
+    });
+
+    it("does not include first_run when bootstrapResult is absent", () => {
+        const result = handleCairnContext(ctx, {});
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.first_run).toBeUndefined();
+        expect(data.project).toBeUndefined();
+        expect(data.git_history_summary).toBeUndefined();
+        expect(data.suggestion).toBeUndefined();
+    });
+
+    it("does not include first_run when bootstrapResult.created is false", () => {
+        ctx.bootstrapResult = {
+            created: false,
+            paths: ctx.paths,
+            projectMeta: { name: "test-project", created: "", detected_from: "directory" },
+            gitSummary: null,
+        };
+
+        const result = handleCairnContext(ctx, {});
+        const data = JSON.parse(result.content[0].text);
+
+        expect(data.first_run).toBeUndefined();
+    });
+});
+
+describe("cairn_review", () => {
+    let ctx: CairnContext;
+    let rootDir: string;
+
+    beforeEach(() => {
+        const env = createTestCtx();
+        ctx = env.ctx;
+        rootDir = env.rootDir;
+    });
+    afterEach(() => rmSync(rootDir, { recursive: true, force: true }));
+
+    function saveStagedEntry(id: string) {
+        ctx.stagedStore.save({
+            id,
+            origin_signal: "sig_001",
+            draft_memory: {
+                type: "rejection",
+                domain: "api-layer",
+                scope: "global",
+                subject: { name: "GraphQL" },
+                summary: "Rejected GraphQL",
+                confidence: { level: "high" },
+                behavior_effect: { type: "avoid_suggestion", instruction: "Do not suggest GraphQL" },
+                rejected: { what: "GraphQL", reason: "Too complex" },
+                revisit: { when: [], status: "not_met" },
+            },
+            review_status: "pending",
+            routing_reason: "Hard rule L2: global scope",
+            created_at: "2026-01-01T00:00:00Z",
+        });
+    }
+
+    it("list returns empty array when no staged entries", () => {
+        const result = handleCairnReview(ctx, { action: "list" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data).toEqual([]);
+    });
+
+    it("list returns pending staged entries", () => {
+        saveStagedEntry("staged_20260101_graphql");
+        const result = handleCairnReview(ctx, { action: "list" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data).toHaveLength(1);
+        expect(data[0].id).toBe("staged_20260101_graphql");
+    });
+
+    it("accept writes entry to memory", () => {
+        saveStagedEntry("staged_20260101_graphql");
+        const result = handleCairnReview(ctx, { action: "accept", id: "staged_20260101_graphql" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.accepted).toBe(true);
+        expect(data.memory_id).toBeDefined();
+
+        const memories = ctx.memoryStore.loadAll();
+        expect(memories.length).toBe(1);
+    });
+
+    it("accept without id returns error", () => {
+        const result = handleCairnReview(ctx, { action: "accept" });
+        expect(result.isError).toBe(true);
+    });
+
+    it("accept with invalid id returns error", () => {
+        const result = handleCairnReview(ctx, { action: "accept", id: "nonexistent" });
+        expect(result.isError).toBe(true);
+    });
+
+    it("reject marks entry as rejected", () => {
+        saveStagedEntry("staged_20260101_graphql");
+        const result = handleCairnReview(ctx, { action: "reject", id: "staged_20260101_graphql" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.rejected).toBe(true);
+
+        const pending = ctx.stagedStore.loadPending();
+        expect(pending).toHaveLength(0);
+    });
+
+    it("reject with invalid id returns error", () => {
+        const result = handleCairnReview(ctx, { action: "reject", id: "nonexistent" });
+        expect(result.isError).toBe(true);
+    });
+});
+
+describe("cairn_memory", () => {
+    let ctx: CairnContext;
+    let rootDir: string;
+
+    beforeEach(() => {
+        const env = createTestCtx();
+        ctx = env.ctx;
+        rootDir = env.rootDir;
+    });
+    afterEach(() => rmSync(rootDir, { recursive: true, force: true }));
+
+    it("list returns empty array when no entries", () => {
+        const result = handleCairnMemory(ctx, { action: "list" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data).toEqual([]);
+    });
+
+    it("list returns all entries", () => {
+        ctx.memoryStore.save(makeMemory("mem_1"));
+        ctx.memoryStore.save(makeMemory("mem_2", { domain: "auth", subject: { name: "JWT" } }));
+        const result = handleCairnMemory(ctx, { action: "list" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data).toHaveLength(2);
+        expect(data[0].id).toBe("mem_1");
+        expect(data[0].subject).toBe("REST API");
+    });
+
+    it("list filters by domain", () => {
+        ctx.memoryStore.save(makeMemory("mem_1"));
+        ctx.memoryStore.save(makeMemory("mem_2", { domain: "auth", subject: { name: "JWT" } }));
+        const result = handleCairnMemory(ctx, { action: "list", domain: "auth" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data).toHaveLength(1);
+        expect(data[0].domain).toBe("auth");
+    });
+
+    it("show returns full entry", () => {
+        ctx.memoryStore.save(makeMemory("mem_show"));
+        const result = handleCairnMemory(ctx, { action: "show", id: "mem_show" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.id).toBe("mem_show");
+        expect(data.relations).toBeDefined();
+    });
+
+    it("show with invalid id returns error", () => {
+        const result = handleCairnMemory(ctx, { action: "show", id: "nonexistent" });
+        expect(result.isError).toBe(true);
+    });
+
+    it("show without id returns error", () => {
+        const result = handleCairnMemory(ctx, { action: "show" });
+        expect(result.isError).toBe(true);
+    });
+
+    it("archive marks entry as archived", () => {
+        ctx.memoryStore.save(makeMemory("mem_archive"));
+        const result = handleCairnMemory(ctx, { action: "archive", id: "mem_archive" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.archived).toBe(true);
+
+        const entry = ctx.memoryStore.loadById("mem_archive");
+        expect(entry?.status).toBe("archived");
+    });
+
+    it("archive with invalid id returns error", () => {
+        const result = handleCairnMemory(ctx, { action: "archive", id: "nonexistent" });
+        expect(result.isError).toBe(true);
+    });
+});
+
+describe("cairn_status — stage operations", () => {
+    let ctx: CairnContext;
+    let rootDir: string;
+
+    beforeEach(() => {
+        const env = createTestCtx();
+        ctx = env.ctx;
+        rootDir = env.rootDir;
+    });
+    afterEach(() => rmSync(rootDir, { recursive: true, force: true }));
+
+    it("default action returns same format as before", () => {
+        const result = handleCairnStatus(ctx);
+        const data = JSON.parse(result.content[0].text);
+        expect(data).toHaveProperty("memory_count");
+        expect(data).toHaveProperty("staged_count");
+        expect(data).toHaveProperty("stage");
+    });
+
+    it("stage_show returns detailed stage info", () => {
+        const result = handleCairnStatus(ctx, { action: "stage_show" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data).toHaveProperty("phase");
+        expect(data).toHaveProperty("confidence");
+        expect(data).toHaveProperty("status");
+        expect(data).toHaveProperty("evidence");
+        expect(data).toHaveProperty("guidance");
+    });
+
+    it("stage_confirm confirms advisory stage", () => {
+        const stateBefore = ctx.stateStore.load();
+        const expectedPhase = stateBefore.stage.phase;
+
+        const result = handleCairnStatus(ctx, { action: "stage_confirm" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.confirmed).toBe(true);
+        expect(data.phase).toBe(expectedPhase);
+
+        const stateAfter = ctx.stateStore.load();
+        expect(stateAfter.stage.status).toBe("confirmed");
+    });
+
+    it("stage_confirm on already-confirmed returns message", () => {
+        const state = ctx.stateStore.load();
+        state.stage.status = "confirmed";
+        ctx.stateStore.save(state);
+
+        const result = handleCairnStatus(ctx, { action: "stage_confirm" });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.confirmed).toBe(true);
+        expect(data.message).toContain("already confirmed");
     });
 });

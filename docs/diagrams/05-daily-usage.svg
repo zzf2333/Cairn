@@ -119,9 +119,9 @@
   <!-- Clock icon -->
   <text x="395" y="292" font-size="18">🕐</text>
   <!-- Command name -->
-  <text x="430" y="288" font-size="14" font-weight="700" fill="#ea580c" font-family="monospace">cairn review</text>
+  <text x="430" y="288" font-size="14" font-weight="700" fill="#ea580c" font-family="monospace">cairn_review()</text>
   <!-- Subtext -->
-  <text x="510" y="310" text-anchor="middle" font-size="11" fill="#9a3412">Periodic human review of staged entries</text>
+  <text x="510" y="310" text-anchor="middle" font-size="11" fill="#9a3412">AI presents staged entries for user decision</text>
 
   <!-- Dashed arrow: human action → main flow -->
   <line x1="510" y1="258" x2="510" y2="216" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow-orange-up)"/>

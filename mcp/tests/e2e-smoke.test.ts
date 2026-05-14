@@ -10,11 +10,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createCairnServer } from "../src/server.js";
 import { createTestEnv } from "./test-helpers.js";
-import { StagedStore } from "../src/stores/staged-store.js";
-import { MemoryEngine } from "../src/engines/memory-engine.js";
-import { MemoryStore } from "../src/stores/memory-store.js";
-import { ViewsEngine } from "../src/engines/views-engine.js";
-import { StateStore } from "../src/stores/state-store.js";
 import { resolvePaths } from "../src/paths.js";
 
 const execFileP = promisify(execFile);
@@ -31,34 +26,12 @@ describe("E2E: CLI binary", () => {
         expect(stdout.trim()).toBe(`cairn ${pkg.version}`);
     });
 
-    it("cairn help outputs usage with all commands", async () => {
+    it("cairn help outputs MCP tools and version command", async () => {
         const { stdout } = await execFileP("node", [CLI_BIN, "help"]);
-        expect(stdout).toContain("Commands:");
-        for (const cmd of ["init", "status", "review", "doctor", "stage", "memory", "version"]) {
-            expect(stdout).toContain(cmd);
-        }
-    });
-
-    it("cairn status succeeds with .cairn/ directory", async () => {
-        const { root } = createTestEnv();
-        try {
-            const { stdout } = await execFileP("node", [CLI_BIN, "status"], { cwd: root });
-            expect(stdout).toContain("Cairn Status");
-        } finally {
-            rmSync(root, { recursive: true, force: true });
-        }
-    });
-
-    it("cairn status without .cairn/ exits with error", async () => {
-        const tmp = join(tmpdir(), `cairn-e2e-nocairn-${Date.now()}`);
-        mkdirSync(tmp, { recursive: true });
-        try {
-            await expect(
-                execFileP("node", [CLI_BIN, "status"], { cwd: tmp }),
-            ).rejects.toThrow();
-        } finally {
-            rmSync(tmp, { recursive: true, force: true });
-        }
+        expect(stdout).toContain("version");
+        expect(stdout).toContain("cairn_context");
+        expect(stdout).toContain("cairn_review");
+        expect(stdout).toContain("cairn_memory");
     });
 });
 
@@ -92,13 +65,22 @@ describe("E2E: MCP server via transport", { timeout: 15_000 }, () => {
         expect(info?.version).toBe("0.2.1");
     });
 
-    it("listTools returns all 6 registered tools", async () => {
+    it("server provides instructions via MCP protocol", () => {
+        const instructions = client.getInstructions();
+        expect(instructions).toBeDefined();
+        expect(instructions).toContain("cairn_context");
+        expect(instructions).toContain("SESSION START");
+    });
+
+    it("listTools returns all 8 registered tools", async () => {
         const { tools } = await client.listTools();
         const names = tools.map((t) => t.name).sort();
         expect(names).toEqual([
             "cairn_context",
             "cairn_doctor",
+            "cairn_memory",
             "cairn_plan",
+            "cairn_review",
             "cairn_session_end",
             "cairn_signal",
             "cairn_status",
@@ -170,20 +152,21 @@ describe("E2E: Full pipeline signal → memory → context", { timeout: 15_000 }
             expect(sigData.accepted).toBe(true);
             expect(sigData.level).toBe("L2");
 
-            // 3. Accept staged entry (simulating `cairn review` accept)
+            // 3. Accept staged entry via cairn_review MCP tool
+            const listResult = JSON.parse(
+                await callToolJSON(client, "cairn_review", { action: "list" }),
+            );
+            expect(listResult.length).toBeGreaterThan(0);
+
+            const acceptResult = JSON.parse(
+                await callToolJSON(client, "cairn_review", {
+                    action: "accept",
+                    id: listResult[0].id,
+                }),
+            );
+            expect(acceptResult.accepted).toBe(true);
+
             const paths = resolvePaths(root);
-            const stagedStore = new StagedStore(paths.stagedDir);
-            const pending = stagedStore.loadPending();
-            expect(pending.length).toBeGreaterThan(0);
-
-            const memoryStore = new MemoryStore(paths.memoryDir);
-            const stateStore = new StateStore(paths.stateYaml);
-            const viewsEngine = new ViewsEngine(paths, memoryStore, stateStore);
-            const memoryEngine = new MemoryEngine(memoryStore, viewsEngine);
-
-            const memory = stagedStore.accept(pending[0].id);
-            expect(memory).not.toBeNull();
-            memoryEngine.write(memory!);
 
             // 4. Context now includes the constraint
             const ctx2 = await callToolJSON(client, "cairn_context", {});

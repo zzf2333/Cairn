@@ -28,8 +28,8 @@ Authoritative reference for the `.cairn/` YAML schema format used by the Cairn d
 | config.yaml | Human (at init + manual edits) | Server | Long-lived, stable |
 | state.yaml | Server | Server | Updated each startup |
 | signals/ | Dual ears via Trust Router | Trust Router | Accumulate, then promote or expire |
-| staged/ | Trust Router | Human (via `cairn review`) | Accepted into memory or discarded |
-| memory/ | `cairn review` / L3 auto-write | Views Engine, MCP Tools | Long-lived, persistent |
+| staged/ | Trust Router | Human (via `cairn_review` MCP tool) | Accepted into memory or discarded |
+| memory/ | `cairn_review` / L3 auto-write | Views Engine, MCP Tools | Long-lived, persistent |
 | views/ | Views Engine (auto) | AI (MCP or Skill) | Regenerated on memory change |
 | sessions/ | Server (at session_end) | Audit / retrospective | Periodically prunable |
 
@@ -37,7 +37,7 @@ Authoritative reference for the `.cairn/` YAML schema format used by the Cairn d
 
 ## config.yaml
 
-Project-level configuration. Created at `cairn init`, rarely changed afterward.
+Project-level configuration. Created automatically on first use (bootstrap), rarely changed afterward.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -507,5 +507,5 @@ Signal enters Trust Router
 | MemoryEntry | `mem_<YYYY_MM>_<domain>_<slug>` | `mem_2024_03_api_tRPC_rejection` |
 | Session | `sess_<YYYY_MM_DD>_<seq>` | `sess_2026_05_11_001` |
 
-Domain keys use `kebab-case`. The domain list is locked at `cairn init`.
+Domain keys use `kebab-case`. The domain list is locked at initial setup.
 

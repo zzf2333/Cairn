@@ -95,7 +95,7 @@
 
   <!-- "cairn review" arrow from L2 down -->
   <line x1="395" y1="298" x2="395" y2="358" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow-amber)"/>
-  <text x="420" y="335" font-size="9" fill="#92400e">cairn review</text>
+  <text x="420" y="335" font-size="9" fill="#92400e">cairn_review()</text>
 
   <!-- Direct arrow from L3 down -->
   <line x1="540" y1="298" x2="540" y2="358" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow-amber)"/>
