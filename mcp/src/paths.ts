@@ -33,15 +33,7 @@ export function findCairnRoot(startDir?: string): string | null {
     return null;
 }
 
-export function resolvePaths(startDir?: string): CairnPaths {
-    const root = findCairnRoot(startDir);
-    if (!root) {
-        throw new Error(
-            "No .cairn/ directory found in this directory or any parent.\n\n" +
-                "Run `cairn init` to initialize this project.",
-        );
-    }
-
+export function buildPaths(root: string): CairnPaths {
     const cairnDir = join(root, ".cairn");
     const viewsDir = join(cairnDir, "views");
     return {
@@ -56,4 +48,15 @@ export function resolvePaths(startDir?: string): CairnPaths {
         viewsDomainsDir: join(viewsDir, "domains"),
         sessionsDir: join(cairnDir, "sessions"),
     };
+}
+
+export function resolvePaths(startDir?: string): CairnPaths {
+    const root = findCairnRoot(startDir);
+    if (!root) {
+        throw new Error(
+            "No .cairn/ directory found in this directory or any parent.\n\n" +
+                "Cairn will auto-initialize on first MCP tool call.",
+        );
+    }
+    return buildPaths(root);
 }

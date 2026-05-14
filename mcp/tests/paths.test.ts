@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { findCairnRoot, resolvePaths } from "../src/paths.js";
+import { findCairnRoot, resolvePaths, buildPaths } from "../src/paths.js";
 
 describe("findCairnRoot", () => {
     const dirs: string[] = [];
@@ -54,9 +54,31 @@ describe("resolvePaths", () => {
         const dir = join(tmpdir(), `cairn-test-resolve-${Date.now()}`);
         mkdirSync(dir, { recursive: true });
         try {
-            expect(() => resolvePaths(dir)).toThrow("cairn init");
+            expect(() => resolvePaths(dir)).toThrow("auto-initialize");
         } finally {
             rmSync(dir, { recursive: true, force: true });
         }
+    });
+});
+
+describe("buildPaths", () => {
+    it("constructs correct paths from root", () => {
+        const root = "/tmp/fake-project";
+        const paths = buildPaths(root);
+        expect(paths.root).toBe(root);
+        expect(paths.cairnDir).toBe(join(root, ".cairn"));
+        expect(paths.configYaml).toBe(join(root, ".cairn", "config.yaml"));
+        expect(paths.stateYaml).toBe(join(root, ".cairn", "state.yaml"));
+        expect(paths.signalsDir).toBe(join(root, ".cairn", "signals"));
+        expect(paths.stagedDir).toBe(join(root, ".cairn", "staged"));
+        expect(paths.memoryDir).toBe(join(root, ".cairn", "memory"));
+        expect(paths.viewsDir).toBe(join(root, ".cairn", "views"));
+        expect(paths.viewsDomainsDir).toBe(join(root, ".cairn", "views", "domains"));
+        expect(paths.sessionsDir).toBe(join(root, ".cairn", "sessions"));
+    });
+
+    it("does not check directory existence", () => {
+        const paths = buildPaths("/nonexistent/path/that/does/not/exist");
+        expect(paths.root).toBe("/nonexistent/path/that/does/not/exist");
     });
 });

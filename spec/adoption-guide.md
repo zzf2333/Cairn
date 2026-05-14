@@ -2,52 +2,48 @@
 
 # Cairn Adoption Guide
 
-Cairn is a dynamic memory engine. A TypeScript CLI handles automatic initialization,
-and an MCP Server captures, routes, and consolidates project memory.
+Cairn is a dynamic memory engine. An MCP Server captures, routes, and consolidates
+project memory. All operations are MCP tools called by your AI assistant.
 
 This guide covers two phases:
 
-1. **Install & Init** — one-time setup per machine + per project
+1. **Install** — one-time setup (auto-registers MCP, auto-initializes on first use)
 2. **Daily Usage** — fully automatic, driven by AI tool calls
 
 ---
 
-## Phase 1: Install & Init
+## Phase 1: Install
 
 ### Step 1: Install
-
-**From npm (recommended):**
 
 ```bash
 npm install -g cairn-mcp-server
 ```
 
-**From source:**
+Requires Node.js 18+. Installation automatically registers the MCP server with
+detected AI tools (Claude Code, Cursor, Windsurf, Claude Desktop). No manual
+configuration needed.
+
+<details>
+<summary>Install from source</summary>
 
 ```bash
 git clone https://github.com/zzf2333/Cairn
 cd Cairn/mcp && npm install && npm run build
 ```
 
-Requires Node.js 18+.
+</details>
 
-### Step 2: Initialize a Project
+### Step 2: Start using
 
-```bash
-cd my-project
-cairn init
-```
+Cairn auto-initializes on first use. When AI first calls `cairn_context()`, the
+server automatically:
 
-The interactive flow walks you through:
+1. **Detects project metadata** — project name from directory, start date from first commit
+2. **Git history scan** — detects reverts, dependency changes, large file movements
+3. **Creates `.cairn/` structure** — config, state, and all subdirectories
 
-1. **Project name** — identifier used in config and views
-2. **Project start date** — used by the Stage Advisory Engine to infer project age
-3. **Domain selection** — pick from 11 standard domains, add custom ones in `kebab-case`
-4. **Git history scan** — detects reverts, dependency changes, large file movements, and
-   other candidate signals from your commit history
-5. **Directory generation** — creates the complete `.cairn/` structure
-
-After init, your project has:
+After initialization, your project has:
 
 ```
 .cairn/
@@ -89,12 +85,10 @@ keys when capturing signals.
 - Full-stack team (2-5 engineers): add `state-management`, `frontend-framework`, `testing`
 - When in doubt, pick fewer. You can always expand later.
 
-### Step 3: Configure MCP
+<details>
+<summary>Manual MCP configuration</summary>
 
-MCP is the primary integration path for AI tools that support it. Add the Cairn
-server to your tool's MCP configuration.
-
-**Claude Code** — `~/.claude/mcp.json` (global) or `.claude/mcp.json` (project):
+If auto-setup didn't detect your tool, add this to your MCP config:
 
 ```json
 {
@@ -104,58 +98,22 @@ server to your tool's MCP configuration.
 }
 ```
 
-**Cursor** — `.cursor/mcp.json`:
-
-```json
-{
-    "mcpServers": {
-        "cairn": { "command": "cairn-mcp-server" }
-    }
-}
-```
-
-**Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-    "mcpServers": {
-        "cairn": { "command": "cairn-mcp-server" }
-    }
-}
-```
-
-**From source** — use the built entry point:
-
-```json
-{
-    "mcpServers": {
-        "cairn": {
-            "command": "node",
-            "args": ["/path/to/cairn/mcp/dist/index.js"]
-        }
-    }
-}
-```
+Config file locations:
+- **Claude Code** — `~/.claude/mcp.json` or `.claude/mcp.json`
+- **Cursor** — `~/.cursor/mcp.json`
+- **Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 The server resolves `.cairn/` by walking up from `process.cwd()`, or via the
 `CAIRN_ROOT` environment variable.
 
-### Step 4: Verify
-
-```bash
-cairn status    # System state overview
-cairn doctor    # Health diagnostics
-```
-
-`cairn doctor` checks config integrity, memory consistency, view freshness, and
-reports any conflicts or stale entries.
+</details>
 
 ---
 
 ## Phase 2: Daily Usage
 
-After init and MCP configuration, daily operation is fully automatic. No manual
-file editing, no CLI ceremonies.
+After installation, daily operation is fully automatic. No manual
+file editing, no CLI commands needed.
 
 ### How It Works
 
@@ -187,7 +145,9 @@ AI closes project → Server exits
 | `cairn_context` | Get constraints before working | No (read-only) |
 | `cairn_signal` | Capture a decision/rejection/constraint | Indirect (via Trust Router) |
 | `cairn_session_end` | End-of-session batch processing | Indirect (via Trust Router) |
-| `cairn_status` | System state overview | No (read-only) |
+| `cairn_status` | System status + stage management | `stage_confirm` writes state |
+| `cairn_review` | Review staged memory entries | `accept` writes memory |
+| `cairn_memory` | Browse and manage memories | `archive` writes memory |
 | `cairn_plan` | History-aware planning framework | No (read-only, experimental) |
 | `cairn_doctor` | Health diagnostics | No (read-only, experimental) |
 
@@ -224,7 +184,7 @@ Every signal passes through the Trust Router. No signal bypasses it.
 |-------|------|-------------|----------|
 | L0 | Drop | Discarded | Noise, duplicates, low confidence |
 | L1 | Candidate | `signals/` | Accumulates; upgrades to L2 when threshold met |
-| L2 | Staged | `staged/` | Awaits human review via `cairn review` |
+| L2 | Staged | `staged/` | Awaits human review via `cairn_review` MCP tool |
 | L3 | Auto-write | `memory/` | Strict conditions met; written automatically |
 
 **Hard rules (never overridden):**
@@ -236,13 +196,12 @@ Every signal passes through the Trust Router. No signal bypasses it.
 
 ### Periodic Review
 
-```bash
-cairn review    # Walk through staged entries: accept / edit / skip / delete
-cairn doctor    # Health check: stale domains, conflicts, orphan no-go entries
-```
+When staged entries accumulate, AI calls `cairn_review(action: 'list')` to present
+them. You decide to accept or reject each entry, and AI calls
+`cairn_review(action: 'accept', id: '...')` or `reject` accordingly.
 
-`cairn review` is the only human-in-the-loop step. Run it when you have staged
-entries to process. Accepted entries move to `memory/` and trigger view regeneration.
+This is the only human-in-the-loop step. Accepted entries move to `memory/` and
+trigger view regeneration.
 
 ---
 
@@ -267,7 +226,7 @@ the `views/` directory directly. Views are standard Markdown files.
 | Read constraints | `cairn_context()` — filtered by task | Reads `views/output.md` in full |
 | Capture signals | `cairn_signal()` — routed automatically | Not available |
 | Session lifecycle | `cairn_session_end()` — batch processing | Not available |
-| Diagnostics | `cairn_doctor()` — structured results | `cairn doctor` CLI |
+| Diagnostics | `cairn_doctor()` — structured results | Not available |
 
 The fallback path provides read-only access to the latest view snapshot. Signal
 capture and memory evolution require MCP.
@@ -319,34 +278,30 @@ new file ratio.
 
 ## CLI Reference
 
+All project memory operations are MCP tools called by your AI assistant.
+
 | Command | Description |
 |---------|-------------|
-| `cairn init` | Interactive project initialization |
-| `cairn status` | System state (memory count, staged count, stage, conflicts) |
-| `cairn review` | Review staged entries (accept / edit / skip / delete) |
-| `cairn doctor` | Health diagnostics |
-| `cairn stage confirm` | Confirm stage advisory as official |
-| `cairn memory show <id>` | View a single memory entry |
-| `cairn memory archive <id>` | Archive a memory entry |
+| `cairn version` | Show version |
 
 ---
 
 ## Troubleshooting
 
-**`cairn doctor` reports stale domains:**
+**Stale domains:**
 Stale domains have new memory entries that haven't been reflected in views.
-Run `cairn_session_end()` or trigger a view regeneration.
+AI can call `cairn_session_end()` to trigger a view regeneration.
 
 **Staged backlog growing:**
-Run `cairn review` to process pending entries. Unreviewed staged entries do not
-affect AI behavior — they are waiting for human confirmation.
+AI will prompt you when staged entries need review. Use `cairn_review` MCP tool
+to process them. Unreviewed staged entries do not affect AI behavior.
 
 **MCP server not connecting:**
 1. Verify installation: `which cairn-mcp-server` or `node /path/to/dist/index.js`
 2. Check MCP config file location matches your AI tool
-3. Ensure `.cairn/` exists in the project (run `cairn init` if not)
+3. `.cairn/` will be auto-created on first MCP tool call
 
 **Conflicts in memory:**
-`cairn doctor` reports conflicting behavior_effects within the same domain.
-Review the conflicting entries with `cairn memory show <id>` and archive or
-edit the outdated one.
+AI can call `cairn_doctor()` to detect conflicting behavior_effects within the
+same domain. Use `cairn_memory(action: 'show', id: '...')` to inspect and
+`cairn_memory(action: 'archive', id: '...')` to archive the outdated entry.

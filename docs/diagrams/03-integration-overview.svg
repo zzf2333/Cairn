@@ -19,32 +19,21 @@
 
   <!-- Title & Subtitle -->
   <text x="480" y="38" text-anchor="middle" font-size="20" font-weight="600" fill="#111827">Integration Overview</text>
-  <text x="480" y="58" text-anchor="middle" font-size="13" fill="#6b7280">MCP (primary) + Skill Adapters (fallback) + CLI — all accessing the same .cairn/ data</text>
+  <text x="480" y="58" text-anchor="middle" font-size="13" fill="#6b7280">MCP (primary) + Skill Adapters (fallback) — all accessing the same .cairn/ data</text>
 
-  <!-- ===== TOP: CLI Panel (centered, y: 80–210) ===== -->
-  <rect x="300" y="80" width="360" height="130" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <!-- ===== TOP: CLI Panel (centered, y: 80–180) ===== -->
+  <rect x="360" y="80" width="240" height="80" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
   <!-- Header bar -->
-  <rect x="300" y="80" width="360" height="32" rx="10" fill="#ea580c"/>
-  <rect x="300" y="98" width="360" height="14" fill="#ea580c"/>
+  <rect x="360" y="80" width="240" height="32" rx="10" fill="#ea580c"/>
+  <rect x="360" y="98" width="240" height="14" fill="#ea580c"/>
   <text x="480" y="101" text-anchor="middle" font-size="13" font-weight="600" fill="#ffffff">CLI (cairn)</text>
   <text x="480" y="128" text-anchor="middle" font-size="11" fill="#c2410c">Node.js 18+ · Terminal</text>
-  <!-- Row 1: init, status, review -->
-  <rect x="322" y="138" width="96" height="24" rx="6" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
-  <text x="370" y="154" text-anchor="middle" font-size="10" font-weight="600" fill="#7c2d12">init</text>
-  <rect x="426" y="138" width="96" height="24" rx="6" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
-  <text x="474" y="154" text-anchor="middle" font-size="10" font-weight="600" fill="#7c2d12">status</text>
-  <rect x="530" y="138" width="96" height="24" rx="6" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
-  <text x="578" y="154" text-anchor="middle" font-size="10" font-weight="600" fill="#7c2d12">review</text>
-  <!-- Row 2: doctor, stage, memory -->
-  <rect x="322" y="170" width="96" height="24" rx="6" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
-  <text x="370" y="186" text-anchor="middle" font-size="10" font-weight="600" fill="#7c2d12">doctor</text>
-  <rect x="426" y="170" width="96" height="24" rx="6" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
-  <text x="474" y="186" text-anchor="middle" font-size="10" font-weight="600" fill="#7c2d12">stage</text>
-  <rect x="530" y="170" width="96" height="24" rx="6" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
-  <text x="578" y="186" text-anchor="middle" font-size="10" font-weight="600" fill="#7c2d12">memory</text>
+  <!-- Single command: version -->
+  <rect x="410" y="138" width="140" height="14" rx="4" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
+  <text x="480" y="149" text-anchor="middle" font-size="9" fill="#7c2d12">version only</text>
 
   <!-- Orange arrow: CLI → .cairn/ -->
-  <path d="M 480,210 L 480,218" stroke="#ea580c" stroke-width="2" fill="none" marker-end="url(#arrow-orange)"/>
+  <path d="M 480,160 L 480,218" stroke="#ea580c" stroke-width="2" fill="none" marker-end="url(#arrow-orange)"/>
 
   <!-- ===== CENTER: .cairn/ Directory (y: 220–400) ===== -->
   <rect x="310" y="220" width="340" height="200" rx="10" fill="#f9fafb" stroke="#374151" stroke-width="2.5"/>
@@ -108,39 +97,49 @@
   <text x="810" y="302" text-anchor="middle" font-size="10" fill="#7c3aed">Cline · Windsurf · GitHub Copilot</text>
   <text x="810" y="316" text-anchor="middle" font-size="10" fill="#7c3aed">Codex CLI · Gemini CLI · OpenCode</text>
   <line x1="696" y1="326" x2="924" y2="326" stroke="#d8b4fe" stroke-width="1"/>
-  <!-- 6 MCP tools -->
+  <!-- 8 MCP tools -->
   <!-- cairn_context() — Stable -->
-  <rect x="696" y="334" width="228" height="30" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="710" cy="349" r="4" fill="#16a34a"/>
-  <text x="720" y="346" font-size="11" font-weight="600" fill="#5b21b6">cairn_context()</text>
-  <text x="910" y="346" text-anchor="end" font-size="10" fill="#7c3aed">Stable</text>
+  <rect x="696" y="332" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <circle cx="708" cy="344" r="3" fill="#16a34a"/>
+  <text x="716" y="348" font-size="10" font-weight="600" fill="#5b21b6">cairn_context()</text>
+  <text x="916" y="348" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
   <!-- cairn_signal() — Stable -->
-  <rect x="696" y="366" width="228" height="30" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="710" cy="381" r="4" fill="#16a34a"/>
-  <text x="720" y="378" font-size="11" font-weight="600" fill="#5b21b6">cairn_signal()</text>
-  <text x="910" y="378" text-anchor="end" font-size="10" fill="#7c3aed">Stable</text>
+  <rect x="696" y="358" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <circle cx="708" cy="370" r="3" fill="#16a34a"/>
+  <text x="716" y="374" font-size="10" font-weight="600" fill="#5b21b6">cairn_signal()</text>
+  <text x="916" y="374" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
   <!-- cairn_session_end() — Stable -->
-  <rect x="696" y="398" width="228" height="30" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="710" cy="413" r="4" fill="#16a34a"/>
-  <text x="720" y="410" font-size="11" font-weight="600" fill="#5b21b6">cairn_session_end()</text>
-  <text x="910" y="410" text-anchor="end" font-size="10" fill="#7c3aed">Stable</text>
+  <rect x="696" y="384" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <circle cx="708" cy="396" r="3" fill="#16a34a"/>
+  <text x="716" y="400" font-size="10" font-weight="600" fill="#5b21b6">cairn_session_end()</text>
+  <text x="916" y="400" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
   <!-- cairn_status() — Stable -->
-  <rect x="696" y="430" width="228" height="30" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="710" cy="445" r="4" fill="#16a34a"/>
-  <text x="720" y="442" font-size="11" font-weight="600" fill="#5b21b6">cairn_status()</text>
-  <text x="910" y="442" text-anchor="end" font-size="10" fill="#7c3aed">Stable</text>
+  <rect x="696" y="410" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <circle cx="708" cy="422" r="3" fill="#16a34a"/>
+  <text x="716" y="426" font-size="10" font-weight="600" fill="#5b21b6">cairn_status()</text>
+  <text x="916" y="426" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
+  <!-- cairn_review() — Stable -->
+  <rect x="696" y="436" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <circle cx="708" cy="448" r="3" fill="#16a34a"/>
+  <text x="716" y="452" font-size="10" font-weight="600" fill="#5b21b6">cairn_review()</text>
+  <text x="916" y="452" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
+  <!-- cairn_memory() — Stable -->
+  <rect x="696" y="462" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <circle cx="708" cy="474" r="3" fill="#16a34a"/>
+  <text x="716" y="478" font-size="10" font-weight="600" fill="#5b21b6">cairn_memory()</text>
+  <text x="916" y="478" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
   <!-- cairn_plan() — Experimental -->
-  <rect x="696" y="462" width="228" height="30" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="710" cy="477" r="4" fill="#f59e0b"/>
-  <text x="720" y="474" font-size="11" font-weight="600" fill="#5b21b6">cairn_plan()</text>
-  <text x="910" y="474" text-anchor="end" font-size="10" fill="#b45309">Experimental</text>
+  <rect x="696" y="488" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <circle cx="708" cy="500" r="3" fill="#f59e0b"/>
+  <text x="716" y="504" font-size="10" font-weight="600" fill="#5b21b6">cairn_plan()</text>
+  <text x="916" y="504" text-anchor="end" font-size="9" fill="#b45309">Experimental</text>
   <!-- cairn_doctor() — Experimental -->
-  <rect x="696" y="494" width="228" height="30" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="710" cy="509" r="4" fill="#f59e0b"/>
-  <text x="720" y="506" font-size="11" font-weight="600" fill="#5b21b6">cairn_doctor()</text>
-  <text x="910" y="506" text-anchor="end" font-size="10" fill="#b45309">Experimental</text>
+  <rect x="696" y="514" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+  <circle cx="708" cy="526" r="3" fill="#f59e0b"/>
+  <text x="716" y="530" font-size="10" font-weight="600" fill="#5b21b6">cairn_doctor()</text>
+  <text x="916" y="530" text-anchor="end" font-size="9" fill="#b45309">Experimental</text>
   <!-- Bottom label -->
-  <text x="810" y="540" text-anchor="middle" font-size="11" fill="#6b7280">full engine access · typed tool calls</text>
+  <text x="810" y="550" text-anchor="middle" font-size="11" fill="#6b7280">full engine access · typed tool calls</text>
 
   <!-- Purple arrow: MCP Server → .cairn/ (pointing left) -->
   <path d="M 680,345 L 652,345" stroke="#9333ea" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>

@@ -80,7 +80,7 @@ and serves the results as structured constraints.
 **Trust Router (L0–L3):**
 - **L0 Drop** — noise or duplicates, discarded
 - **L1 Candidate** — saved to `signals/`, accumulates toward L2
-- **L2 Staged** — awaits human review via `cairn review`
+- **L2 Staged** — awaits review via `cairn_review` MCP tool
 - **L3 Auto-write** — strict conditions met, written to `memory/` automatically
 
 **Memory → Views → Constraints:**
@@ -111,20 +111,54 @@ Every memory entry declares a `behavior_effect`:
 
 ### Install
 
+Requires Node.js 18+.
+
 ```bash
 npm install -g cairn-mcp-server
 ```
 
-Or from source:
+<details>
+<summary>Install from source</summary>
 
 ```bash
 git clone https://github.com/zzf2333/Cairn
 cd Cairn/mcp && npm install && npm run build
 ```
 
-Requires Node.js 18+.
+</details>
 
-### Initialize a Project
+### That's it
+
+Installation automatically registers the MCP server with detected AI tools
+(Claude Code, Cursor, Windsurf, Claude Desktop). No manual configuration needed.
+
+Cairn auto-initializes on first use — it detects your project name, start date,
+and git history when AI first calls `cairn_context()`.
+
+<details>
+<summary>Manual MCP configuration</summary>
+
+If auto-setup didn't detect your tool, add this to your MCP config:
+
+```json
+{
+    "mcpServers": {
+        "cairn": { "command": "cairn-mcp-server" }
+    }
+}
+```
+
+Config file locations:
+- **Claude Code** — `~/.claude/mcp.json`
+- **Cursor** — `~/.cursor/mcp.json`
+- **Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
+
+</details>
+
+<details>
+<summary>Manual initialization (optional)</summary>
+
+If you prefer to customize project name, domains, or trust policy manually:
 
 ```bash
 cd my-project
@@ -133,62 +167,19 @@ cairn init
 
 Interactive flow: project name → start date → domain selection → Git history scan → directory generation.
 
-After init:
-
-```
-.cairn/
-├── config.yaml          # Project configuration (domains, trust policy)
-├── state.yaml           # Server runtime state
-├── signals/             # L1 candidate signal pool
-├── staged/              # L2 entries awaiting human review
-├── memory/              # Confirmed memories (source of truth)
-├── views/               # Auto-generated constraint views
-│   ├── output.md        # Global constraints
-│   ├── stage.md         # Stage advisory
-│   └── domains/         # Per-domain summaries
-└── sessions/            # Session audit records
-```
-
-### Configure MCP
-
-**Claude Code** — `~/.claude/mcp.json` (global) or `.claude/mcp.json` (project):
-
-```json
-{
-    "mcpServers": {
-        "cairn": { "command": "cairn-mcp-server" }
-    }
-}
-```
-
-**Cursor** — `.cursor/mcp.json`:
-
-```json
-{
-    "mcpServers": {
-        "cairn": { "command": "cairn-mcp-server" }
-    }
-}
-```
-
-### Verify
-
-```bash
-cairn status    # System state overview
-cairn doctor    # Health diagnostics
-```
+</details>
 
 ---
 
 ## Daily Usage
 
-After init and MCP configuration, daily operation is fully automatic:
+After MCP configuration, daily operation is fully automatic:
 
 1. **Session start** — AI calls `cairn_context()` to load constraints
 2. **During work** — AI calls `cairn_signal()` when it detects decisions, rejections, or constraints
 3. **Session end** — AI calls `cairn_session_end()` to process signals and regenerate views
 
-The only human action: periodically run `cairn review` to approve staged entries.
+The only human action: periodically review staged entries when AI prompts you.
 
 ![Daily Usage](docs/diagrams/05-daily-usage.png)
 
@@ -201,7 +192,9 @@ The only human action: periodically run `cairn review` to approve staged entries
 | `cairn_context` | Get constraints before working | Stable |
 | `cairn_signal` | Report decisions, rejections, constraints | Stable |
 | `cairn_session_end` | End-of-session batch processing | Stable |
-| `cairn_status` | System status overview | Stable |
+| `cairn_status` | System status + stage management | Stable |
+| `cairn_review` | Review staged memory entries | Stable |
+| `cairn_memory` | Browse and manage memories | Stable |
 | `cairn_plan` | History-aware planning framework | Experimental |
 | `cairn_doctor` | Health diagnostics | Experimental |
 
@@ -248,15 +241,11 @@ The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repos
 
 ## CLI
 
+All project memory operations are MCP tools called by your AI assistant.
+
 | Command | Description |
 |---------|-------------|
-| `cairn init` | Interactive project initialization |
-| `cairn status` | System state overview |
-| `cairn review` | Review staged entries (accept / edit / skip / delete) |
-| `cairn doctor` | Health diagnostics |
-| `cairn stage confirm` | Confirm stage advisory |
-| `cairn memory show <id>` | View a memory entry |
-| `cairn memory archive <id>` | Archive a memory entry |
+| `cairn version` | Show version |
 
 ---
 
@@ -273,11 +262,7 @@ Cairn infers your project's lifecycle phase from Git signals:
 
 The engine is **advisory only** — it never enforces constraints automatically.
 Stage guidance surfaces in `cairn_context()` when confidence >= 0.5. To confirm
-a stage as official:
-
-```bash
-cairn stage confirm
-```
+a stage as official, AI calls `cairn_status(action: 'stage_confirm')`.
 
 ---
 

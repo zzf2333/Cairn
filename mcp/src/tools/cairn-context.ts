@@ -81,11 +81,11 @@ export function handleCairnContext(
     const staged = ctx.stagedStore.loadPending();
     if (staged.length > 0) {
         warnings.push(
-            `${staged.length} staged entries pending review (run 'cairn review')`,
+            `${staged.length} staged entries pending review — use cairn_review tool`,
         );
     }
 
-    const result = {
+    const result: Record<string, unknown> = {
         stage: {
             phase: state.stage.phase,
             confidence: state.stage.confidence,
@@ -97,6 +97,16 @@ export function handleCairnContext(
         active_debt: debts,
         warnings,
     };
+
+    if (ctx.bootstrapResult?.created) {
+        result.first_run = true;
+        result.project = ctx.bootstrapResult.projectMeta;
+        result.git_history_summary = ctx.bootstrapResult.gitSummary;
+        result.suggestion =
+            "This is Cairn's first run — .cairn/ has been auto-initialized. " +
+            "Review the git history summary above and use cairn_signal() to " +
+            "record any important project decisions, rejections, or constraints you identify.";
+    }
 
     return toolResult(JSON.stringify(result, null, 2));
 }

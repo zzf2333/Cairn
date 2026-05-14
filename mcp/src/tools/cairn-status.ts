@@ -1,14 +1,46 @@
 import type { CairnContext } from "../server.js";
 import { toolResult } from "../errors.js";
 
-export function handleCairnStatus(ctx: CairnContext) {
+export function handleCairnStatus(
+    ctx: CairnContext,
+    args: { action?: "status" | "stage_show" | "stage_confirm" } = {},
+) {
+    const action = args.action ?? "status";
+
+    if (action === "stage_show") {
+        const state = ctx.stateStore.load();
+        return toolResult(JSON.stringify(state.stage, null, 2));
+    }
+
+    if (action === "stage_confirm") {
+        const state = ctx.stateStore.load();
+        if (state.stage.status === "confirmed") {
+            return toolResult(
+                JSON.stringify({
+                    confirmed: true,
+                    message: `Stage already confirmed: ${state.stage.phase}`,
+                }),
+            );
+        }
+        state.stage.status = "confirmed";
+        state.stage.last_updated = new Date().toISOString();
+        ctx.stateStore.save(state);
+        ctx.viewsEngine.regenerate();
+        return toolResult(
+            JSON.stringify({
+                confirmed: true,
+                phase: state.stage.phase,
+                confidence: state.stage.confidence,
+            }),
+        );
+    }
+
     const memories = ctx.memoryStore.loadAll();
     const staged = ctx.stagedStore.loadPending();
     const signals = ctx.signalStore.loadAll();
     const conflicts = ctx.memoryStore.findConflicts();
     const state = ctx.stateStore.load();
 
-    // Detect stale domains: domains with no recent updates
     const domainUpdates = new Map<string, string>();
     for (const m of memories) {
         const existing = domainUpdates.get(m.domain);

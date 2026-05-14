@@ -61,9 +61,10 @@ Bilingual reference for core Cairn concepts. All Chinese translations in `.zh.md
 
 | English | 中文 | Notes |
 |---------|------|-------|
-| cairn init | 初始化 | Creates `.cairn/` with 6 subdirectories + config |
-| cairn review | 审核 | Interactive review of staged entries |
-| cairn doctor | 健康诊断 | Rule-based health checks |
+| bootstrap | 自动初始化 | Auto-creates `.cairn/` on first MCP tool call |
+| cairn_review | 审核 | MCP tool: AI-mediated review of staged entries (list/accept/reject) |
+| cairn_memory | 记忆管理 | MCP tool: browse and manage memory entries (list/show/archive) |
+| cairn_doctor | 健康诊断 | MCP tool: rule-based health checks |
 | slug | 文件名标识符 | ASCII short identifier in filenames |
 
 ## Other Terms

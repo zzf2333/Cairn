@@ -28,8 +28,8 @@
 | config.yaml | 人类（init 时 + 手动调整） | Server | 长期稳定 |
 | state.yaml | Server | Server | 每次启动更新 |
 | signals/ | 双耳经 Trust Router | Trust Router | 积累后升级或过期丢弃 |
-| staged/ | Trust Router | 人类（`cairn review` 时） | 审核后写入 memory 或丢弃 |
-| memory/ | `cairn review` / L3 自动写入 | Views Engine、MCP Tools | 长期持久 |
+| staged/ | Trust Router | 人类（通过 `cairn_review` MCP 工具） | 审核后写入 memory 或丢弃 |
+| memory/ | `cairn_review` / L3 自动写入 | Views Engine、MCP Tools | 长期持久 |
 | views/ | Views Engine（自动） | AI（MCP 或 Skill） | memory 变更后重新生成 |
 | sessions/ | Server（session_end 时） | 审计 / 回溯 | 可定期清理 |
 
@@ -37,7 +37,7 @@
 
 ## config.yaml
 
-项目级配置。`cairn init` 时创建，之后极少变动。
+项目级配置。首次使用时自动创建（bootstrap），之后极少变动。
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
@@ -507,5 +507,5 @@ Last generated: <ISO 8601 时间戳>
 | MemoryEntry | `mem_<YYYY_MM>_<domain>_<slug>` | `mem_2024_03_api_tRPC_rejection` |
 | Session | `sess_<YYYY_MM_DD>_<seq>` | `sess_2026_05_11_001` |
 
-域键使用 `kebab-case`。域列表在 `cairn init` 时锁定。
+域键使用 `kebab-case`。域列表在初始化时锁定。
 

@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { resolvePaths, type CairnPaths } from "./paths.js";
+import { resolvePaths, buildPaths, findCairnRoot, type CairnPaths } from "./paths.js";
 import { formatToolError, toolResult } from "./errors.js";
 import { MemoryStore } from "./stores/memory-store.js";
 import { SignalStore } from "./stores/signal-store.js";
@@ -17,6 +17,9 @@ import { handleCairnSessionEnd } from "./tools/cairn-session-end.js";
 import { handleCairnStatus } from "./tools/cairn-status.js";
 import { handleCairnPlan } from "./tools/cairn-plan.js";
 import { handleCairnDoctor } from "./tools/cairn-doctor.js";
+import { handleCairnReview } from "./tools/cairn-review.js";
+import { handleCairnMemory } from "./tools/cairn-memory.js";
+import { bootstrapCairnDir, type BootstrapResult } from "./bootstrap.js";
 import {
     SIGNAL_TYPES,
     MEMORY_TYPES,
@@ -35,10 +38,10 @@ export interface CairnContext {
     gitEar: GitEar;
     stageEngine: StageEngine;
     memoryEngine: MemoryEngine;
+    bootstrapResult?: BootstrapResult;
 }
 
-export function createCairnContext(startDir?: string): CairnContext {
-    const paths = resolvePaths(startDir);
+export function createCairnContextFromPaths(paths: CairnPaths): CairnContext {
     const memoryStore = new MemoryStore(paths.memoryDir);
     const signalStore = new SignalStore(paths.signalsDir);
     const stagedStore = new StagedStore(paths.stagedDir);
@@ -67,6 +70,10 @@ export function createCairnContext(startDir?: string): CairnContext {
         stageEngine,
         memoryEngine,
     };
+}
+
+export function createCairnContext(startDir?: string): CairnContext {
+    return createCairnContextFromPaths(resolvePaths(startDir));
 }
 
 export async function runStartupGitScan(ctx: CairnContext): Promise<void> {
@@ -111,21 +118,66 @@ export async function runStartupGitScan(ctx: CairnContext): Promise<void> {
     }
 }
 
+const CAIRN_INSTRUCTIONS = [
+    "Cairn is a project memory engine. Follow this protocol:",
+    "",
+    "SESSION START: Call cairn_context() BEFORE responding to any user request.",
+    "Pass task and/or files if known. Respect all returned constraints (no_go, active_debt, stage) for the entire session.",
+    "",
+    "DURING WORK: Call cairn_signal() when you detect:",
+    "- User rejects a suggestion (type: user-rejection)",
+    "- User states a constraint (type: user-constraint)",
+    "- A significant decision is made (type: decision)",
+    "- User references past decisions (type: historical-reference)",
+    "- Technical debt is accepted (type: debt-acceptance)",
+    "Do NOT signal routine fixes, formatting, or duplicates.",
+    "",
+    "BEFORE DESIGN TASKS: Call cairn_plan() for historical constraints.",
+    "",
+    "SESSION END: Call cairn_session_end() with a summary before the session closes.",
+    "",
+    "REVIEWING: When cairn_context warns about pending staged entries,",
+    "call cairn_review(action:'list'), present entries to user with context, then accept/reject per their decision.",
+    "",
+    "CONSTRAINT RULES:",
+    "- no_go: Never suggest these directions. Explain history if asked.",
+    "- active_debt: Do not fix. Work within the constraint.",
+    "- stage: Adjust suggestion aggressiveness to project phase (exploration > growth > maturity > maintenance).",
+].join("\n");
+
 export function createCairnServer(
     startDir?: string,
 ): { server: McpServer; runStartupScan: () => Promise<void> } {
-    const server = new McpServer({
-        name: "cairn",
-        version: "0.2.1",
-    });
+    const server = new McpServer(
+        {
+            name: "cairn",
+            version: "0.2.1",
+        },
+        {
+            instructions: CAIRN_INSTRUCTIONS,
+        },
+    );
 
     let ctx: CairnContext | null = null;
+    let ctxPromise: Promise<CairnContext> | null = null;
 
-    function getCtx(): CairnContext {
-        if (!ctx) {
-            ctx = createCairnContext(startDir);
-        }
-        return ctx;
+    async function getCtx(): Promise<CairnContext> {
+        if (ctx) return ctx;
+        if (ctxPromise) return ctxPromise;
+
+        ctxPromise = (async () => {
+            const root = findCairnRoot(startDir);
+            if (root) {
+                ctx = createCairnContextFromPaths(buildPaths(root));
+            } else {
+                const result = await bootstrapCairnDir(startDir);
+                ctx = createCairnContextFromPaths(result.paths);
+                ctx.bootstrapResult = result;
+            }
+            return ctx;
+        })();
+
+        return ctxPromise;
     }
 
     // cairn_context — stable
@@ -134,8 +186,9 @@ export function createCairnServer(
         {
             title: "Get Cairn Constraint Context",
             description:
-                "Get project memory constraints before working. " +
-                "Returns: stage advisory, no-go list, relevant domain summaries, active debts, warnings.",
+                "MUST call at session start before any other work. " +
+                "Returns project constraints: stage advisory, no-go list, relevant domain summaries, active debts, warnings. " +
+                "Auto-initializes on first use. Respect all returned constraints for the entire session.",
             inputSchema: {
                 task: z.string().optional().describe("Current task description"),
                 files: z
@@ -144,9 +197,9 @@ export function createCairnServer(
                     .describe("Files being worked on"),
             },
         },
-        (args) => {
+        async (args) => {
             try {
-                return handleCairnContext(getCtx(), args);
+                return handleCairnContext(await getCtx(), args);
             } catch (e) {
                 return formatToolError(e);
             }
@@ -186,9 +239,9 @@ export function createCairnServer(
                 }),
             },
         },
-        (args) => {
+        async (args) => {
             try {
-                return handleCairnSignal(getCtx(), args);
+                return handleCairnSignal(await getCtx(), args);
             } catch (e) {
                 return formatToolError(e);
             }
@@ -201,7 +254,7 @@ export function createCairnServer(
         {
             title: "End Cairn Session",
             description:
-                "Call at session end. Processes pending signals, " +
+                "MUST call before session ends. Processes pending signals, " +
                 "generates session record, regenerates views.",
             inputSchema: {
                 summary: z.string().describe("Session summary"),
@@ -212,7 +265,7 @@ export function createCairnServer(
         },
         async (args) => {
             try {
-                return await handleCairnSessionEnd(getCtx(), args);
+                return await handleCairnSessionEnd(await getCtx(), args);
             } catch (e) {
                 return formatToolError(e);
             }
@@ -226,11 +279,18 @@ export function createCairnServer(
             title: "Cairn System Status",
             description:
                 "Get system status: memory count, staged count, signals count, " +
-                "conflicts, stale domains, stage advisory.",
+                "conflicts, stale domains, stage advisory. " +
+                "Use action 'stage_show' for detailed stage info, 'stage_confirm' to confirm stage.",
+            inputSchema: {
+                action: z
+                    .enum(["status", "stage_show", "stage_confirm"])
+                    .optional()
+                    .describe("Action: status (default), stage_show, or stage_confirm"),
+            },
         },
-        () => {
+        async (args) => {
             try {
-                return handleCairnStatus(getCtx());
+                return handleCairnStatus(await getCtx(), args);
             } catch (e) {
                 return formatToolError(e);
             }
@@ -249,9 +309,9 @@ export function createCairnServer(
                 task: z.string().describe("Task to plan for"),
             },
         },
-        (args) => {
+        async (args) => {
             try {
-                return handleCairnPlan(getCtx(), args);
+                return handleCairnPlan(await getCtx(), args);
             } catch (e) {
                 return formatToolError(e);
             }
@@ -267,9 +327,53 @@ export function createCairnServer(
                 "Run health diagnostics: token budget, orphan no-gos, " +
                 "stale domains, conflicts, staged backlog.",
         },
-        () => {
+        async () => {
             try {
-                return handleCairnDoctor(getCtx());
+                return handleCairnDoctor(await getCtx());
+            } catch (e) {
+                return formatToolError(e);
+            }
+        },
+    );
+
+    // cairn_review — stable
+    server.registerTool(
+        "cairn_review",
+        {
+            title: "Review Staged Memory Entries",
+            description:
+                "Review, accept, or reject staged memory entries. " +
+                "Call with action:'list' to see pending entries, then accept/reject based on user decision.",
+            inputSchema: {
+                action: z.enum(["list", "accept", "reject"]).describe("Action to perform"),
+                id: z.string().optional().describe("Entry ID (required for accept/reject)"),
+            },
+        },
+        async (args) => {
+            try {
+                return handleCairnReview(await getCtx(), args);
+            } catch (e) {
+                return formatToolError(e);
+            }
+        },
+    );
+
+    // cairn_memory — stable
+    server.registerTool(
+        "cairn_memory",
+        {
+            title: "Manage Memory Entries",
+            description:
+                "List, view, or archive project memory entries.",
+            inputSchema: {
+                action: z.enum(["list", "show", "archive"]).describe("Action to perform"),
+                id: z.string().optional().describe("Entry ID (required for show/archive)"),
+                domain: z.string().optional().describe("Filter by domain (list only)"),
+            },
+        },
+        async (args) => {
+            try {
+                return handleCairnMemory(await getCtx(), args);
             } catch (e) {
                 return formatToolError(e);
             }
@@ -280,9 +384,9 @@ export function createCairnServer(
         server,
         runStartupScan: async () => {
             try {
-                await runStartupGitScan(getCtx());
+                await runStartupGitScan(await getCtx());
             } catch {
-                // No .cairn/ directory or other init failure — silent
+                // Bootstrap or git scan failure — silent
             }
         },
     };

@@ -18,7 +18,7 @@ For tools that don't support MCP, `views/` provides a read-only fallback (see
 
 ## Tools
 
-Six MCP tools, four stable and two experimental:
+Eight MCP tools, six stable and two experimental:
 
 ### Stable
 
@@ -27,7 +27,9 @@ Six MCP tools, four stable and two experimental:
 | `cairn_context` | Get project constraints before working. Returns: stage advisory, no-go list, relevant domains, active debt, warnings. | No (read-only) |
 | `cairn_signal` | Report a project signal from conversation: user rejection, decision, constraint, historical reference, debt acceptance. Routed through Trust Router. | Indirect (via Trust Router) |
 | `cairn_session_end` | End-of-session processing: batch L1 signals, create session record, regenerate views. | Indirect (via Trust Router) |
-| `cairn_status` | System status: memory count, staged count, signals count, conflicts, stale domains, stage advisory. | No (read-only) |
+| `cairn_status` | System status + stage management. Actions: `status` (default), `stage_show`, `stage_confirm`. | `stage_confirm` writes state |
+| `cairn_review` | Review staged memory entries. Actions: `list`, `accept`, `reject`. | `accept` writes memory |
+| `cairn_memory` | Browse and manage memory entries. Actions: `list`, `show`, `archive`. | `archive` writes memory |
 
 ### Experimental
 
@@ -82,7 +84,31 @@ Six MCP tools, four stable and two experimental:
 }
 ```
 
-`cairn_status` and `cairn_doctor` take no input.
+**`cairn_status`**
+```json
+{
+    "action": "enum (optional) — status (default) | stage_show | stage_confirm"
+}
+```
+
+**`cairn_review`**
+```json
+{
+    "action": "enum — list | accept | reject",
+    "id": "string (optional) — entry ID, required for accept/reject"
+}
+```
+
+**`cairn_memory`**
+```json
+{
+    "action": "enum — list | show | archive",
+    "id": "string (optional) — entry ID, required for show/archive",
+    "domain": "string (optional) — filter by domain (list only)"
+}
+```
+
+`cairn_doctor` takes no input.
 
 ## Recommended Workflow
 
@@ -105,6 +131,17 @@ Before design tasks:
 Session end:
   cairn_session_end({ summary: "Refactored auth, rejected OAuth2 PKCE", changed_domains: ["auth"] })
   → Batch processes signals, regenerates views, creates session record
+
+Reviewing staged entries:
+  cairn_review({ action: "list" })
+  → Returns pending entries with draft memory details
+  cairn_review({ action: "accept", id: "staged_..." })
+  → Accepts entry into memory
+
+Managing memories:
+  cairn_memory({ action: "list" })
+  cairn_memory({ action: "show", id: "mem_..." })
+  cairn_memory({ action: "archive", id: "mem_..." })
 
 Diagnostics (any time):
   cairn_status()
@@ -192,7 +229,7 @@ The server resolves the `.cairn/` directory in this order:
 1. `CAIRN_ROOT` environment variable (set in MCP config if needed)
 2. Walk up from `process.cwd()` until `.cairn/` is found
 
-If neither finds a `.cairn/` directory, all tool calls return an actionable error.
+If neither finds a `.cairn/` directory, the server auto-initializes one on first tool call.
 
 To pin the server to a specific project:
 
@@ -211,17 +248,11 @@ To pin the server to a specific project:
 
 ## CLI
 
-The same package provides a `cairn` CLI for initialization and maintenance:
+All project memory operations are MCP tools called by your AI assistant.
 
 | Command | Description |
 |---------|-------------|
-| `cairn init` | Interactive project initialization (creates `.cairn/` with config, state, and directory structure) |
-| `cairn status` | System state overview (memory count, staged count, stage, conflicts) |
-| `cairn review` | Review staged entries: accept / edit / skip / delete |
-| `cairn doctor` | Health diagnostics |
-| `cairn stage confirm` | Confirm stage advisory as official |
-| `cairn memory show <id>` | View a single memory entry |
-| `cairn memory archive <id>` | Archive a memory entry |
+| `cairn version` | Show version |
 
 ## Degraded Mode
 
@@ -252,7 +283,7 @@ npm run dev           # Run server directly (tsx, no build needed)
 mcp/src/
 ├── index.ts              # MCP stdio entry point + startup git scan trigger
 ├── cli.ts                # CLI entry point
-├── server.ts             # McpServer factory: registers 6 tools + startup git scan
+├── server.ts             # McpServer factory: registers 8 tools + startup git scan
 ├── paths.ts              # .cairn/ root detection + path resolution
 ├── tokens.ts             # Token counting utilities
 ├── errors.ts             # Typed error codes
@@ -279,13 +310,10 @@ mcp/src/
 │   ├── cairn-signal.ts
 │   ├── cairn-session-end.ts
 │   ├── cairn-status.ts
+│   ├── cairn-review.ts
+│   ├── cairn-memory.ts
 │   ├── cairn-plan.ts
 │   └── cairn-doctor.ts
-└── cli/                  # CLI subcommands
-    ├── init.ts
-    ├── status.ts
-    ├── review.ts
-    ├── doctor.ts
-    ├── stage.ts
-    └── memory.ts
+└── cli/
+    └── setup.ts          # MCP server auto-registration (postinstall)
 ```

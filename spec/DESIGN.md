@@ -239,7 +239,7 @@ The stage engine synthesizes multiple signals:
 
 The stage engine's output is strictly advisory. When confidence is below threshold
 (0.5 in v0.1), no hard constraints are produced. Stage determination only becomes a
-formal constraint after human confirmation via `cairn stage confirm`. Until then,
+formal constraint after human confirmation via `cairn_status(action: 'stage_confirm')`. Until then,
 guidance uses suggestive language ("consider," "balance") rather than prohibitive
 language ("do not," "never").
 
@@ -383,14 +383,14 @@ The user's role shifts from "write the memory" to "review the memory." The five 
 events still describe when meaningful memory should exist — but the mechanism for
 getting from event to memory is now automated rather than manual.
 
-### The init process
+### Auto-initialization (bootstrap)
 
-`cairn init` performs a two-step initialization:
+On first MCP tool call, if no `.cairn/` directory exists, the server automatically:
 
-1. **Rule-based Git scan** — analyzes git history for candidate signals (reverts,
+1. **Detects project metadata** — project name from directory, start date from first commit
+2. **Rule-based Git scan** — analyzes git history for candidate signals (reverts,
    dependency removals, replacements, major restructurings)
-2. **User-guided review** — presents candidates for user selection and enrichment,
-   generating staged entries that the user reviews and confirms
+3. **Creates `.cairn/` structure** — config, state, and all subdirectories
 
 The guiding principle remains: incomplete is better than inaccurate. An entry with
 `[TODO]` in its `reason` field is more honest than a fabricated justification.
@@ -402,7 +402,7 @@ The guiding principle remains: incomplete is better than inaccurate. An entry wi
 Cairn operates as an MCP server using stdio transport. Any AI tool that supports
 the Model Context Protocol can use Cairn natively through typed tool calls:
 `cairn_context()`, `cairn_signal()`, `cairn_session_end()`, `cairn_status()`,
-`cairn_plan()`, and `cairn_doctor()`.
+`cairn_review()`, `cairn_memory()`, `cairn_plan()`, and `cairn_doctor()`.
 
 For AI tools that do not support MCP, the `views/` directory provides a degradation
 path. Because `views/` provides Markdown projections, Skill adapter files work as a
@@ -441,9 +441,9 @@ deliverables:
 - YAML-based memory store with full provenance tracking
 - Automated views generation from memory source data
 - Rule-based Stage Advisory Engine
-- Six MCP tools forming the complete read-capture-review-constrain loop
-- Two-step `cairn init` with Git history analysis
-- `cairn review` for human memory admission
+- Eight MCP tools forming the complete read-capture-review-constrain loop
+- Auto-initialization (bootstrap) on first MCP tool call with Git history analysis
+- `cairn_review` MCP tool for AI-mediated memory admission
 
 v0.1 ships all modules with rule-based intelligence. Subsequent versions deepen each
 module's capability without changing the architecture.

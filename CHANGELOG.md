@@ -24,9 +24,9 @@ Complete architecture rewrite — from static context files to a dynamic memory 
 ### Breaking Changes
 
 - **Architecture**: Cairn is now a dynamic memory engine. Automatic signal capture, trust-routed memory, and auto-generated views replace manual file maintenance.
-- **MCP tools**: 6 tools replace the previous API — `cairn_context`, `cairn_signal`, `cairn_session_end`, `cairn_status` (stable); `cairn_plan`, `cairn_doctor` (experimental).
+- **MCP tools**: 8 tools replace the previous API — `cairn_context`, `cairn_signal`, `cairn_session_end`, `cairn_status`, `cairn_review`, `cairn_memory` (stable); `cairn_plan`, `cairn_doctor` (experimental).
 - **Directory structure**: New `.cairn/` layout — `memory/` (YAML source of truth), `views/` (auto-generated), `signals/`, `staged/`, `sessions/`, `config.yaml`, `state.yaml`.
-- **CLI**: TypeScript CLI with commands: `cairn init`, `cairn status`, `cairn review`, `cairn doctor`, `cairn stage confirm`, `cairn memory show/archive`.
+- **CLI**: `cairn version` (all project operations are MCP tools called by AI).
 
 ### Added
 
@@ -34,11 +34,12 @@ Complete architecture rewrite — from static context files to a dynamic memory 
 - **Trust Router (L0–L3)**: Four-level routing with hard rules. L0 drop (noise), L1 candidate (accumulates ≥3 to promote), L2 staged (human review), L3 auto-write (strict conditions). Global no-go and stage changes always route to L2.
 - **Structured YAML memory**: Entries carry `type`, `domain`, `scope`, `status`, `confidence`, `subject`, `source`, `behavior_effect`, `revisit`, `relations`. Five types: decision, rejection, transition, debt, experiment. Four behavior effects: avoid_suggestion, prefer_approach, warn_before, require_review.
 - **Views Engine**: Auto-generates `views/output.md`, `views/domains/*.md`, `views/stage.md` from memory with token budget control (300/500 tokens per domain). Regenerated on every memory change.
-- **Stage Advisory Engine**: Infers project phase (exploration → growth → maturity → maintenance) from project age, commit trends, dependency churn, new file ratio. Advisory only — no hard constraints unless human-confirmed via `cairn stage confirm`.
+- **Stage Advisory Engine**: Infers project phase (exploration → growth → maturity → maintenance) from project age, commit trends, dependency churn, new file ratio. Advisory only — no hard constraints unless human-confirmed via `cairn_status(action: 'stage_confirm')`.
 - **Memory Engine**: Conflict detection (same domain + subject + different behavior_effect), health tracking, supersession management.
 - **6 Zod schemas**: MemoryEntry, Signal, StagedEntry, Config, StageSnapshot, SessionRecord — runtime validation for all `.cairn/` data files.
 - **4 YAML stores**: MemoryStore, SignalStore, StagedStore, StateStore — typed CRUD with schema validation.
-- **`cairn review` CLI**: Interactive review for staged entries (accept / edit / skip / delete). Accepted entries promote to memory and trigger view regeneration.
+- **`cairn_review` MCP tool**: AI-mediated review of staged entries (list / accept / reject). Accepted entries promote to memory and trigger view regeneration.
+- **`cairn_memory` MCP tool**: Browse and manage memory entries (list / show / archive).
 - **Session records**: `cairn_session_end()` creates audit records in `sessions/` with signal counts, routing stats, and domain coverage.
 - **GitEar integration**: Automatic Git history scan on MCP server startup, detecting signals since last session.
 - **9 AI tools supported via MCP**: Claude Code, Cursor, Claude Desktop, Cline/Roo Code, Windsurf, GitHub Copilot, Codex CLI, Gemini CLI, OpenCode.
