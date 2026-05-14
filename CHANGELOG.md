@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-05-14
+
+### Added
+
+- **Zero-config installation**: `npm install -g` auto-registers MCP server with detected AI tools (Claude Code, Cursor, Windsurf, Claude Desktop) via postinstall
+- **Auto-initialization**: First MCP tool call bootstraps `.cairn/` directory with project metadata and Git history scan — no manual `cairn init` needed
+- **`cairn_review` MCP tool**: AI-mediated review of staged entries (list/accept/reject), replacing interactive CLI
+- **`cairn_memory` MCP tool**: Browse and manage memory entries (list/show/archive), replacing CLI commands
+- **`cairn_status` stage operations**: Extended with `stage_show` and `stage_confirm` actions
+
+### Changed
+
+- **CLI simplified**: Only `cairn version` remains; all project operations are MCP tools called by AI
+- **MCP tools**: 6 → 8 stable tools + 2 experimental
+- **Documentation**: All spec documents, adoption guide, glossary, and 3 architecture diagrams updated
+
+### Removed
+
+- CLI commands: `init`, `status`, `review`, `doctor`, `stage`, `memory` (replaced by MCP tools)
+
 ## [0.2.1] - 2026-05-12
 
 ### Fixed

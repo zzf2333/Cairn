@@ -11,7 +11,10 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createCairnServer } from "../src/server.js";
 import { createTestEnv } from "./test-helpers.js";
 import { resolvePaths } from "../src/paths.js";
+import { createRequire } from "node:module";
 
+const require = createRequire(import.meta.url);
+const PKG_VERSION: string = require("../package.json").version;
 const execFileP = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -62,7 +65,7 @@ describe("E2E: MCP server via transport", { timeout: 15_000 }, () => {
     it("server identifies as cairn with correct version", () => {
         const info = client.getServerVersion();
         expect(info?.name).toBe("cairn");
-        expect(info?.version).toBe("0.2.1");
+        expect(info?.version).toBe(PKG_VERSION);
     });
 
     it("server provides instructions via MCP protocol", () => {
