@@ -130,10 +130,9 @@ describe("ViewsEngine — token truncation", () => {
             join(ctx.paths.viewsDir, "output.md"),
             "utf-8",
         );
-        expect(content).toContain("REST");
-        expect(content).toContain("Use REST for APIs");
-        expect(content).toContain("JWT");
-        expect(content).toContain("Use JWT for auth");
+        expect(content).toContain("## hooks");
+        expect(content).toContain("api-layer");
+        expect(content).toContain("auth");
     });
 
     it("generates empty sections gracefully with 0 memories", () => {

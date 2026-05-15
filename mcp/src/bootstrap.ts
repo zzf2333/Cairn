@@ -7,7 +7,7 @@ import { simpleGit } from "simple-git";
 import { buildPaths, type CairnPaths } from "./paths.js";
 import { createCairnContextFromPaths } from "./context.js";
 import { DEFAULT_L3_AUTO_WRITE, type Config } from "./schemas/config.js";
-import type { MemoryEntry } from "./schemas/memory-entry.js";
+
 
 export interface BootstrapResult {
     created: boolean;
@@ -210,32 +210,14 @@ function discoverWorkspaceDirs(root: string): string[] {
     return dirs.slice(0, MAX_WORKSPACE_DIRS);
 }
 
-function detectTechStack(root: string): MemoryEntry[] {
-    const entries: MemoryEntry[] = [];
-    const now = new Date().toISOString();
+function detectTechStack(root: string): TechDetection[] {
+    const entries: TechDetection[] = [];
     const seen = new Set<string>();
 
     function addEntry(det: TechDetection): void {
         if (seen.has(det.name)) return;
         seen.add(det.name);
-        const slug = det.name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-        entries.push({
-            id: `mem_bootstrap_${slug}`,
-            type: "decision",
-            domain: det.domain,
-            scope: "local",
-            status: "active",
-            health: { state: "ok", reason: null },
-            confidence: { level: "high" },
-            source: { kind: "manual", refs: [{ type: "session", id: "bootstrap" }], captured_at: now },
-            subject: { name: det.name },
-            summary: det.summary,
-            behavior_effect: { type: "prefer_approach", instruction: `Project uses ${det.name}` },
-            revisit: { when: [], status: "not_met" },
-            relations: { related: [], conflicts: [] },
-            created_at: now,
-            updated_at: now,
-        });
+        entries.push(det);
     }
 
     // Node.js / package.json
@@ -482,6 +464,7 @@ export async function bootstrapCairnDir(startDir?: string): Promise<BootstrapRes
             ],
         },
         stage: { override: null, auto_constraint: false },
+        tech_stack: [],
     };
     writeFileSync(paths.configYaml, yamlStringify(config), "utf-8");
 
@@ -539,12 +522,11 @@ export async function bootstrapCairnDir(startDir?: string): Promise<BootstrapRes
         }
         autoSignalsRouted = actionableSignals.length;
 
-        // 4. Detect tech stack → memory entries
-        const techEntries = detectTechStack(root);
-        for (const entry of techEntries) {
-            ctx.memoryStore.save(entry);
-        }
-        autoSignalsRouted += techEntries.length;
+        // 4. Detect tech stack → config.yaml (lightweight, not memory)
+        const techStack = detectTechStack(root);
+        const configRaw = yamlParse(readFileSync(paths.configYaml, "utf-8"));
+        configRaw.tech_stack = techStack;
+        writeFileSync(paths.configYaml, yamlStringify(configRaw), "utf-8");
 
         // 5. Record HEAD as last scanned commit
         const head = await ctx.gitEar.getHeadCommit();

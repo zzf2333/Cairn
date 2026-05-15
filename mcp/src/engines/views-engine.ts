@@ -1,5 +1,6 @@
-import { writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { writeFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { parse as yamlParse } from "yaml";
 import type { CairnPaths } from "../paths.js";
 import type { MemoryStore } from "../stores/memory-store.js";
 import type { StateStore } from "../stores/state-store.js";
@@ -69,13 +70,21 @@ export class ViewsEngine {
             sections.push(`## no-go\n\n(none)`);
         }
 
-        // Stack
-        const stackEntries = memories.filter(
-            (m) => m.type === "decision" && m.status === "active",
-        );
-        if (stackEntries.length > 0) {
-            const items = stackEntries
-                .map((m) => `- ${m.subject.name}: ${m.summary}`)
+        // Stack (from config.yaml tech_stack)
+        let techStack: Array<{ name: string; domain: string }> = [];
+        try {
+            const configRaw = yamlParse(readFileSync(this.paths.configYaml, "utf-8"));
+            techStack = configRaw.tech_stack ?? [];
+        } catch { /* no config */ }
+        if (techStack.length > 0) {
+            const byDomain = new Map<string, string[]>();
+            for (const t of techStack) {
+                const list = byDomain.get(t.domain) ?? [];
+                list.push(t.name);
+                byDomain.set(t.domain, list);
+            }
+            const items = [...byDomain.entries()]
+                .map(([domain, names]) => `${domain}: ${names.join(", ")}`)
                 .join("\n");
             sections.push(`## stack\n\n${items}`);
         }
@@ -89,10 +98,11 @@ export class ViewsEngine {
             sections.push(`## debt\n\n${items}`);
         }
 
-        // Hooks
-        const domains = [...new Set(memories.map((m) => m.domain))];
-        if (domains.length > 0) {
-            const items = domains.map((d) => `- ${d}`).join("\n");
+        // Hooks (domains from memory + tech_stack)
+        const domainSet = new Set(memories.map((m) => m.domain));
+        for (const t of techStack) domainSet.add(t.domain);
+        if (domainSet.size > 0) {
+            const items = [...domainSet].map((d) => `- ${d}`).join("\n");
             sections.push(`## hooks\n\n${items}`);
         }
 

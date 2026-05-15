@@ -219,19 +219,22 @@ describe("bootstrapCairnDir", () => {
         const result = await bootstrapCairnDir(dir);
 
         expect(result.created).toBe(true);
-        const memFiles = readdirSync(join(dir, ".cairn", "memory"))
-            .filter(f => f.endsWith(".yaml"));
-        const memNames = memFiles.map(f => f.replace(".yaml", ""));
 
-        expect(memNames).toContain("mem_bootstrap_next_js");
-        expect(memNames).toContain("mem_bootstrap_react");
-        expect(memNames).toContain("mem_bootstrap_zustand");
-        expect(memNames).toContain("mem_bootstrap_vitest");
-        expect(memNames).toContain("mem_bootstrap_fastapi");
-        expect(memNames).toContain("mem_bootstrap_sqlalchemy");
-        expect(memNames).toContain("mem_bootstrap_redis");
-        expect(memNames).toContain("mem_bootstrap_turborepo");
-        expect(memNames).toContain("mem_bootstrap_pnpm_workspaces");
+        const bootstrapMems = readdirSync(join(dir, ".cairn", "memory"))
+            .filter(f => f.startsWith("mem_bootstrap_"));
+        expect(bootstrapMems).toHaveLength(0);
+
+        const config = yamlParse(readFileSync(join(dir, ".cairn", "config.yaml"), "utf-8"));
+        const techNames = config.tech_stack.map((t: { name: string }) => t.name);
+        expect(techNames).toContain("Next.js");
+        expect(techNames).toContain("React");
+        expect(techNames).toContain("Zustand");
+        expect(techNames).toContain("Vitest");
+        expect(techNames).toContain("FastAPI");
+        expect(techNames).toContain("SQLAlchemy");
+        expect(techNames).toContain("Redis");
+        expect(techNames).toContain("Turborepo");
+        expect(techNames).toContain("pnpm workspaces");
     });
 
     it("detects npm workspace package dependencies", async () => {
@@ -252,11 +255,9 @@ describe("bootstrapCairnDir", () => {
         const result = await bootstrapCairnDir(dir);
 
         expect(result.created).toBe(true);
-        const memFiles = readdirSync(join(dir, ".cairn", "memory"))
-            .filter(f => f.endsWith(".yaml"));
-        const memNames = memFiles.map(f => f.replace(".yaml", ""));
-
-        expect(memNames).toContain("mem_bootstrap_react");
-        expect(memNames).toContain("mem_bootstrap_tailwind_css");
+        const config = yamlParse(readFileSync(join(dir, ".cairn", "config.yaml"), "utf-8"));
+        const techNames = config.tech_stack.map((t: { name: string }) => t.name);
+        expect(techNames).toContain("React");
+        expect(techNames).toContain("Tailwind CSS");
     });
 });

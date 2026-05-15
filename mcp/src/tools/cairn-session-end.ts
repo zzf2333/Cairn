@@ -48,6 +48,7 @@ export async function handleCairnSessionEnd(
                 never_auto: [],
             },
             stage: { override: null, auto_constraint: false },
+            tech_stack: [],
         };
     }
 

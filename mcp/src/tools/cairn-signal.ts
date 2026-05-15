@@ -64,6 +64,7 @@ export function handleCairnSignal(ctx: CairnContext, args: SignalArgs) {
                 never_auto: [],
             },
             stage: { override: null, auto_constraint: false },
+            tech_stack: [],
         };
     }
 

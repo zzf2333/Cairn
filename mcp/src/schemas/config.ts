@@ -44,6 +44,14 @@ export const ConfigSchema = z.object({
             auto_constraint: z.boolean().default(false),
         })
         .default({}),
+
+    tech_stack: z
+        .array(z.object({
+            name: z.string(),
+            domain: z.string(),
+            summary: z.string(),
+        }))
+        .default([]),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

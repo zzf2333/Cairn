@@ -51,6 +51,7 @@ export async function runStartupGitScan(ctx: CairnContext): Promise<void> {
                         never_auto: [],
                     },
                     stage: { override: null, auto_constraint: false },
+                    tech_stack: [],
                 };
             }
 
