@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+import { VERSION } from "../constants.js";
+import { runInit } from "./init.js";
+import { runStatus } from "./status.js";
+import { runDoctor } from "./doctor.js";
+import { runReview } from "./review.js";
+import { runAudit } from "./audit.js";
+import { runDna } from "./dna.js";
+import { runSkeleton } from "./skeleton.js";
+import { runBlood } from "./blood.js";
+import { runStage } from "./stage.js";
+
+const USAGE = `cairn v${VERSION}
+
+Usage: cairn <command> [options]
+
+Commands:
+  init        Initialize .cairn/ directory (--empty for empty structure)
+  status      Show project cognitive status
+  doctor      Run consistency checks and health diagnostics
+  review      List pending staged entries
+  audit       Show governance audit log
+  dna         Show/manage DNA traits
+  skeleton    Show skeleton nodes
+  blood       Show/manage blood events
+  stage       Manage project stage
+
+Options:
+  --version   Show version
+`;
+
+async function main() {
+    const args = process.argv.slice(2);
+    const command = args[0];
+
+    if (!command || command === "--help" || command === "-h") {
+        console.log(USAGE);
+        return;
+    }
+
+    if (command === "--version" || command === "-v") {
+        console.log(VERSION);
+        return;
+    }
+
+    try {
+        switch (command) {
+            case "init":
+                await runInit(args.slice(1));
+                break;
+            case "status":
+                await runStatus();
+                break;
+            case "doctor":
+                await runDoctor();
+                break;
+            case "review":
+                await runReview();
+                break;
+            case "audit":
+                await runAudit();
+                break;
+            case "dna":
+                await runDna(args.slice(1));
+                break;
+            case "skeleton":
+                await runSkeleton(args.slice(1));
+                break;
+            case "blood":
+                await runBlood(args.slice(1));
+                break;
+            case "stage":
+                await runStage(args.slice(1));
+                break;
+            default:
+                console.error(`Unknown command: ${command}`);
+                console.log(USAGE);
+                process.exit(1);
+        }
+    } catch (err) {
+        console.error(err instanceof Error ? err.message : String(err));
+        process.exit(1);
+    }
+}
+
+main();
