@@ -5,12 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.6] - 2026-05-15
+## [0.2.7] - 2026-05-15
+
+### Added
+
+- **Tech stack detection**: Bootstrap scans project files (package.json, Cargo.toml, go.mod, pyproject.toml, tsconfig.json, Dockerfile, CI configs) and creates memory entries for detected frameworks, test runners, build tools, ORMs, and infrastructure
+- **Populated output.md**: `views/output.md` now includes a `## stack` section listing all detected technology choices
 
 ### Fixed
 
-- **Bootstrap writes to memory**: Git signals (reverts, dependency changes, large refactors) now write directly to memory during bootstrap instead of being routed to staged review queue, so `.cairn/` is populated with real project analysis from day one
-- **Non-empty output.md**: Bootstrap-generated `views/output.md` now contains actual no-go list and project constraints instead of empty placeholders
+- **Bootstrap writes to memory**: Git signals (reverts, dependency changes, large refactors) now write directly to memory during bootstrap instead of being routed to staged review queue
+- **Non-empty initialization**: `.cairn/` is populated with real project analysis from day one — no more empty templates
 
 ### Changed
 
