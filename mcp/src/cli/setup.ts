@@ -42,7 +42,7 @@ async function registerClaudeCode(): Promise<SetupResult> {
     try {
         if (await hasClaudeCli()) {
             try {
-                await execFileP("claude", ["mcp", "add", "cairn", "--", "cairn-mcp-server"]);
+                await execFileP("claude", ["mcp", "add", "cairn", "-s", "user", "--", "cairn-mcp-server"]);
                 return { tool, status: "registered", message: "via claude mcp add" };
             } catch (e) {
                 const msg = e instanceof Error ? e.message : String(e);
