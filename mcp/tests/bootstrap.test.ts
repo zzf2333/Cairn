@@ -1,8 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { parse as yamlParse } from "yaml";
+import { simpleGit } from "simple-git";
 import { bootstrapCairnDir } from "../src/bootstrap.js";
 
 function makeTempDir(suffix: string): string {
@@ -142,4 +143,48 @@ describe("bootstrapCairnDir", () => {
 
         expect(result.paths.root).toBe(dir);
     });
+
+    it("writes git signals directly to memory during bootstrap", async () => {
+        const dir = makeTempDir("memory-pop");
+        dirs.push(dir);
+
+        const git = simpleGit(dir);
+        await git.init();
+        await git.addConfig("user.email", "test@test.com");
+        await git.addConfig("user.name", "Test");
+
+        writeFileSync(join(dir, "package.json"), JSON.stringify({
+            name: "test-proj", version: "1.0.0",
+            dependencies: { lodash: "^4.0.0" },
+        }));
+        await git.add(".");
+        await git.commit("init");
+
+        writeFileSync(join(dir, "package.json"), JSON.stringify({
+            name: "test-proj", version: "1.0.0", dependencies: {},
+        }));
+        await git.add(".");
+        await git.commit("remove lodash");
+
+        writeFileSync(join(dir, "feature.txt"), "x");
+        await git.add(".");
+        await git.commit("add feature");
+        await git.revert("HEAD", { "--no-edit": null });
+
+        const result = await bootstrapCairnDir(dir);
+
+        expect(result.created).toBe(true);
+        expect(result.gitSummary?.auto_signals_routed).toBeGreaterThan(0);
+
+        const memFiles = readdirSync(join(dir, ".cairn", "memory"))
+            .filter(f => f.endsWith(".yaml"));
+        expect(memFiles.length).toBeGreaterThan(0);
+
+        const stagedFiles = readdirSync(join(dir, ".cairn", "staged"))
+            .filter(f => f.endsWith(".yaml"));
+        expect(stagedFiles.length).toBe(0);
+
+        const output = readFileSync(join(dir, ".cairn", "views", "output.md"), "utf-8");
+        expect(output).toContain("no-go");
+    }, 30000);
 });

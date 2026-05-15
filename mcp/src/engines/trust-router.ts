@@ -254,7 +254,7 @@ export class TrustRouter {
         this.stagedStore.save(staged);
     }
 
-    private signalToMemory(
+    signalToMemory(
         signal: Signal,
         domain: string,
         subjectName: string,

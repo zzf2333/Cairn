@@ -1,16 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { resolvePaths, buildPaths, findCairnRoot, type CairnPaths } from "./paths.js";
+import { resolvePaths, buildPaths, findCairnRoot } from "./paths.js";
 import { formatToolError, toolResult } from "./errors.js";
-import { MemoryStore } from "./stores/memory-store.js";
-import { SignalStore } from "./stores/signal-store.js";
-import { StagedStore } from "./stores/staged-store.js";
-import { StateStore } from "./stores/state-store.js";
-import { ViewsEngine } from "./engines/views-engine.js";
-import { TrustRouter } from "./engines/trust-router.js";
-import { GitEar } from "./engines/git-ear.js";
-import { StageEngine } from "./engines/stage-engine.js";
-import { MemoryEngine } from "./engines/memory-engine.js";
 import { handleCairnContext } from "./tools/cairn-context.js";
 import { handleCairnSignal } from "./tools/cairn-signal.js";
 import { handleCairnSessionEnd } from "./tools/cairn-session-end.js";
@@ -19,58 +10,17 @@ import { handleCairnPlan } from "./tools/cairn-plan.js";
 import { handleCairnDoctor } from "./tools/cairn-doctor.js";
 import { handleCairnReview } from "./tools/cairn-review.js";
 import { handleCairnMemory } from "./tools/cairn-memory.js";
-import { bootstrapCairnDir, type BootstrapResult } from "./bootstrap.js";
+import { bootstrapCairnDir } from "./bootstrap.js";
 import {
     SIGNAL_TYPES,
     MEMORY_TYPES,
     BEHAVIOR_EFFECT_TYPES,
 } from "./schemas/index.js";
 import type { Config } from "./schemas/config.js";
+import { createCairnContextFromPaths, type CairnContext } from "./context.js";
 
-export interface CairnContext {
-    paths: CairnPaths;
-    memoryStore: MemoryStore;
-    signalStore: SignalStore;
-    stagedStore: StagedStore;
-    stateStore: StateStore;
-    viewsEngine: ViewsEngine;
-    trustRouter: TrustRouter;
-    gitEar: GitEar;
-    stageEngine: StageEngine;
-    memoryEngine: MemoryEngine;
-    bootstrapResult?: BootstrapResult;
-}
-
-export function createCairnContextFromPaths(paths: CairnPaths): CairnContext {
-    const memoryStore = new MemoryStore(paths.memoryDir);
-    const signalStore = new SignalStore(paths.signalsDir);
-    const stagedStore = new StagedStore(paths.stagedDir);
-    const stateStore = new StateStore(paths.stateYaml);
-    const viewsEngine = new ViewsEngine(paths, memoryStore, stateStore);
-    const memoryEngine = new MemoryEngine(memoryStore, viewsEngine);
-    const trustRouter = new TrustRouter(
-        memoryStore,
-        signalStore,
-        stagedStore,
-        memoryEngine,
-        stateStore,
-    );
-    const gitEar = new GitEar(paths.root);
-    const stageEngine = new StageEngine();
-
-    return {
-        paths,
-        memoryStore,
-        signalStore,
-        stagedStore,
-        stateStore,
-        viewsEngine,
-        trustRouter,
-        gitEar,
-        stageEngine,
-        memoryEngine,
-    };
-}
+export type { CairnContext } from "./context.js";
+export { createCairnContextFromPaths } from "./context.js";
 
 export function createCairnContext(startDir?: string): CairnContext {
     return createCairnContextFromPaths(resolvePaths(startDir));
@@ -156,7 +106,7 @@ export function createCairnServer(
     const server = new McpServer(
         {
             name: "cairn",
-            version: "0.2.5",
+            version: "0.2.6",
         },
         {
             instructions: CAIRN_INSTRUCTIONS,

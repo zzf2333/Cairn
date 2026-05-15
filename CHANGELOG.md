@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2026-05-15
+
+### Fixed
+
+- **Bootstrap writes to memory**: Git signals (reverts, dependency changes, large refactors) now write directly to memory during bootstrap instead of being routed to staged review queue, so `.cairn/` is populated with real project analysis from day one
+- **Non-empty output.md**: Bootstrap-generated `views/output.md` now contains actual no-go list and project constraints instead of empty placeholders
+
+### Changed
+
+- **TrustRouter.signalToMemory** is now a public method for use by bootstrap and other callers that need to bypass trust routing
+
 ## [0.2.5] - 2026-05-15
 
 ### Fixed
