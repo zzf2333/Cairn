@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Per-commit dependency analysis**: Rewrote `detectDependencyChanges` to analyze each commit individually via `git log --diff-filter=M`, fixing the "net diff" bug where intermediate removals were masked by the final state
 - **Rich signal metadata**: All git-ear signals now populate `what`, `reason`, and `subject` fields in `raw_data`, producing human-readable memory summaries instead of signal-type placeholders
 - **Package.json key filtering**: `extractPackageName` now skips structural keys (`dependencies`, `name`, `scripts`, etc.) to avoid false positive dependency signals
+- **Tech stack storage**: Moved from 22 individual memory YAML files (660 lines) to a lightweight `tech_stack` array in `config.yaml`. Memory is now reserved for non-derivable decisions, rejections, and constraints
+- **Compact stack view**: `views/output.md` stack section now renders domain-grouped format (`frontend: React, Next.js, Tailwind CSS`) instead of one-per-line with redundant summaries
 
 ### Added
 
@@ -23,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Commit message pattern analysis**: New `detectCommitPatterns` method extracts domain activity signals from commit messages using keyword matching and conventional commit scope parsing
 - **Tech transition detection**: Detects migration patterns in commit messages (`migrate from X to Y`, `replace X with Y`, etc.) and produces decision signals
 - **Young project stage inference**: Projects younger than 3 months now default to "exploration" phase instead of falling through to the default "growth 0.4" branch
+- **Stage evidence enrichment**: Stage advisory now includes total commit count and top active domains (by commit keyword frequency) in the evidence section
 - **Tests**: 15 new test cases covering full-history scanning, signal metadata, domain inference, commit patterns, tech transitions, young project stage, and monorepo workspace detection
 
 ## [0.2.9] - 2026-05-15
