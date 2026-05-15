@@ -16,7 +16,7 @@ import {
     MEMORY_TYPES,
     BEHAVIOR_EFFECT_TYPES,
 } from "./schemas/index.js";
-import type { Config } from "./schemas/config.js";
+import { DEFAULT_L3_AUTO_WRITE, type Config } from "./schemas/config.js";
 import { createCairnContextFromPaths, type CairnContext } from "./context.js";
 
 export type { CairnContext } from "./context.js";
@@ -46,11 +46,7 @@ export async function runStartupGitScan(ctx: CairnContext): Promise<void> {
                     },
                     domains: { locked: [] },
                     trust_policy: {
-                        L3_auto_write: [
-                            "source.kind == 'conversation' AND type == 'rejection'",
-                            "source.kind == 'conversation' AND type == 'decision'",
-                            "source.kind == 'conversation' AND type == 'debt'",
-                        ],
+                        L3_auto_write: DEFAULT_L3_AUTO_WRITE,
                         L2_staged: [],
                         never_auto: [],
                     },

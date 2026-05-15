@@ -1,5 +1,6 @@
 import type { CairnContext } from "../server.js";
 import { toolResult } from "../errors.js";
+import { DEFAULT_L3_AUTO_WRITE } from "../schemas/config.js";
 import type { Signal, SignalType } from "../schemas/index.js";
 
 interface SignalArgs {
@@ -58,11 +59,7 @@ export function handleCairnSignal(ctx: CairnContext, args: SignalArgs) {
             project: { name: "unknown", created: now.slice(0, 7) },
             domains: { locked: [] },
             trust_policy: {
-                L3_auto_write: [
-                    "source.kind == 'conversation' AND type == 'rejection'",
-                    "source.kind == 'conversation' AND type == 'decision'",
-                    "source.kind == 'conversation' AND type == 'debt'",
-                ],
+                L3_auto_write: DEFAULT_L3_AUTO_WRITE,
                 L2_staged: [],
                 never_auto: [],
             },

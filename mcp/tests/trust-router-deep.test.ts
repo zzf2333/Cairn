@@ -89,6 +89,60 @@ describe("L3 auto-write policy matching", () => {
         expect(router.matchesL3Policy(signal, defaultConfig)).toBe(false);
     });
 
+    it("matches conversation rejection via config rule", () => {
+        setup();
+        const signal = makeSignal("sig_l3_conv_rej", {
+            source_ear: "conversation",
+            signal_type: "user-rejection",
+            raw_data: { what: "rejected X", scope: "local", subject: "X" },
+            inferred: { probable_type: "rejection", confidence: "high" },
+        });
+        expect(router.matchesL3Policy(signal, defaultConfig)).toBe(true);
+    });
+
+    it("matches conversation decision via config rule", () => {
+        setup();
+        const signal = makeSignal("sig_l3_conv_dec", {
+            source_ear: "conversation",
+            signal_type: "decision",
+            raw_data: { what: "chose Y", scope: "local", subject: "Y" },
+            inferred: { probable_type: "decision", confidence: "high" },
+        });
+        expect(router.matchesL3Policy(signal, defaultConfig)).toBe(true);
+    });
+
+    it("matches conversation debt via config rule", () => {
+        setup();
+        const signal = makeSignal("sig_l3_conv_debt", {
+            source_ear: "conversation",
+            signal_type: "debt-acceptance",
+            raw_data: { what: "accepted tech debt", scope: "local", subject: "tech-debt" },
+            inferred: { probable_type: "debt", confidence: "high" },
+        });
+        expect(router.matchesL3Policy(signal, defaultConfig)).toBe(true);
+    });
+
+    it("conversation signals do not match without conversation rules", () => {
+        setup();
+        const gitOnlyConfig: Config = {
+            ...defaultConfig,
+            trust_policy: {
+                ...defaultConfig.trust_policy,
+                L3_auto_write: [
+                    "source.kind == 'git-revert' AND scope == 'local'",
+                    "source.kind == 'git-dependency' AND type == 'rejection' AND scope == 'local'",
+                ],
+            },
+        };
+        const signal = makeSignal("sig_l3_conv_noconfig", {
+            source_ear: "conversation",
+            signal_type: "user-rejection",
+            raw_data: { what: "rejected Z", scope: "local", subject: "Z" },
+            inferred: { probable_type: "rejection", confidence: "high" },
+        });
+        expect(router.matchesL3Policy(signal, gitOnlyConfig)).toBe(false);
+    });
+
     it("empty L3 rules match nothing", () => {
         setup();
         const emptyL3Config: Config = {
@@ -98,13 +152,21 @@ describe("L3 auto-write policy matching", () => {
                 L3_auto_write: [],
             },
         };
-        const signal = makeSignal("sig_l3_empty", {
+        const gitSignal = makeSignal("sig_l3_empty_git", {
             source_ear: "git",
             signal_type: "revert",
             raw_data: { what: "reverted Z", scope: "local", subject: "Z" },
             inferred: { probable_type: "rejection", confidence: "high" },
         });
-        expect(router.matchesL3Policy(signal, emptyL3Config)).toBe(false);
+        expect(router.matchesL3Policy(gitSignal, emptyL3Config)).toBe(false);
+
+        const convSignal = makeSignal("sig_l3_empty_conv", {
+            source_ear: "conversation",
+            signal_type: "user-rejection",
+            raw_data: { what: "rejected W", scope: "local", subject: "W" },
+            inferred: { probable_type: "rejection", confidence: "high" },
+        });
+        expect(router.matchesL3Policy(convSignal, emptyL3Config)).toBe(false);
     });
 });
 

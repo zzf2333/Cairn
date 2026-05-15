@@ -5,7 +5,7 @@ import { stringify as yamlStringify } from "yaml";
 import { simpleGit } from "simple-git";
 import { buildPaths, type CairnPaths } from "./paths.js";
 import { createCairnContextFromPaths } from "./context.js";
-import type { Config } from "./schemas/config.js";
+import { DEFAULT_L3_AUTO_WRITE, type Config } from "./schemas/config.js";
 import type { MemoryEntry } from "./schemas/memory-entry.js";
 
 export interface BootstrapResult {
@@ -298,13 +298,7 @@ export async function bootstrapCairnDir(startDir?: string): Promise<BootstrapRes
         project: { name, created },
         domains: { locked: [] },
         trust_policy: {
-            L3_auto_write: [
-                "source.kind == 'git-revert' AND scope == 'local'",
-                "source.kind == 'git-dependency' AND type == 'rejection' AND scope == 'local'",
-                "source.kind == 'conversation' AND type == 'rejection'",
-                "source.kind == 'conversation' AND type == 'decision'",
-                "source.kind == 'conversation' AND type == 'debt'",
-            ],
+            L3_auto_write: DEFAULT_L3_AUTO_WRITE,
             L2_staged: [
                 "scope == 'global'",
                 "type == 'transition' AND affects_output == true",

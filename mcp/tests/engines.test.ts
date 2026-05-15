@@ -10,7 +10,7 @@ import { ViewsEngine } from "../src/engines/views-engine.js";
 import { MemoryEngine } from "../src/engines/memory-engine.js";
 import { TrustRouter } from "../src/engines/trust-router.js";
 import { StageEngine } from "../src/engines/stage-engine.js";
-import type { MemoryEntry, Signal, Config } from "../src/schemas/index.js";
+import type { MemoryEntry, Signal } from "../src/schemas/index.js";
 import type { CairnPaths } from "../src/paths.js";
 
 function createTestEnv() {
@@ -77,7 +77,7 @@ function makeMemory(id: string, overrides?: Partial<MemoryEntry>): MemoryEntry {
     };
 }
 
-const defaultConfig: Config = {
+const defaultConfig = {
     version: "2.0",
     project: { name: "test", created: "2024-01" },
     domains: { locked: ["api-layer", "auth"] },
@@ -85,6 +85,9 @@ const defaultConfig: Config = {
         L3_auto_write: [
             "source.kind == 'git-revert' AND scope == 'local'",
             "source.kind == 'git-dependency' AND type == 'rejection' AND scope == 'local'",
+            "source.kind == 'conversation' AND type == 'rejection'",
+            "source.kind == 'conversation' AND type == 'decision'",
+            "source.kind == 'conversation' AND type == 'debt'",
         ],
         L2_staged: [
             "scope == 'global'",

@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+export const DEFAULT_L3_AUTO_WRITE: string[] = [
+    "source.kind == 'git-revert' AND scope == 'local'",
+    "source.kind == 'git-dependency' AND type == 'rejection' AND scope == 'local'",
+    "source.kind == 'conversation' AND type == 'rejection'",
+    "source.kind == 'conversation' AND type == 'decision'",
+    "source.kind == 'conversation' AND type == 'debt'",
+];
+
 export const ConfigSchema = z.object({
     version: z.string().default("2.0"),
 
@@ -16,10 +24,7 @@ export const ConfigSchema = z.object({
 
     trust_policy: z
         .object({
-            L3_auto_write: z.array(z.string()).default([
-                "source.kind == 'git-revert' AND scope == 'local'",
-                "source.kind == 'git-dependency' AND type == 'rejection' AND scope == 'local'",
-            ]),
+            L3_auto_write: z.array(z.string()).default(DEFAULT_L3_AUTO_WRITE),
             L2_staged: z.array(z.string()).default([
                 "scope == 'global'",
                 "type == 'transition' AND affects_output == true",

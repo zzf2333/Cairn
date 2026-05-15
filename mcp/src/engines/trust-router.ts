@@ -171,33 +171,17 @@ export class TrustRouter {
     private matchesL3Policy(signal: Signal, config: Config): boolean {
         const sourceKind = this.inferSourceKind(signal);
         const raw = signal.raw_data as Record<string, unknown>;
-        const scope = raw["scope"] as string | undefined ?? "local";
+        const scope = (raw["scope"] as string | undefined) ?? "local";
         const type = signal.inferred.probable_type ?? signal.signal_type;
+        const vars: Record<string, string> = { "source.kind": sourceKind, scope, type };
+        return config.trust_policy.L3_auto_write.some(rule => this.evaluateRule(rule, vars));
+    }
 
-        // Conversation signals are explicitly curated by the AI —
-        // always auto-write rejection/decision/debt regardless of config
-        if (sourceKind === "conversation") {
-            if (type === "rejection" || type === "decision" || type === "debt") {
-                return true;
-            }
-        }
-
-        for (const rule of config.trust_policy.L3_auto_write) {
-            if (
-                rule.includes("source.kind == 'git-revert'") &&
-                sourceKind === "git-revert" &&
-                scope === "local"
-            )
-                return true;
-            if (
-                rule.includes("source.kind == 'git-dependency'") &&
-                sourceKind === "git-dependency" &&
-                type === "rejection" &&
-                scope === "local"
-            )
-                return true;
-        }
-        return false;
+    private evaluateRule(rule: string, vars: Record<string, string>): boolean {
+        return rule.split(/\s+AND\s+/).every(cond => {
+            const m = cond.trim().match(/^(\S+)\s*==\s*'([^']+)'$/);
+            return m ? vars[m[1]] === m[2] : false;
+        });
     }
 
     private inferSourceKind(

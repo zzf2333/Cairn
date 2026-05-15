@@ -21,6 +21,7 @@ import { handleCairnDoctor } from "../src/tools/cairn-doctor.js";
 import type { CairnContext } from "../src/server.js";
 import type { CairnPaths } from "../src/paths.js";
 import type { Config } from "../src/schemas/index.js";
+import { DEFAULT_L3_AUTO_WRITE } from "../src/schemas/config.js";
 
 function setupEnv() {
     const root = join(tmpdir(), "cairn-integration-" + Date.now());
@@ -49,10 +50,7 @@ function setupEnv() {
         project: { name: "test-integration", created: "2024-01" },
         domains: { locked: ["api-layer", "auth", "database"] },
         trust_policy: {
-            L3_auto_write: [
-                "source.kind == 'git-revert' AND scope == 'local'",
-                "source.kind == 'git-dependency' AND type == 'rejection' AND scope == 'local'",
-            ],
+            L3_auto_write: DEFAULT_L3_AUTO_WRITE,
             L2_staged: [
                 "scope == 'global'",
                 "type == 'transition' AND affects_output == true",
