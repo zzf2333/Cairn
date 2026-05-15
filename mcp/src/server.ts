@@ -147,7 +147,7 @@ const CAIRN_INSTRUCTIONS = [
 
 export function createCairnServer(
     startDir?: string,
-): { server: McpServer; runStartupScan: () => Promise<void> } {
+): { server: McpServer; runStartupScan: () => Promise<void>; setProjectRoot: (root: string) => void } {
     const server = new McpServer(
         {
             name: "cairn",
@@ -160,17 +160,23 @@ export function createCairnServer(
 
     let ctx: CairnContext | null = null;
     let ctxPromise: Promise<CairnContext> | null = null;
+    let projectRoot: string | undefined;
+
+    function setProjectRoot(root: string) {
+        projectRoot = root;
+    }
 
     async function getCtx(): Promise<CairnContext> {
         if (ctx) return ctx;
         if (ctxPromise) return ctxPromise;
 
         ctxPromise = (async () => {
-            const root = findCairnRoot(startDir);
+            const effectiveDir = projectRoot ?? startDir;
+            const root = findCairnRoot(effectiveDir);
             if (root) {
                 ctx = createCairnContextFromPaths(buildPaths(root));
             } else {
-                const result = await bootstrapCairnDir(startDir);
+                const result = await bootstrapCairnDir(effectiveDir);
                 ctx = createCairnContextFromPaths(result.paths);
                 ctx.bootstrapResult = result;
             }
@@ -389,5 +395,6 @@ export function createCairnServer(
                 // Bootstrap or git scan failure — silent
             }
         },
+        setProjectRoot,
     };
 }
