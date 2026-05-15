@@ -265,18 +265,18 @@ describe("TrustRouter", () => {
         expect(result.route).toBe("dropped");
     });
 
-    it("saves medium confidence to L1", () => {
+    it("auto-writes conversation decision to L3", () => {
         const signal: Signal = {
-            id: "sig_medium",
+            id: "sig_conv_decision",
             source_ear: "conversation",
             signal_type: "decision",
             raw_data: { what: "Chose Prisma", subject: "Prisma-unique" },
-            inferred: { probable_domain: "database", confidence: "medium" },
+            inferred: { probable_domain: "database", probable_type: "decision", confidence: "medium" },
             captured_at: "2026-01-01T00:00:00Z",
         };
         const result = env.trustRouter.route(signal, defaultConfig);
-        expect(result.level).toBe("L1");
-        expect(result.route).toBe("signals");
+        expect(result.level).toBe("L3");
+        expect(result.route).toBe("memory");
     });
 
     it("L2 overrides L3 for global scope", () => {

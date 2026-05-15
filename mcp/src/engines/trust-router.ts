@@ -174,6 +174,14 @@ export class TrustRouter {
         const scope = raw["scope"] as string | undefined ?? "local";
         const type = signal.inferred.probable_type ?? signal.signal_type;
 
+        // Conversation signals are explicitly curated by the AI —
+        // always auto-write rejection/decision/debt regardless of config
+        if (sourceKind === "conversation") {
+            if (type === "rejection" || type === "decision" || type === "debt") {
+                return true;
+            }
+        }
+
         for (const rule of config.trust_policy.L3_auto_write) {
             if (
                 rule.includes("source.kind == 'git-revert'") &&
@@ -188,14 +196,6 @@ export class TrustRouter {
                 scope === "local"
             )
                 return true;
-            if (
-                rule.includes("source.kind == 'conversation'") &&
-                sourceKind === "conversation"
-            ) {
-                if (rule.includes("type == 'rejection'") && type === "rejection") return true;
-                if (rule.includes("type == 'decision'") && type === "decision") return true;
-                if (rule.includes("type == 'debt'") && type === "debt") return true;
-            }
         }
         return false;
     }
