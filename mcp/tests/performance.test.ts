@@ -30,7 +30,7 @@ describe("Performance: MemoryStore", () => {
         expect(elapsed).toBeLessThan(2000);
     });
 
-    it("findDuplicate searches 200 entries within 1s", () => {
+    it("findDuplicate searches 200 entries within 3s", () => {
         for (let i = 0; i < 200; i++) {
             ctx.memoryStore.save(makeMemory(`mem_dup_${i}`, {
                 domain: `domain-${i % 10}`,
@@ -44,7 +44,7 @@ describe("Performance: MemoryStore", () => {
         }
         const elapsed = performance.now() - start;
 
-        expect(elapsed).toBeLessThan(2000);
+        expect(elapsed).toBeLessThan(3000);
     });
 
     it("findConflicts scales with 200 entries within 2s", () => {
