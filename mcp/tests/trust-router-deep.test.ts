@@ -295,6 +295,179 @@ describe("signalToMemory conversion", () => {
     });
 });
 
+describe("evaluateRule edge cases", () => {
+    let root: string;
+    let router: any;
+
+    afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+    function setup() {
+        const env = createTestEnv();
+        root = env.root;
+        router = env.ctx.trustRouter;
+    }
+
+    it("single condition rule matches", () => {
+        setup();
+        expect(router.evaluateRule(
+            "type == 'rejection'",
+            { "source.kind": "conversation", scope: "local", type: "rejection" },
+        )).toBe(true);
+    });
+
+    it("extra whitespace in conditions still matches", () => {
+        setup();
+        expect(router.evaluateRule(
+            "  source.kind == 'conversation'   AND   type == 'rejection'  ",
+            { "source.kind": "conversation", scope: "local", type: "rejection" },
+        )).toBe(true);
+    });
+
+    it("unknown variable in rule causes condition to fail", () => {
+        setup();
+        expect(router.evaluateRule(
+            "source.kind == 'conversation' AND foo == 'bar'",
+            { "source.kind": "conversation", scope: "local", type: "rejection" },
+        )).toBe(false);
+    });
+
+    it("malformed rule returns false", () => {
+        setup();
+        expect(router.evaluateRule(
+            "this is not a valid rule",
+            { "source.kind": "conversation", type: "rejection" },
+        )).toBe(false);
+    });
+
+    it("empty string returns false", () => {
+        setup();
+        expect(router.evaluateRule(
+            "",
+            { "source.kind": "conversation", type: "rejection" },
+        )).toBe(false);
+    });
+
+    it("three-condition rule matches when all vars present", () => {
+        setup();
+        expect(router.evaluateRule(
+            "source.kind == 'conversation' AND type == 'rejection' AND scope == 'local'",
+            { "source.kind": "conversation", scope: "local", type: "rejection" },
+        )).toBe(true);
+    });
+
+    it("three-condition rule fails when one var mismatches", () => {
+        setup();
+        expect(router.evaluateRule(
+            "source.kind == 'conversation' AND type == 'rejection' AND scope == 'local'",
+            { "source.kind": "conversation", scope: "global", type: "rejection" },
+        )).toBe(false);
+    });
+});
+
+describe("Config variations", () => {
+    let root: string;
+    let router: any;
+
+    afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+    function setup() {
+        const env = createTestEnv();
+        root = env.root;
+        router = env.ctx.trustRouter;
+    }
+
+    it("custom L3 rule with novel field matches", () => {
+        setup();
+        const customConfig: Config = {
+            ...defaultConfig,
+            trust_policy: {
+                ...defaultConfig.trust_policy,
+                L3_auto_write: [
+                    "source.kind == 'conversation' AND type == 'experiment'",
+                ],
+            },
+        };
+        const signal = makeSignal("sig_custom", {
+            source_ear: "conversation",
+            signal_type: "decision",
+            raw_data: { what: "experiment X", scope: "local", subject: "X" },
+            inferred: { probable_type: "experiment", confidence: "high" },
+        });
+        expect(router.matchesL3Policy(signal, customConfig)).toBe(true);
+    });
+
+    it("config with only conversation rules does not match git signals", () => {
+        setup();
+        const convOnlyConfig: Config = {
+            ...defaultConfig,
+            trust_policy: {
+                ...defaultConfig.trust_policy,
+                L3_auto_write: [
+                    "source.kind == 'conversation' AND type == 'rejection'",
+                    "source.kind == 'conversation' AND type == 'decision'",
+                ],
+            },
+        };
+        const signal = makeSignal("sig_git_only", {
+            source_ear: "git",
+            signal_type: "revert",
+            raw_data: { what: "reverted X", scope: "local", subject: "X" },
+            inferred: { probable_type: "rejection", confidence: "high" },
+        });
+        expect(router.matchesL3Policy(signal, convOnlyConfig)).toBe(false);
+    });
+
+    it("stricter rule with scope constraint only matches local", () => {
+        setup();
+        const strictConfig: Config = {
+            ...defaultConfig,
+            trust_policy: {
+                ...defaultConfig.trust_policy,
+                L3_auto_write: [
+                    "source.kind == 'conversation' AND type == 'rejection' AND scope == 'local'",
+                ],
+            },
+        };
+        const localSignal = makeSignal("sig_strict_local", {
+            source_ear: "conversation",
+            signal_type: "user-rejection",
+            raw_data: { what: "rejected X", scope: "local", subject: "X" },
+            inferred: { probable_type: "rejection", confidence: "high" },
+        });
+        expect(router.matchesL3Policy(localSignal, strictConfig)).toBe(true);
+
+        const globalSignal = makeSignal("sig_strict_global", {
+            source_ear: "conversation",
+            signal_type: "user-rejection",
+            raw_data: { what: "rejected Y", scope: "global", subject: "Y" },
+            inferred: { probable_type: "rejection", confidence: "high" },
+        });
+        expect(router.matchesL3Policy(globalSignal, strictConfig)).toBe(false);
+    });
+
+    it("malformed rule strings in config are safely ignored", () => {
+        setup();
+        const brokenConfig: Config = {
+            ...defaultConfig,
+            trust_policy: {
+                ...defaultConfig.trust_policy,
+                L3_auto_write: [
+                    "not a real rule",
+                    "=== broken ===",
+                    "",
+                ],
+            },
+        };
+        const signal = makeSignal("sig_broken", {
+            source_ear: "conversation",
+            signal_type: "decision",
+            raw_data: { what: "chose X", scope: "local", subject: "X" },
+            inferred: { probable_type: "decision", confidence: "high" },
+        });
+        expect(router.matchesL3Policy(signal, brokenConfig)).toBe(false);
+    });
+});
+
 describe("inferBehaviorType via routing", () => {
     let root: string;
     let router: any;

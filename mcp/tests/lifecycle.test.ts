@@ -268,4 +268,91 @@ describe("Lifecycle: Multi-session full verification", { timeout: 30_000 }, () =
             await st.close();
         }
     });
+
+    it("Session 4: historical-reference, review reject, memory archive, stage_confirm", async () => {
+        const { client, ct, st } = await createSession(root);
+
+        try {
+            // 1. historical-reference → L3 memory (inferMemoryType = "decision")
+            const sig1 = JSON.parse(await callToolJSON(client, "cairn_signal", {
+                type: "historical-reference",
+                domain: "frontend",
+                details: { what: "We discussed component patterns before" },
+                evidence: { user_said: "Remember we talked about this" },
+            }));
+            expect(sig1.level).toBe("L3");
+            expect(sig1.route).toBe("memory");
+
+            // 2. Memory count increased
+            const status1 = JSON.parse(await callToolJSON(client, "cairn_status", {}));
+            expect(status1.memory_count).toBe(5);
+
+            // 3. user-constraint → L2 staged (for reject test)
+            const sig2 = JSON.parse(await callToolJSON(client, "cairn_signal", {
+                type: "user-constraint",
+                domain: "testing",
+                details: { what: "No Cypress" },
+                evidence: { user_said: "Don't use Cypress for E2E" },
+            }));
+            expect(sig2.level).toBe("L2");
+            expect(sig2.route).toBe("staged");
+
+            // 4. cairn_review reject
+            const pending = JSON.parse(await callToolJSON(client, "cairn_review", { action: "list" }));
+            expect(pending.length).toBe(1);
+            const stagedId = pending[0].id;
+
+            const rejectResult = JSON.parse(await callToolJSON(client, "cairn_review", {
+                action: "reject",
+                id: stagedId,
+            }));
+            expect(rejectResult.rejected).toBe(true);
+
+            // 5. Rejected entry gone from pending
+            const pending2 = JSON.parse(await callToolJSON(client, "cairn_review", { action: "list" }));
+            expect(pending2.length).toBe(0);
+
+            // 6. Memory count unchanged (reject doesn't add to memory)
+            const status2 = JSON.parse(await callToolJSON(client, "cairn_status", {}));
+            expect(status2.memory_count).toBe(5);
+
+            // 7. cairn_memory show
+            const memories = JSON.parse(await callToolJSON(client, "cairn_memory", { action: "list" }));
+            const firstMem = memories[0];
+            const showResult = JSON.parse(await callToolJSON(client, "cairn_memory", {
+                action: "show",
+                id: firstMem.id,
+            }));
+            expect(showResult.id).toBe(firstMem.id);
+            expect(showResult.status).toBe("active");
+
+            // 8. cairn_memory archive
+            const archiveResult = JSON.parse(await callToolJSON(client, "cairn_memory", {
+                action: "archive",
+                id: firstMem.id,
+            }));
+            expect(archiveResult.archived).toBe(true);
+
+            // 9. Archived memory shows status=archived
+            const archivedEntry = JSON.parse(await callToolJSON(client, "cairn_memory", {
+                action: "show",
+                id: firstMem.id,
+            }));
+            expect(archivedEntry.status).toBe("archived");
+
+            // 10. cairn_status stage_confirm
+            const stageResult = JSON.parse(await callToolJSON(client, "cairn_status", {
+                action: "stage_confirm",
+            }));
+            expect(stageResult.confirmed).toBe(true);
+            expect(stageResult.phase).toBeDefined();
+
+            // 11. Stage now confirmed in status
+            const status3 = JSON.parse(await callToolJSON(client, "cairn_status", {}));
+            expect(status3.stage.status).toBe("confirmed");
+        } finally {
+            await ct.close();
+            await st.close();
+        }
+    });
 });
