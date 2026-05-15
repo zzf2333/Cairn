@@ -1,7 +1,7 @@
 {
     "name": "cairn-mcp-server",
-    "version": "0.2.10",
-    "description": "Cairn — AI-maintained project memory engine via MCP",
+    "version": "3.0.0",
+    "description": "Cairn — AI-native engineering cognition engine via MCP",
     "type": "module",
     "license": "MIT",
     "author": "Cairn Contributors",
@@ -18,8 +18,9 @@
         "mcp",
         "cairn",
         "ai",
-        "memory",
-        "model-context-protocol"
+        "cognition",
+        "model-context-protocol",
+        "engineering-memory"
     ],
     "files": [
         "dist/**/*.js",
@@ -36,7 +37,6 @@
     "scripts": {
         "build": "tsc",
         "dev": "tsx src/index.ts",
-        "postinstall": "node dist/postinstall.js || true",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage"

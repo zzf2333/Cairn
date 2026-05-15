@@ -19,10 +19,10 @@
 
 ---
 
-Cairn is an AI-maintained project memory engine. It automatically captures project
-decisions, rejected paths, and accepted trade-offs from Git history and AI conversations,
-then routes them through a trust system into structured memory that AI coding assistants
-consume as behavioral constraints.
+Cairn is an AI-native engineering cognition engine. It captures project decisions,
+rejected paths, and accepted trade-offs from Git history and AI conversations, routes
+them through a gravity-based trust system, and serves structured constraints that AI
+coding assistants consume as behavioral guardrails.
 
 ---
 
@@ -53,7 +53,7 @@ memory of a colleague who's been here from the start.
 
 ## What is Cairn
 
-Cairn is a **dynamic memory engine for AI coding assistants** — it captures, routes, stores,
+Cairn is an **AI-native engineering cognition engine** — it captures, routes, stores,
 and serves project constraints so that AI works within your project's real history instead
 of suggesting in a vacuum.
 
@@ -66,37 +66,57 @@ of suggesting in a vacuum.
 
 ---
 
-## How It Works
+## Architecture
 
-Cairn captures project signals from two sources, routes them through a trust system,
-and serves the results as structured constraints.
+Cairn V3 is built on six core subsystems:
+
+| Subsystem | Role |
+|-----------|------|
+| **Skeleton** | Domain ownership map — which module owns what, stability level, causal keywords |
+| **Blood** | Evolution events — every decision, rejection, transition, and debt acceptance |
+| **DNA** | Emergent project personality — traits that compress from repeated patterns |
+| **Capillaries** | Per-domain constraint projections — constraints, rejected paths, accepted debt |
+| **Gravity** | Signal weight system (G0–G3) replacing V2's L0–L3 trust levels |
+| **Governance** | 3-tier validation: agent_proposed, system_validated, human_ratified |
+
+### How It Works
+
+Cairn captures project signals from two sources, routes them through a gravity-based
+trust system, and serves the results as structured constraints.
 
 ![How It Works](docs/diagrams/04-how-it-works.png)
 
-**Dual-ear signal capture:**
+**Signal capture:**
 - **Git Ear** detects reverts, dependency changes, large refactors, commit patterns
 - **Conversation Ear** captures user rejections, decisions, constraints, debt acceptance
+- **Calibration Ear** detects skeleton drift, consistency conflicts, DNA drift warnings
 
-**Trust Router (L0–L3):**
-- **L0 Drop** — noise or duplicates, discarded
-- **L1 Candidate** — saved to `signals/`, accumulates toward L2
-- **L2 Staged** — awaits review via `cairn_review` MCP tool
-- **L3 Auto-write** — strict conditions met, written to `memory/` automatically
+**Gravity System (G0–G3):**
+- **G0 Drop** — noise or duplicates, discarded
+- **G1 Suggestion** — low-weight signal, stored for potential future use
+- **G2 Reflective Challenge** — significant enough to challenge AI assumptions
+- **G3 Hard Constraint** — must be respected, no exceptions
 
-**Memory → Views → Constraints:**
-- `memory/` is the source of truth (structured YAML, git-diff-friendly)
+**Blood → Views → Constraints:**
+- `blood/` stores evolution events (structured YAML, git-diff-friendly)
 - `views/` is auto-generated (token-budget-aware Markdown for AI consumption)
 - AI calls `cairn_context()` to get filtered constraints for the current task
 
 ![Signal Pipeline](docs/diagrams/02-three-layer-architecture.png)
 
-### Trust Router Decision Flow
+### Cognitive Modes
 
-![Trust Router Flow](docs/diagrams/06-trust-router-flow.png)
+Cairn adapts its behavior intensity to project needs:
+
+| Mode | Governance Threshold | Decay | Best For |
+|------|---------------------|-------|----------|
+| `lightweight` | G3 only | Aggressive (30/60 days) | Solo projects, experiments |
+| `standard` | G2+ | Moderate (90/120 days) | Small teams, most projects |
+| `institutional` | G1+ | Conservative (180/240 days) | Large teams, regulated industries |
 
 ### Four Constraint Behaviors
 
-Every memory entry declares a `behavior_effect`:
+Every evolution event declares a `behavior_effect`:
 
 | Type | AI Behavior |
 |------|-------------|
@@ -132,9 +152,9 @@ cd Cairn/mcp && npm install && npm run build
 Installation automatically registers the MCP server with detected AI tools
 (Claude Code, Cursor, Windsurf, Claude Desktop). No manual configuration needed.
 
-Cairn auto-initializes on first use — it detects your project name, tech stack
-(including monorepo workspace packages), git history patterns, and project stage
-when AI first calls `cairn_context()`.
+Cairn uses a two-phase initialization: AI first calls `cairn_init_status()` to check
+the project state, analyzes the codebase, then calls `cairn_init_commit()` to write
+the initial cognition (skeleton, blood events, DNA traits, stage).
 
 <details>
 <summary>Manual MCP configuration</summary>
@@ -159,14 +179,14 @@ Config file locations:
 <details>
 <summary>Manual initialization (optional)</summary>
 
-If you prefer to customize project name, domains, or trust policy manually:
+If you prefer to create the `.cairn/` directory structure manually:
 
 ```bash
 cd my-project
-cairn init
+cairn init --empty
 ```
 
-Interactive flow: project name → start date → domain selection → Git history scan → directory generation.
+This creates an empty `.cairn/` scaffold. AI will populate it on first `cairn_init_commit()`.
 
 </details>
 
@@ -176,7 +196,7 @@ Interactive flow: project name → start date → domain selection → Git histo
 
 After MCP configuration, daily operation is fully automatic:
 
-1. **Session start** — AI calls `cairn_context()` to load constraints
+1. **Session start** — AI calls `cairn_context()` to activate relevant cognition
 2. **During work** — AI calls `cairn_signal()` when it detects decisions, rejections, or constraints
 3. **Session end** — AI calls `cairn_session_end()` to process signals and regenerate views
 
@@ -190,14 +210,17 @@ The only human action: periodically review staged entries when AI prompts you.
 
 | Tool | Purpose | Stability |
 |------|---------|-----------|
-| `cairn_context` | Get constraints before working | Stable |
+| `cairn_init_status` | Check initialization status | Stable |
+| `cairn_init_commit` | Batch write initial cognition after project analysis | Stable |
+| `cairn_context` | Activate relevant cognition for the current task | Stable |
 | `cairn_signal` | Report decisions, rejections, constraints | Stable |
 | `cairn_session_end` | End-of-session batch processing | Stable |
-| `cairn_status` | System status + stage management | Stable |
-| `cairn_review` | Review staged memory entries | Stable |
-| `cairn_memory` | Browse and manage memories | Stable |
-| `cairn_plan` | History-aware planning framework | Experimental |
-| `cairn_doctor` | Health diagnostics | Experimental |
+| `cairn_status` | System status overview | Stable |
+| `cairn_plan` | History-aware planning framework | Stable |
+| `cairn_stage_list` | List pending staged entries | Stable |
+| `cairn_stage_accept` | Accept a staged entry into blood | Stable |
+| `cairn_stage_reject` | Reject a staged entry | Stable |
+| `cairn_doctor` | Cognitive consistency validation | Stable |
 
 See [`mcp/README.md`](mcp/README.md) for full tool schemas and recommended workflow.
 
@@ -242,11 +265,27 @@ The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repos
 
 ## CLI
 
-All project memory operations are MCP tools called by your AI assistant.
+```
+cairn <command> [options]
 
-| Command | Description |
-|---------|-------------|
-| `cairn version` | Show version |
+Commands:
+  init [--empty]           Initialize .cairn/ directory
+  status                   Show project cognitive status
+  doctor                   Run consistency checks and health diagnostics
+  review                   List pending staged entries
+  audit                    Show governance audit log
+  dna show                 Show DNA traits
+  dna reevaluate           Trigger DNA reevaluation
+  skeleton show            Show skeleton nodes
+  blood show [id]          Show blood events
+  blood archive <id>       Archive a blood event
+  blood resurrect <id>     Resurrect an archived event
+  blood trauma <id>        Mark event as trauma
+  stage confirm            Confirm stage advisory as official
+
+Options:
+  --version                Show version
+```
 
 ---
 
@@ -263,14 +302,52 @@ Cairn infers your project's lifecycle phase from Git signals:
 
 The engine is **advisory only** — it never enforces constraints automatically.
 Stage guidance surfaces in `cairn_context()` when confidence >= 0.5. To confirm
-a stage as official, AI calls `cairn_status(action: 'stage_confirm')`.
+a stage as official, use `cairn stage confirm` or via AI-mediated `cairn_stage_accept`.
+
+---
+
+## `.cairn/` Directory Structure
+
+```
+.cairn/
+├── config.yaml              # Project config: name, domains, cognitive mode, tech stack
+├── state.yaml               # Runtime state: last session, stage snapshot
+├── skeleton/                # Domain ownership map (one YAML per domain)
+│   ├── frontend.yaml
+│   └── backend.yaml
+├── blood/                   # Evolution events (decisions, rejections, transitions)
+│   ├── evt_001.yaml
+│   └── evt_002.yaml
+├── dna/                     # Emergent project personality
+│   ├── identity.yaml        # Current DNA traits
+│   └── imprint.yaml         # Inherited constraints (for forked projects)
+├── domains/                 # Per-domain capillary projections
+│   ├── frontend/
+│   │   ├── constraints.yaml
+│   │   ├── accepted_debt.yaml
+│   │   └── rejected_paths.yaml
+│   └── backend/
+├── staged/                  # Entries awaiting human review
+├── signals/                 # Raw captured signals
+│   ├── raw_git/
+│   ├── raw_conversation/
+│   └── raw_calibration/
+├── governance/              # Governance policy and audit log
+│   ├── policy.yaml
+│   └── audit.yaml
+├── views/                   # Auto-generated markdown projections
+│   ├── output.md            # Global constraint summary
+│   ├── stage.md             # Stage advisory details
+│   └── domains/             # Per-domain summaries
+├── sessions/                # Session audit records
+```
 
 ---
 
 ## Examples
 
 - [`examples/saas-18mo/`](examples/saas-18mo/) — 18-month SaaS project
-  (stage `growth`, no-go: tRPC/Redux, 3 domains, 4 memory entries)
+  (stage `growth`, no-go: tRPC/Redux, 3 domains, 4 blood events)
 
 ---
 
@@ -279,7 +356,7 @@ a stage as official, AI calls `cairn_status(action: 'stage_confirm')`.
 | Document | Contents |
 |----------|----------|
 | [`spec/FORMAT.md`](spec/FORMAT.md) | Complete schema reference for all `.cairn/` data files |
-| [`spec/DESIGN.md`](spec/DESIGN.md) | Design rationale: dual-ear, Trust Router, stage engine, memory/views separation |
+| [`spec/DESIGN.md`](spec/DESIGN.md) | Design rationale: signal capture, Gravity, stage engine, Blood/Views separation |
 | [`spec/vs-adr.md`](spec/vs-adr.md) | How Cairn relates to Architecture Decision Records |
 | [`spec/adoption-guide.md`](spec/adoption-guide.md) | Install and daily usage guide |
 | [`spec/glossary.md`](spec/glossary.md) | Terminology reference |

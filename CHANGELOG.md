@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-05-15
+
+### Breaking Changes
+
+- Complete V3 rewrite — new architecture, new storage format, not backward compatible with V2
+- `.cairn/memory/` replaced by `.cairn/blood/` (evolution events with full lifecycle metadata)
+- Trust Router levels L0–L3 replaced by Gravity system G0–G3 (drop, suggestion, reflective challenge, hard constraint)
+- `cairn_review` and `cairn_memory` MCP tools removed — replaced by `cairn_stage_list`, `cairn_stage_accept`, `cairn_stage_reject`
+- `cairn_status` no longer accepts `action` parameter for stage management — stage operations moved to dedicated tools and CLI commands
+- Config schema version bumped to `3.0` with new structure (cognitive_mode, stage.override)
+- Signal schema split into three types: GitSignal, ConversationSignal, CalibrationSignal
+
+### Added
+
+- **Skeleton**: Domain ownership map — each domain declares what it owns, does not own, stability level, causal keywords, and dependencies
+- **Blood**: Evolution events with full metadata — gravity, source, subject, behavior effect, lifecycle (validity/decay), trauma, governance status, health tracking
+- **DNA**: Emergent project personality traits — compressed from repeated patterns, with identity status (not_yet_emerged → emerging → emerged) and imprint inheritance for forked projects
+- **Capillaries**: Per-domain constraint projections — constraints, rejected paths, and accepted debt automatically derived from blood events
+- **Gravity system (G0–G3)**: G0 drop, G1 suggestion, G2 reflective challenge, G3 hard constraint — with multi-dimensional gravity (architectural, operational, local)
+- **Governance**: 3-tier validation (agent_proposed, system_validated, human_ratified) with full audit log
+- **Cognitive modes**: lightweight / standard / institutional — controls governance threshold, decay aggressiveness, DNA evidence requirements, calibration depth
+- **Trauma system**: Permanent domain sensitivity markers with configurable sensitivity multiplier, decay override, and DNA impact
+- **Lifecycle management**: Validity levels (transient, tactical, strategic, identity) with configurable decay policies (downgrade, expire, permanent)
+- **Calibration Ear**: Detects skeleton drift, consistency conflicts, debt resolution candidates, and DNA drift warnings
+- **Activation Engine**: Context-aware cognition activation — filters blood events by domain relevance, generates challenges for current task
+- **Challenge Engine**: Produces reflective challenges when AI approaches areas with known constraints
+- **Decay Engine**: Ages stale blood events based on cognitive mode parameters
+- **Compression Engine**: Identifies DNA trait candidates from repeated blood patterns
+- **Resurrection Engine**: Detects access patterns that warrant resurrecting archived events
+- **Consistency Engine**: Validates cross-subsystem consistency (skeleton vs blood, domain capillaries, DNA coherence)
+- **11 MCP tools**: `cairn_init_status`, `cairn_init_commit`, `cairn_context`, `cairn_signal`, `cairn_session_end`, `cairn_status`, `cairn_plan`, `cairn_stage_list`, `cairn_stage_accept`, `cairn_stage_reject`, `cairn_doctor`
+- **Two-phase initialization**: `cairn_init_status` checks project state, `cairn_init_commit` writes initial cognition (skeleton, blood, DNA, stage) in one atomic batch
+- **CLI commands**: `cairn init --empty`, `cairn status`, `cairn doctor`, `cairn review`, `cairn audit`, `cairn dna show/reevaluate`, `cairn skeleton show`, `cairn blood show/archive/resurrect/trauma`, `cairn stage confirm`
+- **11 Zod schemas**: EvolutionEvent, SkeletonNode, DNAIdentity, DNAImprint, DomainCapillary, Config, State, GovernancePolicy, AuditEntry, StagedEntry, SessionRecord, plus shared schemas (Gravity, Source, Subject, BehaviorEffect, Lifecycle, Trauma, Revisit, Health)
+- **11 YAML stores**: BloodStore, SkeletonStore, DnaStore, DomainStore, SignalStore, StagedStore, StateStore, ConfigStore, GovernanceStore, SessionStore
+- **14 engines**: ActivationEngine, ChallengeEngine, StageEngine, DecayEngine, CompressionEngine, ResurrectionEngine, ConsistencyEngine, BloodEngine, ViewsEngine, GovernanceEngine, TrustRouter, GitEar, CalibrationEar
+
+### Changed
+
+- **Architecture**: From flat memory engine to Skeleton + Blood + DNA + Capillaries + Gravity + Governance
+- **Storage format**: `memory/*.yaml` (flat entries) → `blood/*.yaml` (evolution events with gravity, lifecycle, trauma, governance)
+- **Trust routing**: L0–L3 level-based → G0–G3 gravity-based with multi-dimensional weight (architectural, operational, local)
+- **Signal types**: Unified signal type → three specialized types (GitSignal, ConversationSignal, CalibrationSignal)
+- **Initialization**: Single auto-bootstrap → two-phase AI-mediated initialization (init_status + init_commit)
+- **Views engine**: Regenerated from blood events instead of memory entries, with skeleton and DNA context
+- **Stage management**: `cairn_status(action: 'stage_confirm')` → dedicated `cairn stage confirm` CLI and `cairn_stage_accept` MCP tool
+- **Domain model**: Flat domain list → rich domain capillaries with constraints, rejected paths, and accepted debt
+
+### Removed
+
+- `memory/` directory and MemoryEntry schema (replaced by `blood/` and EvolutionEvent)
+- `cairn_review` MCP tool (replaced by `cairn_stage_list` + `cairn_stage_accept` + `cairn_stage_reject`)
+- `cairn_memory` MCP tool (blood management via CLI `cairn blood` commands)
+- L0–L3 trust levels (replaced by G0–G3 gravity system)
+- `trust_policy` config section (replaced by cognitive mode parameters and governance)
+- `MemoryStore` (replaced by BloodStore)
+- Single-phase auto-bootstrap (replaced by two-phase init_status + init_commit)
+
 ## [0.2.10] - 2026-05-15
 
 ### Changed

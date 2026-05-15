@@ -1,56 +1,89 @@
-import type { CairnPaths } from "./paths.js";
-import { MemoryStore } from "./stores/memory-store.js";
-import { SignalStore } from "./stores/signal-store.js";
-import { StagedStore } from "./stores/staged-store.js";
-import { StateStore } from "./stores/state-store.js";
-import { ViewsEngine } from "./engines/views-engine.js";
-import { TrustRouter } from "./engines/trust-router.js";
-import { GitEar } from "./engines/git-ear.js";
-import { StageEngine } from "./engines/stage-engine.js";
-import { MemoryEngine } from "./engines/memory-engine.js";
-import type { BootstrapResult } from "./bootstrap.js";
+import { buildPaths, ALL_DIRS, type CairnPaths } from "./paths.js";
+import { mkdir } from "node:fs/promises";
+import {
+    BloodStore, SkeletonStore, DnaStore, DomainStore,
+    SignalStore, StagedStore, StateStore, ConfigStore,
+    GovernanceStore, SessionStore,
+} from "./stores/index.js";
+import {
+    ActivationEngine, ChallengeEngine, StageEngine,
+    DecayEngine, CompressionEngine, ResurrectionEngine,
+    ConsistencyEngine, BloodEngine, ViewsEngine,
+    GovernanceEngine, TrustRouter, GitEar, CalibrationEar,
+} from "./engines/index.js";
 
 export interface CairnContext {
     paths: CairnPaths;
-    memoryStore: MemoryStore;
+    bloodStore: BloodStore;
+    skeletonStore: SkeletonStore;
+    dnaStore: DnaStore;
+    domainStore: DomainStore;
     signalStore: SignalStore;
     stagedStore: StagedStore;
     stateStore: StateStore;
+    configStore: ConfigStore;
+    governanceStore: GovernanceStore;
+    sessionStore: SessionStore;
+    activationEngine: ActivationEngine;
+    challengeEngine: ChallengeEngine;
+    stageEngine: StageEngine;
+    decayEngine: DecayEngine;
+    compressionEngine: CompressionEngine;
+    resurrectionEngine: ResurrectionEngine;
+    consistencyEngine: ConsistencyEngine;
+    bloodEngine: BloodEngine;
     viewsEngine: ViewsEngine;
+    governanceEngine: GovernanceEngine;
     trustRouter: TrustRouter;
     gitEar: GitEar;
-    stageEngine: StageEngine;
-    memoryEngine: MemoryEngine;
-    bootstrapResult?: BootstrapResult;
+    calibrationEar: CalibrationEar;
 }
 
-export function createCairnContextFromPaths(paths: CairnPaths): CairnContext {
-    const memoryStore = new MemoryStore(paths.memoryDir);
-    const signalStore = new SignalStore(paths.signalsDir);
-    const stagedStore = new StagedStore(paths.stagedDir);
-    const stateStore = new StateStore(paths.stateYaml);
-    const viewsEngine = new ViewsEngine(paths, memoryStore, stateStore);
-    const memoryEngine = new MemoryEngine(memoryStore, viewsEngine);
-    const trustRouter = new TrustRouter(
-        memoryStore,
-        signalStore,
-        stagedStore,
-        memoryEngine,
-        stateStore,
-    );
-    const gitEar = new GitEar(paths.root);
+export async function createContext(projectRoot: string): Promise<CairnContext> {
+    const paths = buildPaths(projectRoot);
+
+    const bloodStore = new BloodStore(paths.blood);
+    const skeletonStore = new SkeletonStore(paths.skeleton);
+    const dnaStore = new DnaStore(paths.dnaIdentity, paths.dnaImprint);
+    const domainStore = new DomainStore(paths.domains);
+    const signalStore = new SignalStore(paths.signalsGit, paths.signalsCalibration, paths.signalsConversation);
+    const stagedStore = new StagedStore(paths.staged);
+    const stateStore = new StateStore(paths.state);
+    const configStore = new ConfigStore(paths.config);
+    const governanceStore = new GovernanceStore(paths.governancePolicy, paths.governanceAudit);
+    const sessionStore = new SessionStore(paths.sessions);
+
+    const activationEngine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore);
+    const challengeEngine = new ChallengeEngine(bloodStore, skeletonStore, dnaStore);
     const stageEngine = new StageEngine();
+    const decayEngine = new DecayEngine(bloodStore);
+    const compressionEngine = new CompressionEngine(bloodStore);
+    const resurrectionEngine = new ResurrectionEngine(bloodStore, stateStore);
+    const consistencyEngine = new ConsistencyEngine(bloodStore, skeletonStore, dnaStore, stateStore);
+    const governanceEngine = new GovernanceEngine(governanceStore, configStore);
+    const trustRouter = new TrustRouter(bloodStore, dnaStore, governanceEngine);
+    const viewsEngine = new ViewsEngine(
+        bloodStore, skeletonStore, domainStore, dnaStore, stateStore,
+        paths.viewsOutput, paths.viewsStage, paths.viewsDomains,
+    );
+    const bloodEngine = new BloodEngine(bloodStore, domainStore, viewsEngine);
+    const gitEar = new GitEar(paths.root, skeletonStore);
+    const calibrationEar = new CalibrationEar(paths.root, bloodStore, skeletonStore, domainStore);
 
     return {
         paths,
-        memoryStore,
-        signalStore,
-        stagedStore,
-        stateStore,
-        viewsEngine,
-        trustRouter,
-        gitEar,
-        stageEngine,
-        memoryEngine,
+        bloodStore, skeletonStore, dnaStore, domainStore,
+        signalStore, stagedStore, stateStore, configStore,
+        governanceStore, sessionStore,
+        activationEngine, challengeEngine, stageEngine,
+        decayEngine, compressionEngine, resurrectionEngine,
+        consistencyEngine, bloodEngine, viewsEngine,
+        governanceEngine, trustRouter, gitEar, calibrationEar,
     };
+}
+
+export async function ensureCairnDirs(paths: CairnPaths): Promise<void> {
+    for (const dir of ALL_DIRS(paths)) {
+        await mkdir(dir, { recursive: true });
+    }
 }

@@ -1,78 +1,44 @@
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
+import { mkdir } from "node:fs/promises";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
-import {
-    StageSnapshotSchema,
-    type StageSnapshot,
-} from "../schemas/index.js";
-import { ConfigSchema, type Config } from "../schemas/config.js";
-
-export interface StateData {
-    last_session_commit: string | null;
-    last_session_at: string | null;
-    stage: StageSnapshot;
-}
-
-const DEFAULT_STAGE: StageSnapshot = {
-    phase: "growth",
-    confidence: 0.4,
-    status: "advisory",
-    evidence: [],
-    guidance: [],
-    last_updated: new Date().toISOString(),
-};
+import { StateSchema, StageSnapshotSchema, type State, type StageSnapshot } from "../schemas/index.js";
 
 export class StateStore {
-    constructor(private filepath: string) {}
+    constructor(private readonly filePath: string) {}
 
-    load(): StateData {
-        if (!existsSync(this.filepath)) {
-            return {
-                last_session_commit: null,
-                last_session_at: null,
-                stage: DEFAULT_STAGE,
-            };
-        }
+    async load(): Promise<State> {
         try {
-            const raw = readFileSync(this.filepath, "utf-8");
-            const data = yamlParse(raw) ?? {};
-            return {
-                last_session_commit: data.last_session_commit ?? null,
-                last_session_at: data.last_session_at ?? null,
-                stage: data.stage
-                    ? StageSnapshotSchema.parse(data.stage)
-                    : DEFAULT_STAGE,
-            };
-        } catch {
-            return {
-                last_session_commit: null,
-                last_session_at: null,
-                stage: DEFAULT_STAGE,
-            };
+            const content = await readFile(this.filePath, "utf-8");
+            return StateSchema.parse(yamlParse(content));
+        } catch (err: any) {
+            if (err.code === "ENOENT") return StateSchema.parse({});
+            throw err;
         }
     }
 
-    save(state: StateData): void {
-        writeFileSync(this.filepath, yamlStringify(state), "utf-8");
+    async save(state: State): Promise<void> {
+        await mkdir(dirname(this.filePath), { recursive: true });
+        await writeFile(this.filePath, yamlStringify(state), "utf-8");
     }
 
-    updateLastGitScan(commit: string): void {
-        const state = this.load();
-        state.last_session_commit = commit;
-        this.save(state);
+    async updateLastSession(commit: string | null, endedAt: string): Promise<void> {
+        const state = await this.load();
+        state.last_session.commit = commit;
+        state.last_session.ended_at = endedAt;
+        await this.save(state);
     }
 
-    updateStage(snapshot: StageSnapshot): void {
-        const state = this.load();
-        state.stage = snapshot;
-        this.save(state);
+    async updateStage(stage: StageSnapshot): Promise<void> {
+        const state = await this.load();
+        state.stage = StageSnapshotSchema.parse(stage);
+        await this.save(state);
     }
 
-    loadConfig(configPath: string): Config {
-        if (!existsSync(configPath)) {
-            throw new Error(`Config file not found: ${configPath}`);
-        }
-        const raw = readFileSync(configPath, "utf-8");
-        const data = yamlParse(raw);
-        return ConfigSchema.parse(data);
+    async recordActivation(eventId: string): Promise<void> {
+        const state = await this.load();
+        const hits = state.activation_log.recent_hits;
+        hits[eventId] = (hits[eventId] ?? 0) + 1;
+        await this.save(state);
     }
 }

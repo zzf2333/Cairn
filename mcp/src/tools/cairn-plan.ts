@@ -1,87 +1,73 @@
-import type { CairnContext } from "../server.js";
+import type { CairnContext } from "../context.js";
 import { toolResult } from "../errors.js";
 
-export function handleCairnPlan(
+export async function handlePlan(
     ctx: CairnContext,
     args: { task: string },
 ) {
-    // cairn_plan is STRICTLY read-only — never writes signals/staged/memory
-    const memories = ctx.memoryStore.findActive();
-    const state = ctx.stateStore.load();
-    const taskLower = args.task.toLowerCase();
+    const activation = await ctx.activationEngine.activate({ task: args.task });
 
-    // Find relevant historical constraints
-    const relevantMemories = memories.filter((m) => {
-        const keywords = [
-            m.domain,
-            m.subject.name,
-            ...(m.rejected?.what ? [m.rejected.what] : []),
-            ...(m.chosen?.what ? [m.chosen.what] : []),
-        ].map((k) => k.toLowerCase());
-
-        return keywords.some(
-            (k) => taskLower.includes(k) || k.includes(taskLower.split(/\s+/)[0]),
-        );
-    });
-
-    const historicalConstraints = relevantMemories.map((m) => {
-        let constraint = `[${m.type}] ${m.summary}`;
-        if (m.behavior_effect.type === "avoid_suggestion") {
-            constraint += ` → DO NOT suggest: ${m.behavior_effect.instruction}`;
-        } else if (m.behavior_effect.type === "prefer_approach") {
-            constraint += ` → PREFER: ${m.behavior_effect.instruction}`;
-        } else if (m.behavior_effect.type === "warn_before") {
-            constraint += ` → WARNING: ${m.behavior_effect.instruction}`;
+    const identity = await ctx.dnaStore.loadIdentity();
+    const dnaGuidance: string[] = [];
+    if (identity.status !== "not_yet_emerged") {
+        for (const [name, trait] of Object.entries(identity.traits)) {
+            if (trait.level === "high" || trait.level === "low") {
+                dnaGuidance.push(`${name}: ${trait.level}`);
+            }
         }
-        return constraint;
-    });
+    }
 
-    // Stage guidance
-    const stageGuidance = state.stage.confidence >= 0.5
-        ? `Project is in ${state.stage.phase} phase. ${state.stage.guidance?.join(". ") ?? ""}`
-        : `Stage inference confidence too low (${state.stage.confidence}). No stage guidance applied.`;
-
-    // Warnings
     const warnings: string[] = [];
-    const noGoHits = relevantMemories.filter(
-        (m) => m.behavior_effect.type === "avoid_suggestion",
-    );
-    for (const hit of noGoHits) {
-        warnings.push(
-            `⚠ No-go: "${hit.subject.name}" — ${hit.behavior_effect.instruction}`,
-        );
+    for (const noGo of activation.constraints.no_go) {
+        warnings.push(`No-go: "${noGo.what}" — ${noGo.reason}`);
+    }
+    for (const challenge of activation.challenges) {
+        warnings.push(`[${challenge.level}] ${challenge.description}`);
     }
 
-    const revisitHits = relevantMemories.filter(
-        (m) => m.revisit.status === "possibly_met",
-    );
-    for (const hit of revisitHits) {
-        warnings.push(
-            `Revisit condition may be met for: ${hit.subject.name}`,
-        );
+    const openQuestions: string[] = [];
+    for (const domain of activation.relevant_domains) {
+        for (const q of domain.open_questions) {
+            openQuestions.push(`[${domain.domain}] ${q}`);
+        }
     }
 
-    // Recommended direction
-    const preferredApproaches = relevantMemories
-        .filter((m) => m.behavior_effect.type === "prefer_approach")
-        .map((m) => m.behavior_effect.instruction);
+    const historicalConstraints: string[] = [];
+    for (const noGo of activation.constraints.no_go) {
+        historicalConstraints.push(`[no-go] ${noGo.what}: ${noGo.reason} (${noGo.gravity})`);
+    }
+    for (const debt of activation.constraints.accepted_debt) {
+        historicalConstraints.push(`[debt] ${debt.what}: ${debt.reason}`);
+    }
+    for (const domain of activation.relevant_domains) {
+        for (const rp of domain.rejected_paths) {
+            historicalConstraints.push(`[rejected] ${rp.path}: ${rp.reason}`);
+        }
+        for (const pitfall of domain.pitfalls) {
+            historicalConstraints.push(`[pitfall] ${pitfall}`);
+        }
+    }
 
-    const recommendedDirection =
-        preferredApproaches.length > 0
+    const preferredApproaches: string[] = [];
+    for (const sc of activation.constraints.stage_constraints) {
+        preferredApproaches.push(sc);
+    }
+
+    const result = {
+        task: args.task,
+        stage_guidance: {
+            phase: activation.stage.phase,
+            confidence: activation.stage.confidence,
+            guidance: activation.stage.guidance,
+        },
+        dna_guidance: dnaGuidance,
+        historical_constraints: historicalConstraints,
+        recommended_direction: preferredApproaches.length > 0
             ? preferredApproaches.join(". ")
-            : "No specific historical preference found for this task.";
+            : "No specific historical preference found for this task.",
+        warnings,
+        open_questions: openQuestions,
+    };
 
-    return toolResult(
-        JSON.stringify(
-            {
-                task: args.task,
-                stage_guidance: stageGuidance,
-                historical_constraints: historicalConstraints,
-                recommended_direction: recommendedDirection,
-                warnings,
-            },
-            null,
-            2,
-        ),
-    );
+    return toolResult(JSON.stringify(result, null, 2));
 }

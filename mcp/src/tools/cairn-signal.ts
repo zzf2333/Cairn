@@ -1,108 +1,163 @@
-import type { CairnContext } from "../server.js";
-import { toolResult } from "../errors.js";
-import { DEFAULT_L3_AUTO_WRITE } from "../schemas/config.js";
-import type { Signal, SignalType } from "../schemas/index.js";
+import type { CairnContext } from "../context.js";
+import { toolResult, formatToolError } from "../errors.js";
+import type { EvolutionEvent } from "../schemas/index.js";
+import type { GravityLevel } from "../constants.js";
+
+const SIGNAL_TYPE_MAP: Record<string, EvolutionEvent["type"]> = {
+    user_rejection: "rejection",
+    decision: "architecture_decision",
+    constraint_declaration: "constraint_added",
+    debt_acceptance: "debt_acceptance",
+    historical_reference: "architecture_decision",
+    stage_constraint: "stage_transition",
+};
+
+const SIGNAL_GRAVITY_MAP: Record<string, GravityLevel> = {
+    user_rejection: "G1",
+    decision: "G1",
+    constraint_declaration: "G2",
+    debt_acceptance: "G1",
+    historical_reference: "G1",
+    stage_constraint: "G2",
+};
 
 interface SignalArgs {
-    type: SignalType;
+    signal_type: string;
     domain?: string;
     details: {
         what: string;
         reason?: string;
-        rejected_alternatives?: string[];
+        rejected_alternatives?: Array<{ path: string; reason: string }>;
         revisit_when?: string[];
     };
     evidence: {
         user_said?: string;
         files?: string[];
-        commit?: string;
+        commit_ref?: string;
     };
 }
 
-export function handleCairnSignal(ctx: CairnContext, args: SignalArgs) {
-    const now = new Date().toISOString();
-    const dateSlug = now.slice(0, 10).replace(/-/g, "_");
-    const typeSlug = args.type.replace(/-/g, "_");
-
-    const signal: Signal = {
-        id: `sig_conv_${dateSlug}_${typeSlug}_${Date.now().toString(36)}`,
-        source_ear: "conversation",
-        signal_type: args.type,
-        raw_data: {
-            what: args.details.what,
-            reason: args.details.reason,
-            rejected_alternatives: args.details.rejected_alternatives,
-            revisit_when: args.details.revisit_when,
-            user_said: args.evidence.user_said,
-            files: args.evidence.files,
-            commit: args.evidence.commit,
-            subject: args.details.what,
-            scope: args.type === "user-constraint" ? "global" : "local",
-        },
-        inferred: {
-            probable_type: inferMemoryType(args.type),
-            probable_domain: args.domain,
-            // Conversation signals default to medium confidence
-            confidence: args.evidence.commit ? "high" : "medium",
-        },
-        captured_at: now,
-    };
-
-    // Load config for Trust Router
-    let config;
+export async function handleSignal(ctx: CairnContext, args: Record<string, unknown>) {
     try {
-        config = ctx.stateStore.loadConfig(ctx.paths.configYaml);
-    } catch {
-        // Use default config if not found
-        config = {
-            version: "2.0",
-            project: { name: "unknown", created: now.slice(0, 7) },
-            domains: { locked: [] },
-            trust_policy: {
-                L3_auto_write: DEFAULT_L3_AUTO_WRITE,
-                L2_staged: [],
-                never_auto: [],
+        const {
+            signal_type: signalType,
+            domain,
+            details,
+            evidence,
+        } = args as unknown as SignalArgs;
+
+        const now = new Date().toISOString();
+        const eventDomain = domain ?? "global";
+        const id = `evt_${eventDomain}_${signalType}_${Date.now()}`;
+        const eventType = SIGNAL_TYPE_MAP[signalType] ?? "architecture_decision";
+        const gravity = SIGNAL_GRAVITY_MAP[signalType] ?? "G1";
+
+        const refs: Array<{ type: string; id: string }> = [];
+        if (evidence.commit_ref) {
+            refs.push({ type: "commit", id: evidence.commit_ref });
+        }
+
+        const event: EvolutionEvent = {
+            id,
+            time: now,
+            domain: eventDomain,
+            type: eventType,
+            gravity: { level: gravity },
+            source: {
+                type: "conversation",
+                confidence: 0.9,
+                verified: false,
+                refs,
             },
-            stage: { override: null, auto_constraint: false },
-            tech_stack: [],
+            subject: { name: details.what },
+            trigger: evidence.user_said ?? signalType,
+            decision_or_change: details.what,
+            rejected_paths: details.rejected_alternatives ?? [],
+            reasoning: details.reason ?? details.what,
+            constraints_added: signalType === "constraint_declaration" ? [details.what] : [],
+            constraints_removed: [],
+            accepted_debt: signalType === "debt_acceptance" ? [details.what] : [],
+            behavior_effect: {
+                type: signalType === "user_rejection" ? "avoid_suggestion" : "prefer_approach",
+                instruction: details.reason ?? details.what,
+            },
+            affects: {
+                skeleton: false,
+                dna: false,
+                domains: [eventDomain],
+            },
+            lifecycle: {
+                validity: "strategic",
+                decay_policy: "downgrade",
+                resurrection_count: 0,
+            },
+            revisit: details.revisit_when
+                ? { when: details.revisit_when, status: "not_met" }
+                : undefined,
+            supersedes: null,
+            conflicts_with: [],
+            related: [],
+            health: { state: "ok", reason: null },
+            trauma: {
+                is_trauma: false,
+                sensitivity_multiplier: 1.0,
+                decay_override: null,
+                affects_dna: false,
+                requires_human_ratification: true,
+            },
+            created_at: now,
+            updated_at: now,
+            governance_status: "pending",
         };
-    }
 
-    const result = ctx.trustRouter.route(signal, config);
+        const routing = await ctx.trustRouter.route({
+            domain: eventDomain,
+            subject_name: details.what,
+            type: eventType,
+            gravity,
+        });
 
-    return toolResult(
-        JSON.stringify(
-            {
-                accepted: result.level !== "L0",
-                level: result.level,
-                route: result.route,
-                reason: result.reason,
+        let challenges: Array<{ level: string; conflict_with: string; description: string }> = [];
+
+        if (routing.destination === "blood") {
+            event.governance_status = "auto_confirmed";
+            await ctx.bloodEngine.commit(event);
+        } else if (routing.destination === "staged") {
+            event.governance_status = "pending";
+            await ctx.stagedStore.save({
+                id: event.id,
+                draft_event: event,
+                review_status: "pending",
+                routing_reason: routing.reason,
+                gravity: routing.gravity,
+                governance_required: routing.governance === "human_ratified"
+                    ? "human_ratified"
+                    : "auto_confirmable",
+                created_at: now,
+            });
+        }
+
+        const detected = await ctx.challengeEngine.detectConflicts({
+            task: details.what,
+            domain: eventDomain,
+            subject_name: details.what,
+        });
+        challenges = detected.map(c => ({
+            level: c.level,
+            conflict_with: c.conflict_with,
+            description: c.description,
+        }));
+
+        return toolResult(JSON.stringify({
+            accepted: true,
+            routing: {
+                level: routing.gravity,
+                destination: routing.destination,
+                governance: routing.governance,
             },
-            null,
-            2,
-        ),
-    );
-}
-
-function inferMemoryType(
-    signalType: SignalType,
-): string {
-    switch (signalType) {
-        case "user-rejection":
-        case "dependency-removed":
-        case "revert":
-            return "rejection";
-        case "decision":
-        case "user-constraint":
-        case "historical-reference":
-            return "decision";
-        case "dependency-replaced":
-        case "large-refactor":
-        case "stage-signal":
-            return "transition";
-        case "debt-acceptance":
-            return "debt";
-        default:
-            return "decision";
+            challenges,
+        }));
+    } catch (error) {
+        return formatToolError(error);
     }
 }

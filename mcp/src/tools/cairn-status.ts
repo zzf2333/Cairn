@@ -1,80 +1,65 @@
-import type { CairnContext } from "../server.js";
-import { toolResult } from "../errors.js";
+import type { CairnContext } from "../context.js";
+import { toolResult, formatToolError } from "../errors.js";
 
-export function handleCairnStatus(
-    ctx: CairnContext,
-    args: { action?: "status" | "stage_show" | "stage_confirm" } = {},
-) {
-    const action = args.action ?? "status";
+export async function handleStatus(ctx: CairnContext) {
+    try {
+        const [
+            bloodEvents,
+            stagedEntries,
+            skeletonNodes,
+            dnaIdentity,
+            state,
+            auditLog,
+        ] = await Promise.all([
+            ctx.bloodStore.loadAll(),
+            ctx.stagedStore.loadAll(),
+            ctx.skeletonStore.loadAll(),
+            ctx.dnaStore.loadIdentity(),
+            ctx.stateStore.load(),
+            ctx.governanceStore.loadAuditLog(),
+        ]);
 
-    if (action === "stage_show") {
-        const state = ctx.stateStore.load();
-        return toolResult(JSON.stringify(state.stage, null, 2));
-    }
+        const staleCount = bloodEvents.filter(e => e.health.state === "stale").length;
+        const activeCount = bloodEvents.filter(
+            e => e.health.state === "ok" || e.health.state === "resurrected",
+        ).length;
+        const traumaCount = bloodEvents.filter(e => e.trauma.is_trauma).length;
 
-    if (action === "stage_confirm") {
-        const state = ctx.stateStore.load();
-        if (state.stage.status === "confirmed") {
-            return toolResult(
-                JSON.stringify({
-                    confirmed: true,
-                    message: `Stage already confirmed: ${state.stage.phase}`,
-                }),
-            );
-        }
-        state.stage.status = "confirmed";
-        state.stage.last_updated = new Date().toISOString();
-        ctx.stateStore.save(state);
-        ctx.viewsEngine.regenerate();
-        return toolResult(
-            JSON.stringify({
-                confirmed: true,
+        const pendingStaged = stagedEntries.filter(e => e.review_status === "pending").length;
+
+        const pendingGovernance = auditLog.filter(e => e.action === "auto_confirmed").length;
+
+        return toolResult(JSON.stringify({
+            initialization: state.initialization_status,
+            stage: {
                 phase: state.stage.phase,
                 confidence: state.stage.confidence,
-            }),
-        );
+                status: state.stage.status,
+            },
+            blood: {
+                total: bloodEvents.length,
+                active: activeCount,
+                stale: staleCount,
+                trauma: traumaCount,
+            },
+            staged: {
+                total: stagedEntries.length,
+                pending: pendingStaged,
+            },
+            skeleton: {
+                nodes: skeletonNodes.length,
+                domains: skeletonNodes.map(n => n.domain),
+            },
+            dna: {
+                status: dnaIdentity.status,
+                trait_count: Object.keys(dnaIdentity.traits).length,
+            },
+            governance: {
+                pending: pendingGovernance,
+            },
+            last_session: state.last_session,
+        }));
+    } catch (error) {
+        return formatToolError(error);
     }
-
-    const memories = ctx.memoryStore.loadAll();
-    const staged = ctx.stagedStore.loadPending();
-    const signals = ctx.signalStore.loadAll();
-    const conflicts = ctx.memoryStore.findConflicts();
-    const state = ctx.stateStore.load();
-
-    const domainUpdates = new Map<string, string>();
-    for (const m of memories) {
-        const existing = domainUpdates.get(m.domain);
-        if (!existing || m.updated_at > existing) {
-            domainUpdates.set(m.domain, m.updated_at);
-        }
-    }
-
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    const staleDomains: string[] = [];
-    for (const [domain, lastUpdate] of domainUpdates) {
-        if (new Date(lastUpdate) < threeMonthsAgo) {
-            staleDomains.push(domain);
-        }
-    }
-
-    const result = {
-        memory_count: memories.length,
-        staged_count: staged.length,
-        signals_count: signals.length,
-        stale_domains: staleDomains,
-        conflicts: conflicts.map((c) => ({
-            id: c.id,
-            domain: c.domain,
-            reason: c.health.reason,
-        })),
-        last_git_scan: state.last_session_commit,
-        stage: {
-            phase: state.stage.phase,
-            confidence: state.stage.confidence,
-            status: state.stage.status,
-        },
-    };
-
-    return toolResult(JSON.stringify(result, null, 2));
 }

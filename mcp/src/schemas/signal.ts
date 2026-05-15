@@ -1,41 +1,86 @@
 import { z } from "zod";
+import { GravityLevelEnum } from "./shared.js";
 
-export const SIGNAL_TYPES = [
-    "dependency-removed",
-    "dependency-replaced",
-    "revert",
-    "large-refactor",
-    "user-rejection",
-    "user-constraint",
-    "historical-reference",
-    "stage-signal",
-    "decision",
-    "debt-acceptance",
+export const GIT_SIGNAL_TYPES = [
+    "revert", "dependency_removed", "dependency_replaced",
+    "large_refactor", "commit_frequency_change",
+    "new_contributor", "todo_fixme_cluster",
 ] as const;
 
-export const ROUTING_LEVELS = ["L0", "L1", "L2", "L3"] as const;
-
-export const SignalRoutingSchema = z.object({
-    level: z.enum(ROUTING_LEVELS),
-    reason: z.string(),
-});
-
-export const SignalSchema = z.object({
+export const GitSignalSchema = z.object({
     id: z.string(),
-    source_ear: z.enum(["git", "conversation"]),
-    signal_type: z.enum(SIGNAL_TYPES),
-    raw_data: z.record(z.unknown()).default({}),
-    inferred: z
-        .object({
-            probable_type: z.string().optional(),
-            probable_domain: z.string().optional(),
-            confidence: z.enum(["high", "medium", "low"]).default("medium"),
-        })
-        .default({}),
-    routing: SignalRoutingSchema.optional(),
+    signal_type: z.enum(GIT_SIGNAL_TYPES),
+    raw_data: z.object({
+        commits: z.array(z.string()).optional(),
+        files_changed: z.array(z.string()).optional(),
+        packages: z.object({
+            added: z.array(z.string()).optional(),
+            removed: z.array(z.string()).optional(),
+            replaced: z.array(z.object({
+                from: z.string(),
+                to: z.string(),
+            })).optional(),
+        }).optional(),
+        stats: z.object({
+            commit_count_30d: z.number().optional(),
+            project_avg: z.number().optional(),
+        }).optional(),
+    }).default({}),
+    inferred_gravity: GravityLevelEnum,
+    inferred_domain: z.string().optional(),
+    confidence: z.number().min(0).max(1),
     captured_at: z.string(),
 });
+export type GitSignal = z.infer<typeof GitSignalSchema>;
 
-export type Signal = z.infer<typeof SignalSchema>;
-export type SignalRouting = z.infer<typeof SignalRoutingSchema>;
-export type SignalType = z.infer<typeof SignalSchema>["signal_type"];
+export const CONVERSATION_SIGNAL_TYPES = [
+    "user_rejection", "historical_reference",
+    "constraint_declaration", "decision",
+    "debt_acceptance", "stage_constraint",
+] as const;
+
+export const ConversationSignalSchema = z.object({
+    id: z.string(),
+    signal_type: z.enum(CONVERSATION_SIGNAL_TYPES),
+    domain: z.string().optional(),
+    details: z.object({
+        what: z.string(),
+        reason: z.string().optional(),
+        rejected_alternatives: z.array(z.object({
+            path: z.string(),
+            reason: z.string(),
+        })).optional(),
+        revisit_when: z.array(z.string()).optional(),
+    }),
+    evidence: z.object({
+        user_said: z.string().optional(),
+        files_involved: z.array(z.string()).optional(),
+        commit_ref: z.string().optional(),
+    }).default({}),
+    confidence: z.number().min(0).max(1),
+    captured_at: z.string(),
+});
+export type ConversationSignal = z.infer<typeof ConversationSignalSchema>;
+
+export const CALIBRATION_SIGNAL_TYPES = [
+    "calibration_conflict", "skeleton_drift",
+    "debt_resolution_candidate", "dna_drift_warning",
+] as const;
+
+export const CalibrationSignalSchema = z.object({
+    id: z.string(),
+    signal_type: z.enum(CALIBRATION_SIGNAL_TYPES),
+    domain: z.string().optional(),
+    description: z.string(),
+    evidence: z.object({
+        expected: z.string(),
+        actual: z.string(),
+        source: z.string(),
+    }),
+    inferred_gravity: GravityLevelEnum,
+    confidence: z.number().min(0).max(1),
+    captured_at: z.string(),
+});
+export type CalibrationSignal = z.infer<typeof CalibrationSignalSchema>;
+
+export type Signal = GitSignal | ConversationSignal | CalibrationSignal;

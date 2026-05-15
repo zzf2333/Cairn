@@ -47,8 +47,8 @@ ADRs sit in a directory and are either all read or all ignored. There is no mech
 to say "read this one always," "read this one only when planning API work," or "only
 fetch this one if the user asks about authentication history." An AI reading 30 ADRs
 at session start consumes most of its context budget on history that may be irrelevant
-to the current task. Cairn's three-layer injection — always-on (`output.md`),
-on-demand by domain (`domains/*.md`), and precision-queried (`history/`) — is a
+to the current task. Cairn's activation pipeline — always-on (`output.md`),
+on-demand by domain (`domains/*.md`), and precision-queried via `cairn_context()` — is a
 concept ADRs do not model.
 
 **3. No explicit no-go enforcement mechanism.**
@@ -63,16 +63,17 @@ directions.
 A team with 20 ADRs has decisions about auth, API design, state management, deployment,
 and testing all mixed in the same directory, sorted chronologically. When an AI is
 planning an API change, it has no efficient way to pull only the API-relevant history.
-Cairn's `domains/*.md` layer pre-compresses decision history by domain, so the AI gets
-exactly the relevant context without reading the full archive.
+Cairn's skeleton maps domains to ownership boundaries, and `domains/*.md` views
+pre-compress evolution history by domain, so the AI gets exactly the relevant context
+without reading the full archive.
 
 **5. The `rejected` field is structurally absent.**
 ADRs have an "alternatives considered" section, but it is optional, free-form, and
 rarely written with enough specificity for AI use. The rejected paths — the directions
 that were evaluated and ruled out — are the most important inputs for preventing AI
-from re-proposing already-discarded options. Cairn treats `rejected` as the most
-critical field in every history entry: even a `decision` entry MUST record what was
-considered and not chosen.
+from re-proposing already-discarded options. Cairn treats rejected paths as critical
+data: every evolution event with `behavior_effect: avoid_suggestion` records what was
+tried and why it was excluded.
 
 ---
 
@@ -82,27 +83,30 @@ Cairn does not replace ADRs. It adds a structured, AI-targeted constraint layer 
 of (or alongside) whatever documentation the team already keeps.
 
 **Automatic signal capture.**
-Cairn captures project signals automatically from two sources: the Git ear
-(reverts, dependency changes, large refactors) and the conversation ear (AI reports
-user rejections, decisions, constraints via `cairn_signal()`). ADRs require a human
-author to write each record. Cairn's dual-ear design means constraint-relevant events
+Cairn captures project signals automatically from three sources: the Git ear
+(reverts, dependency changes, large refactors), the conversation ear (AI reports
+user rejections, decisions, constraints via `cairn_signal()`), and the calibration ear
+(detects drift between code reality and cognitive state). ADRs require a human
+author to write each record. Cairn's tri-ear design means constraint-relevant events
 are captured as they happen, with no manual documentation step.
 
-**Trust-routed memory with human review.**
-Captured signals flow through a Trust Router that assigns trust levels (L0–L3).
-Low-confidence signals accumulate in a candidate pool. High-impact signals go to
-a staged review queue for human approval before becoming formal memory. Only signals
-with strong evidence (e.g., git reverts of local-scope changes) are written
-automatically. This ensures memory quality without requiring humans to write every entry.
+**Gravity-routed cognition with human review.**
+Captured signals flow through a Trust Router that assigns gravity (G0–G3).
+G0 signals are noise and get dropped. G1 suggestions are written automatically in
+lightweight mode or system-validated in standard mode. G2 reflective challenges require
+the AI to present reasoning. G3 hard constraints always require human ratification.
+Trauma domains permanently upgrade gravity for new signals. DNA traits modulate gravity
+based on project personality. This ensures cognitive quality without requiring humans
+to write every entry.
 
 **Token-budget-aware constraint views.**
-Cairn auto-generates `views/output.md` from memory with a target of 500 tokens and a
+Cairn auto-generates `views/output.md` from blood events with a target of 500 tokens and a
 hard limit of 800. The format uses `key: value` pairs and short bullet lists, not prose.
 Every line must change AI behavior — if removing it would not alter a response, the
 Views Engine does not include it.
 
 **Machine-readable `behavior_effect` field.**
-Every memory entry declares its `behavior_effect` — how the AI's behavior should
+Every evolution event declares its `behavior_effect` — how the AI's behavior should
 change. Four types are supported:
 
 - `avoid_suggestion`: the AI MUST NOT suggest this direction
@@ -113,10 +117,12 @@ change. Four types are supported:
 This is a direct behavioral instruction, not narrative context. ADRs describe
 consequences in prose; Cairn encodes them as machine-readable constraints.
 
-**Domain-scoped context separation.**
-Each domain (`api-layer`, `auth`, `state-management`, etc.) has its own compressed
-view file. When the AI calls `cairn_context({ task: "API design" })`, it receives
-only API-relevant constraints — not auth history, not deployment history.
+**Domain-scoped context via Skeleton.**
+Each domain in the skeleton (`api-layer`, `auth`, `state-management`, etc.) defines
+ownership boundaries and causal keywords. When the AI calls
+`cairn_context({ task: "API design" })`, the activation engine maps the task to
+relevant domains and returns only domain-specific constraints — not auth history,
+not deployment history.
 
 ---
 
@@ -125,14 +131,14 @@ only API-relevant constraints — not auth history, not deployment history.
 ADRs and Cairn are not competing systems. The same technical event produces a different
 artifact in each:
 
-| | ADR | Cairn memory entry |
-|--|-----|---------------------|
-| Audience | Human engineers | AI constraint system |
-| Format | Prose paragraphs | Structured YAML fields |
-| Purpose | Institutional memory | Behavioral input |
-| Creation | Human writes | Captured from signals, routed through trust levels |
+| | ADR | Cairn evolution event |
+|--|-----|----------------------|
+| Audience | Human engineers | AI cognitive system |
+| Format | Prose paragraphs | Structured YAML with gravity, lifecycle, trauma |
+| Purpose | Institutional memory | Behavioral constraint input |
+| Creation | Human writes | Captured from signals, routed through gravity |
 | Injection | Read by humans on demand | Returned by `cairn_context()` MCP tool |
-| Constraint | None — informational only | `behavior_effect`, `revisit`, `relations` |
+| Constraint | None — informational only | `behavior_effect`, `lifecycle`, `trauma`, `governance` |
 
 ### Example: Choosing PostgreSQL
 
@@ -156,47 +162,51 @@ artifact in each:
 This is the right format for a human reader: narrative, contextual, explains the
 reasoning fully, readable without any tool.
 
-**The Cairn version** (`.cairn/memory/mem_2023_03_database_postgresql.yaml`):
+**The Cairn version** (`.cairn/blood/evt_2023_03_database_postgresql.yaml`):
 
 ```yaml
-id: mem_2023_03_database_postgresql
+id: evt_2023_03_database_postgresql
 type: decision
 domain: database
-scope: local
-status: active
-confidence:
-  level: high
+subject:
+  name: PostgreSQL
+  category: database
+summary: Chose PostgreSQL as primary database; relational model fits structured data
+gravity:
+  level: G2
+  architectural: medium
+  operational: low
+  local: high
 source:
   kind: conversation
   refs:
     - type: session
       id: sess_2023_03_15
   captured_at: "2023-03-15T00:00:00Z"
-subject:
-  name: PostgreSQL
-summary: Chose PostgreSQL as primary database; relational model fits structured data
-rejected:
-  what: MongoDB, DynamoDB
-  reason: >
-    MongoDB — document model ill-fitted to relational data requirements.
-    DynamoDB — vendor lock-in risk, team had no AWS ops familiarity.
-chosen:
-  what: PostgreSQL
-  reason: >
-    Data is highly relational. ACID guarantees required for financial records.
-    Prisma ORM reduces migration friction for a team of 2.
 behavior_effect:
   type: prefer_approach
   instruction: Use PostgreSQL for new data storage needs
+  scope: local
+lifecycle:
+  validity: strategic
+  decay_policy: downgrade
 revisit:
   when:
     - Data model becomes document-heavy
     - Multi-region latency demands a globally distributed store
   status: not_met
+governance:
+  status: human_ratified
+  ratified_by: human
+  ratified_at: "2023-03-15T00:00:00Z"
+health:
+  last_accessed: "2023-03-15T00:00:00Z"
+  access_count: 0
+  staleness: fresh
 ```
 
 The Views Engine auto-generates `views/output.md` with `db: PostgreSQL` in the
-stack section, and `views/domains/database.md` with the rejected paths.
+stack section, and `views/domains/database.md` with the evolution trajectory.
 
-The ADR tells the story. The Cairn memory entry enforces the constraint. Both are
+The ADR tells the story. The Cairn evolution event enforces the constraint. Both are
 correct for their purpose. Neither replaces the other.

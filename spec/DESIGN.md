@@ -1,8 +1,8 @@
 [中文](DESIGN.zh.md) | English
 
-# Cairn — Design Document
+# Cairn — Design Document (V3)
 
-> Status: Dynamic memory engine architecture.
+> Status: AI-native engineering cognition engine.
 
 ---
 
@@ -16,401 +16,214 @@ side of the path.
 
 That is the role Cairn plays for AI coding assistants.
 
-Every time an AI enters a project, it arrives like a climber who has never been on this
-mountain before — capable, well-equipped, but with no knowledge of which directions were
-tried and abandoned, which areas have hidden dangers, and where the project currently is
-in its journey. Cairn stacks the project's accumulated decisions at the trailside in a
-structured form: this technical direction was tried and did not work; this module has a
-known trap, route around it; the project is in a stability phase now, not the time for
-large changes.
-
-Each rejection record is one stone. Each known pitfall is one stone. Each phase
-transition is one stone. The more complete the cairn, the less likely anyone who comes
-after — whether a new human developer or an AI starting a fresh session — is to go off
-course.
+Each evolution event is one stone. Each rejected path is one stone. Each trauma is one
+stone. The more complete the cairn, the less likely anyone who comes after — whether a
+new human developer or an AI starting a fresh session — is to go off course.
 
 ---
 
 ## The Problem
 
-Software projects accumulate constraints. Every architectural decision is shaped by the
-history of decisions that came before it: the technology stack already in place, the
-trade-offs already accepted, the directions already evaluated and ruled out. This
-dependency on prior choices is called **path dependency**.
+Software projects accumulate constraints through path dependency. AI coding tools cannot
+perceive this — they have no memory between sessions. The result is a recurring pattern
+where AI repeatedly proposes directions that were already tried and rejected.
 
-AI coding tools cannot perceive path dependency. They have no memory between sessions.
-Each conversation starts from zero — the AI has access to the current code, but not to
-the reasoning behind it. The result is a recurring pattern:
-
-- The AI proposes tRPC. The team tried tRPC eight months ago and reverted after two
-  weeks. The AI does not know this.
-- The AI suggests refactoring the auth module. The team deliberately accepted the
-  current auth coupling as debt until the team grows. The AI does not know this.
-- The AI recommends a microservices split. The team has no ops capacity and explicitly
-  ruled this out. The AI does not know this.
-
-Each of these is not an AI failure in the conventional sense. The model is reasoning
-correctly given the information it has. The problem is structural: the information it
-needs does not exist in a form the AI can use.
-
-Documentation exists, but documentation is written for humans. Architecture Decision
-Records (ADRs) describe what was decided. They do not tell an AI what to avoid
-proposing, under what conditions a past rejection might be worth revisiting, or what
-the active constraints are right now. Reading a 20-page ADR at the start of every
-session is not a realistic workflow.
-
-The result is that AI assistants behave like a developer who joined the team today and
-has not yet been onboarded — technically competent, but repeatedly suggesting things
-that were settled long ago. Every session is the first day.
+This is not a model capability problem. The information AI needs does not exist in a
+form it can use. Documentation is for humans. ADRs describe what was decided but don't
+tell AI what to avoid proposing or under what conditions a past rejection might be
+worth revisiting.
 
 ---
 
-## Existing Tools and Their Gaps
+## V3 Architecture: Cognitive Thermodynamics
 
-Several tools address parts of this problem. None solve it completely.
+V3 models project memory as a thermodynamic system with six continuous processes:
 
-**Memory Bank (Cline community)** uses six Markdown files to record a project's current
-state — stack, architecture, progress. This solves "what the project is" but provides a
-static snapshot with no timeline, no concept of project age, and no rejection records.
+1. **Sedimentation** — Signals enter and accumulate (Git ear, Conversation ear, Calibration ear)
+2. **Routing** — Trust Router assigns Gravity (G0–G3) and routes to blood or staged
+3. **Activation** — Causal retrieval pipeline: Task → Skeleton → Capillary → Blood → DNA → Context
+4. **Decay** — Unused events age and become stale; trauma events are exempt
+5. **Compression** — Repeated patterns compress into DNA traits
+6. **Resurrection** — Archived events that keep getting referenced are revived
 
-**Cursor Rules / CLAUDE.md / Copilot Instructions** are distributed system prompts that
-tell the AI "how to write code." They do not capture "why this way" — which decisions
-carry which trade-offs, which alternatives were already eliminated.
+### Core Data Structures
 
-**ADRs** have rejection records, but they are formal documents written for humans. The
-format is heavy, solo developers rarely maintain them, and they were never designed as
-AI-consumable context.
-
-**The common problem across all these approaches: they require manual human maintenance.**
-Once the maintenance cost rises even slightly, nobody writes them. Three months later
-the files rot and the system effectively ceases to exist.
-
----
-
-## Dual-Ear Design
-
-### Why two signal sources
-
-The signals that matter for project memory are distributed across two fundamentally
-different channels. Neither channel alone provides a complete picture.
-
-### Git ear: what happened, but not why
-
-The Git ear observes code-level facts. It detects:
-
-- **Reverts** — a direction was tried and rolled back
-- **Dependency changes** — packages appeared then disappeared, or were replaced
-- **Large-scale file movement** — major restructuring events
-- **Commit frequency trends** — acceleration, deceleration, stability
-- **New contributors** — team composition changes
-
-These are objective project evolution facts. Git records all of them. But Git cannot
-tell you *why* a revert happened, *why* a dependency was removed, or *why* the team
-restructured. The reasoning behind the action is invisible to Git.
-
-### Conversation ear: why, but not what
-
-The conversation ear captures what users say during AI interactions:
-
-- **User rejections** — "don't suggest that, we tried it"
-- **Historical references** — "we did this before and it failed"
-- **Constraint declarations** — "we're in a funding sprint, no big refactors"
-- **Decisions** — "we're going with Zustand for state management"
-- **Debt acceptance** — "we know auth is coupled, we're accepting it for now"
-
-These are the highest-value constraint signals, but they exist only in conversations
-between humans and AI. Git contains none of them.
-
-### The combination
-
-With only the Git ear, you know what happened but not why.
-With only the conversation ear, you know what was said but not what actually changed
-in the code.
-
-Both ears together produce the complete picture needed to capture path dependency:
-the Git ear provides the factual substrate, the conversation ear provides the
-reasoning layer, and the combination produces memory entries that carry both evidence
-and intent.
+| Structure | Role | Storage |
+|-----------|------|---------|
+| **Skeleton** | Domain ownership map (role, owns, does_not_own, causal_keywords) | `skeleton/` |
+| **Blood** | Evolution events — the cognitive atom with full lifecycle | `blood/` |
+| **DNA** | Emergent project personality traits | `dna/` |
+| **Capillaries** | Per-domain constraint channels (constraints, debt, rejected paths) | `domains/` |
+| **Staged** | Events awaiting human review | `staged/` |
+| **Views** | Auto-generated projections for AI consumption | `views/` |
 
 ---
 
-## Trust Router: Why Not Fully Automatic
+## Gravity System (G0–G3)
 
-### The core argument: Mnemonic Sovereignty
+Replaces V2's L0–L3 trust levels. Gravity measures the weight of a cognitive signal.
 
-Fully automatic memory writing is dangerous. A single incorrect no-go entry acts like
-a corrupted system prompt — it amplifies through every subsequent AI suggestion. The
-danger is not just inserting one wrong entry, but that the error gets promoted to high
-weight through summarization, reflection, or experience memory mechanisms.
+| Level | Name | Behavior |
+|-------|------|----------|
+| G0 | Drop | Noise, duplicates — discarded |
+| G1 | Suggestion | AI proposes, no human approval needed |
+| G2 | Reflective Challenge | AI must present reasoning and alternatives |
+| G3 | Hard Constraint | Requires human ratification before entering blood |
 
-This concern has formal grounding. Research on mnemonic sovereignty (arXiv 2604.16548)
-warns explicitly: the risk lies not in the individual bad entry but in its propagation
-through the memory system.
+Gravity is multi-dimensional: `architectural`, `operational`, `local` — each can be
+low/medium/high. The `level` field (G0–G3) is the primary routing key.
 
-Cairn's position: **any memory that changes AI global behavior must not be written
-fully automatically.**
+### DNA Modulation
 
-### L0–L3: four trust levels
+DNA traits modify gravity at routing time. Example: if `simplicity_bias` is high,
+introducing a complex framework automatically upgrades gravity.
 
-| Level | Name | Storage | Behavior |
-|-------|------|---------|----------|
-| L0 | Drop | None | Noise, duplicates, low confidence — discard |
-| L1 | Candidate | `signals/` | Accumulate, wait for corroboration |
-| L2 | Staged | `staged/` | Queued for human review |
-| L3 | Auto-write | `memory/` | Written automatically under strict conditions |
+### Trauma Modulation
 
-### How signals flow through levels
+Domains with trauma events permanently increase gravity for new signals in that domain.
+
+---
+
+## Trust Router v3
+
+All signals must pass through the Trust Router. No signal bypasses it.
 
 ```
 Signal enters Trust Router
   │
-  ├→ Duplicate? → Merge into existing entry → L0/merge
+  ├→ Duplicate? → Merge into existing event → dropped
   │
-  ├→ Triggers hard L2 rule? → staged/ (regardless of source reliability)
+  ├→ Governance hard rules? (G3, DNA changes, trauma) → staged + human_ratified
   │
-  ├→ Matches L2 condition? → staged/
+  ├→ Trauma domain? → Upgrade gravity
   │
-  ├→ Matches L3 condition? → memory/ → trigger views regeneration
+  ├→ DNA modulation? → Adjust gravity based on personality traits
   │
-  ├→ Confidence ≥ medium → L1 (signals/)
+  ├→ Gravity routing:
+  │     G0 → dropped
+  │     G1 → blood (auto or system_validated based on cognitive_mode)
+  │     G2 → staged or blood (depends on cognitive_mode)
+  │     G3 → staged + human_ratified
   │
-  └→ Confidence < medium → L0 (drop)
+  └→ Return routing result
 ```
-
-When L1 candidates sharing the same domain and subject accumulate to 3 or more
-(L1_ACCUMULATION_THRESHOLD), they automatically upgrade to L2.
-
-### Hard rules: never automatic
-
-These conditions always route to L2, regardless of source reliability or confidence:
-
-- Adding a global no-go
-- Stage transitions
-- Any `behavior_effect` with `scope == global`
-- Any item in the `never_auto` configuration list
-
-### L3 conditions: when auto-write is permitted
-
-Auto-write requires all of:
-
-- Source is verifiable (e.g., `git-revert` or `git-dependency`)
-- Scope is `local` (affects one domain, not global behavior)
-- No conflict with existing memory entries
-- Not on the `never_auto` list
-
-Example: a Git revert is detected for a local dependency change. The source is
-objective (Git evidence), the scope is local, and there are no conflicts. This can
-be auto-written as an L3 entry.
-
-Counterexample: a user says "we should never use GraphQL." This affects global
-behavior. Regardless of confidence, it must go through L2 review.
 
 ---
 
-## Stage Advisory Engine
+## Governance: Three-Tier Permissions
 
-### A unique capability
+| Tier | Description | When |
+|------|-------------|------|
+| `agent_proposed` | AI writes without validation | G0–G1 in lightweight mode |
+| `system_validated` | System checks pass, no human needed | G1 in standard/institutional |
+| `human_ratified` | Requires explicit human approval | G2+ in standard, all trauma, all DNA changes |
 
-Among all surveyed tools and academic papers, **none perform automatic project stage
-inference from project signals.** The same technical suggestion has completely different
-answers depending on stage: during exploration, introducing a new dependency for rapid
-validation is fine; during maturity, the same action requires strong justification. But
-existing AI tools have no concept of which stage a project is in.
+### Cognitive Modes
 
-### Rule-based v0.1 implementation
-
-The stage engine synthesizes multiple signals:
-
-- **Project age** — months since first commit
-- **Commit frequency trend** — accelerating, stable, decelerating
-- **Dependency change rate** — how often dependencies are added or removed
-- **New file ratio** — proportion of recently created files
-
-### Four stages
-
-| Stage | Characteristics | AI guidance |
-|-------|----------------|-------------|
-| **Exploration** | Young project, high dependency churn, rapid iteration | Favor speed, tolerate experiments |
-| **Growth** | Increasing commits, stabilizing dependencies | Balance speed and stability |
-| **Maturity** | Low new-file ratio, stable architecture | Require justification for new dependencies |
-| **Maintenance** | Declining commit frequency, minimal changes | Prioritize stability, minimize risk |
-
-### Advisory only
-
-The stage engine's output is strictly advisory. When confidence is below threshold
-(0.5 in v0.1), no hard constraints are produced. Stage determination only becomes a
-formal constraint after human confirmation via `cairn_status(action: 'stage_confirm')`. Until then,
-guidance uses suggestive language ("consider," "balance") rather than prohibitive
-language ("do not," "never").
-
-Stage transitions always route through L2 — they require human review before updating
-`state.yaml`.
+| Mode | G_min for human approval | Decay speed | DNA evidence threshold |
+|------|--------------------------|-------------|----------------------|
+| `lightweight` | G3 only | Fast (30/60 days) | 5 events |
+| `standard` | G2+ | Medium (90/120 days) | 3 events |
+| `institutional` | G1+ | Slow (180/240 days) | 3 events |
 
 ---
 
-## Memory / Views Separation
+## Cognitive Trauma
 
-### The problem with conflating source and projection
+Trauma events are permanent memory markers that can never decay. They:
 
-### Data Model
+- Set `decay_override: permanent`
+- Apply `sensitivity_multiplier: 2.0` to the affected domain
+- Always require `human_ratified` governance
+- Affect DNA traits (`affects_dna: true`)
 
-Cairn strictly separates the two concerns:
+Any new signal in a trauma domain gets its gravity upgraded automatically.
 
-**`memory/` is source data (Source of Truth).** Each memory is a YAML file containing
-full provenance tracking, confidence scores, and `behavior_effect` declarations. This
-is what humans review.
+---
 
-**`views/` is automatically generated projection.** `output.md`, `domains/*.md`, and
-`stage.md` are all aggregated from `memory/` files. The AI consumes views; humans
-review source data. Views can be regenerated from memory at any time without loss.
+## Five Consistency Rules
 
-### Why this separation matters
+The Consistency Engine validates cross-subsystem coherence:
 
-**Preventing memory corruption.** If a view file becomes stale or is accidentally
-modified, regenerating it from `memory/` restores correctness. The source of truth is
-never the rendered view.
+1. **DNA-Event Consistency** — High DNA traits shouldn't contradict recent high-gravity events
+2. **No-Go Support** — No-go events with stale health are orphaned constraints
+3. **Skeleton-Reality** — Skeleton ownership should match code reality (stub in V3.0)
+4. **Archived Reactivation** — Archived events with many recent hits should be resurrected
+5. **Constraint Consistency** — Same subject can't have both avoid and prefer effects
 
-**Git diff clarity.** YAML memory files produce structured, field-level diffs that are
-far easier to review than Markdown prose changes. A reviewer can see exactly which
-field changed (`confidence`, `behavior_effect`, `revisit.status`) rather than parsing
-free-text differences.
+---
 
-**Degraded mode.** The `views/` format is compatible with Skill adapter files. When the
-MCP server is not running, adapters can read `views/` directly as a fallback.
+## Dual-Ear Design + Calibration Ear
 
-### Generation rules
+### Git Ear
 
-Views are regenerated whenever `memory/` changes:
+Detects reverts, dependency changes, large refactors from git history. Maps changed
+files to skeleton domains using causal keywords.
 
-- `views/output.md` — Extracts global no-gos, active stack decisions, accepted debt,
-  domain hooks, and stage advisory. Target 500 tokens, hard limit 800.
-- `views/domains/*.md` — Groups memory entries by domain. Generates trajectory,
-  rejected paths, known pitfalls, and open questions. Target 300 tokens per file,
-  hard limit 500.
-- `views/stage.md` — Renders current stage advisory with evidence and guidance.
+### Conversation Ear
 
-All view files carry a generated header:
+Captures user rejections, constraint declarations, decisions, debt acceptance during
+AI conversations via the `cairn_signal` MCP tool.
 
-```markdown
-<!--
-Generated by Cairn. Do not edit manually.
-Source: .cairn/memory/*.yaml
-Last generated: 2026-05-11T10:30:00+09:00
--->
-```
+### Calibration Ear
+
+Compares code reality against cognitive state: detects no-go dependencies still present
+in package.json, skeleton drift, and DNA inconsistencies.
+
+---
+
+## Blood / Views Separation
+
+**`blood/` is source data.** Each evolution event is a YAML file with full provenance,
+gravity, lifecycle metadata, trauma flags, and governance status.
+
+**`views/` is projection.** `output.md`, `domains/*.md`, and `stage.md` are aggregated
+from blood events, skeleton, DNA, and domain capillaries. Views can be regenerated
+from source data at any time.
+
+### Token Budgets
+
+- `output.md` — target 500 tokens, hard limit 800
+- `domains/*.md` — target 300 tokens per file, hard limit 500
 
 ---
 
 ## Design Principles
 
-### 1. Every module exists, but depth is controlled
+### 1. Headless cognitive runtime
 
-Cairn ships all core modules from day one — Git ear, conversation ear, Trust Router,
-Stage Advisory Engine, Memory Engine, Views Engine. But each module's intelligence
-depth in v0.1 uses rules, not LLMs. Git ear does pattern matching. Stage inference
-uses rule-based heuristics. Trust Router uses if-else logic.
+Cairn stores, validates, and routes. The host AI interprets. Cairn has no LLM — it is
+pure data engine with rule-based intelligence.
 
-The architecture is complete on day one. Intelligence deepens over subsequent versions.
+### 2. Human review authority is non-bypassable
 
-> Do not delete modules, reduce depth.
+Any event that changes global behavior — G2+ events, trauma, DNA changes — must pass
+through human ratification. No configuration can bypass this gate.
 
-### 2. Architecture is full, permissions are strict
+### 3. Facts and speculation are separated
 
-The system skeleton is complete, but L3 auto-write conditions are deliberately strict.
-The default posture is conservative: when in doubt, route to L2 for human review. As
-the system proves reliable through real-world use, L3 conditions can be gradually
-relaxed.
+`cairn_plan` is read-only. AI planning speculation never becomes project memory.
 
-> Do not reduce architecture, control permissions.
+### 4. Progressive trust through Gravity
 
-### 3. Human review authority is non-bypassable
+Signals enter with assessed gravity, may be upgraded by DNA/trauma modulation, and
+are routed accordingly. There is no mechanism to skip governance checks.
 
-Any memory that changes AI global behavior — global no-gos, stage transitions, global
-`behavior_effect` entries — must pass through L2 human review. No configuration change,
-no accumulated confidence score, and no automated process can bypass this gate.
+### 5. Cognition doesn't rot
 
-### 4. Facts and speculation are separated
-
-`cairn_plan` is a read-only advisory tool. It never writes to `signals/`, `staged/`,
-or `memory/`. AI planning speculation is not project factual memory. If plan output
-could produce memory, the system would conflate "what the AI guessed" with "what
-actually happened."
-
-### 5. Progressive trust, no skipping levels
-
-A signal starts at L1 (candidate), accumulates corroborating evidence, may upgrade to
-L2 (staged for review), and enters `memory/` only after review or L3 qualification.
-There is no mechanism to jump from raw signal to permanent memory in a single step
-without meeting strict conditions.
-
----
-
-## The `rejected` Field Remains the Most Important Field
-
-Every memory entry carries a `rejected` field that records what alternatives were
-considered and not chosen. This is the most critical field.
-
-AI models are trained to be helpful. When asked for a solution, they produce what looks
-like a good answer given available information. They cannot access the reasoning that
-already eliminated certain solutions. As a result, AI assistants reliably re-propose
-directions that were previously considered and ruled out.
-
-The `rejected` field directly addresses this. Recording "we considered tRPC and here is
-why we did not adopt it" makes that reasoning available to the AI. The `revisit.when`
-conditions that accompany each rejection give the AI a model for when a rejection
-should be reconsidered — making constraints time-bounded rather than permanent.
-
-The `rejected` field has additional structure: it lives in YAML source data
-with explicit `behavior_effect` declarations, making its constraint role machine-
-verifiable rather than dependent on AI interpretation of prose.
-
----
-
-## Adoption Model: From Reactive to Continuous
-
-### Continuous Capture
-
-Cairn automates the capture step. Instead of requiring the
-user to notice a trigger event and manually record it, the dual-ear system detects
-signals continuously:
-
-- The Git ear scans for reverts, dependency changes, and structural shifts every time
-  the server starts.
-- The conversation ear captures rejection signals, constraint declarations, and
-  decisions as they occur in natural AI interaction.
-
-The user's role shifts from "write the memory" to "review the memory." The five trigger
-events still describe when meaningful memory should exist — but the mechanism for
-getting from event to memory is now automated rather than manual.
-
-### Auto-initialization (bootstrap)
-
-On first MCP tool call, if no `.cairn/` directory exists, the server automatically:
-
-1. **Detects project metadata** — project name from directory, start date from first commit
-2. **Rule-based Git scan** — analyzes git history for candidate signals (reverts,
-   dependency removals, replacements, major restructurings)
-3. **Creates `.cairn/` structure** — config, state, and all subdirectories
-
-The guiding principle remains: incomplete is better than inaccurate. An entry with
-`[TODO]` in its `reason` field is more honest than a fabricated justification.
+Six continuous processes (sedimentation, routing, activation, decay, compression,
+resurrection) maintain thermodynamic balance. `cairn_doctor` validates consistency.
 
 ---
 
 ## Tool Compatibility
 
-Cairn operates as an MCP server using stdio transport. Any AI tool that supports
-the Model Context Protocol can use Cairn natively through typed tool calls:
-`cairn_context()`, `cairn_signal()`, `cairn_session_end()`, `cairn_status()`,
-`cairn_review()`, `cairn_memory()`, `cairn_plan()`, and `cairn_doctor()`.
+Cairn operates as an MCP server (stdio transport). 11 tools form the complete
+cognition lifecycle: init, context activation, signal capture, session management,
+governance review, and health diagnostics.
 
-For AI tools that do not support MCP, the `views/` directory provides a degradation
-path. Because `views/` provides Markdown projections, Skill adapter files work as a
-fallback when the MCP server is unavailable. The AI reads views as static files — it
-loses real-time signal capture and Trust Router integration but retains access to the
-accumulated constraint context.
-
-Supported tool configurations:
+For AI tools without MCP support, `views/` provides a degradation path via Skill
+adapter files.
 
 | Tool | MCP Support | Fallback |
 |------|-------------|----------|
@@ -421,39 +234,3 @@ Supported tool configurations:
 | GitHub Copilot | — | views/ via copilot-instructions.md |
 | Codex CLI | — | views/ via AGENTS.md |
 | Gemini CLI | — | views/ via GEMINI.md |
-
-The runtime model: the MCP server starts when the AI tool opens a project and exits
-when the project closes. Each project runs its own server instance — no global daemon,
-no database, no cloud dependency. Like a language server (LSP), it is project-scoped
-and session-lived.
-
----
-
-## Roadmap
-
-### Current Phase — Dynamic Memory Engine
-
-Transforms Cairn from a static file format into an active memory system. Core
-deliverables:
-
-- Dual-ear signal capture (Git + conversation)
-- Trust Router with L0–L3 graduated admission
-- YAML-based memory store with full provenance tracking
-- Automated views generation from memory source data
-- Rule-based Stage Advisory Engine
-- Eight MCP tools forming the complete read-capture-review-constrain loop
-- Auto-initialization (bootstrap) on first MCP tool call with Git history analysis
-- `cairn_review` MCP tool for AI-mediated memory admission
-
-v0.1 ships all modules with rule-based intelligence. Subsequent versions deepen each
-module's capability without changing the architecture.
-
-### Future versions
-
-- **v0.2** — Signal quality: enhanced Git ear patterns, deduplication, candidate
-  accumulation
-- **v0.3** — Stage engine: multi-dimensional signals, confidence improvements
-- **v0.4** — Plan engine: history × stage × domain cross-reasoning
-- **v0.5** — Memory maintenance: stale detection, conflict graphs, archive policies
-- **1.0** — Autonomous project memory: long-running validation, quantifiable AI
-  improvement, stable API

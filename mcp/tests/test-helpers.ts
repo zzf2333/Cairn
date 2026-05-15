@@ -1,54 +1,128 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { stringify as yamlStringify } from "yaml";
-import { MemoryStore } from "../src/stores/memory-store.js";
-import { SignalStore } from "../src/stores/signal-store.js";
-import { StagedStore } from "../src/stores/staged-store.js";
-import { StateStore } from "../src/stores/state-store.js";
-import { ViewsEngine } from "../src/engines/views-engine.js";
-import { MemoryEngine } from "../src/engines/memory-engine.js";
-import { TrustRouter } from "../src/engines/trust-router.js";
-import { GitEar } from "../src/engines/git-ear.js";
-import { StageEngine } from "../src/engines/stage-engine.js";
-import type { CairnContext } from "../src/server.js";
-import type { CairnPaths } from "../src/paths.js";
-import type { MemoryEntry, Config, StagedEntry } from "../src/schemas/index.js";
-import type { Signal } from "../src/schemas/signal.js";
+import { join } from "node:path";
+import type { EvolutionEvent } from "../src/schemas/evolution-event.js";
+import type { SkeletonNode } from "../src/schemas/skeleton.js";
+import type { DNAIdentity } from "../src/schemas/dna.js";
+import type { Config } from "../src/schemas/config.js";
+import type { State } from "../src/schemas/state.js";
+import type { StagedEntry } from "../src/schemas/staged-entry.js";
 
-export function makeMemory(id: string, overrides?: Partial<MemoryEntry>): MemoryEntry {
+export async function createTmpDir(): Promise<string> {
+    return mkdtemp(join(tmpdir(), "cairn-test-"));
+}
+
+export async function cleanTmpDir(dir: string): Promise<void> {
+    await rm(dir, { recursive: true, force: true });
+}
+
+const now = "2026-05-15T10:00:00Z";
+
+export function makeEvolutionEvent(id: string, overrides?: Partial<EvolutionEvent>): EvolutionEvent {
     return {
         id,
-        type: "decision",
+        time: "2026-05-15",
         domain: "api-layer",
-        scope: "local",
-        status: "active",
+        type: "architecture_decision",
+        gravity: { level: "G1" },
+        source: { type: "conversation", confidence: 0.8, verified: false, refs: [] },
+        subject: { name: "test-subject" },
+        trigger: "test trigger",
+        decision_or_change: "test decision",
+        rejected_paths: [],
+        reasoning: "test reasoning",
+        constraints_added: [],
+        constraints_removed: [],
+        accepted_debt: [],
+        behavior_effect: { type: "avoid_suggestion", instruction: "test instruction" },
+        affects: { skeleton: false, dna: false, domains: ["api-layer"] },
+        lifecycle: { validity: "tactical", decay_policy: "downgrade", resurrection_count: 0 },
         health: { state: "ok", reason: null },
-        confidence: { level: "high" },
-        source: {
-            kind: "conversation",
-            refs: [{ type: "session", id: "sess_001" }],
-            captured_at: "2026-01-01T00:00:00Z",
+        trauma: {
+            is_trauma: false,
+            sensitivity_multiplier: 1.0,
+            decay_override: null,
+            affects_dna: false,
+            requires_human_ratification: true,
         },
-        subject: { name: "REST API" },
-        summary: "Chose REST API",
-        behavior_effect: { type: "prefer_approach", instruction: "Prefer REST" },
-        revisit: { when: [], status: "not_met" },
-        relations: { related: [], conflicts: [] },
-        created_at: "2026-01-01T00:00:00Z",
-        updated_at: "2026-01-01T00:00:00Z",
+        supersedes: null,
+        conflicts_with: [],
+        related: [],
+        created_at: now,
+        updated_at: now,
+        governance_status: "auto_confirmed",
         ...overrides,
     };
 }
 
-export function makeSignal(id: string, overrides?: Partial<Signal>): Signal {
+export function makeTraumaEvent(id: string, domain: string): EvolutionEvent {
+    return makeEvolutionEvent(id, {
+        domain,
+        type: "incident",
+        gravity: { level: "G2", architectural: "high" },
+        trauma: {
+            is_trauma: true,
+            sensitivity_multiplier: 2.0,
+            decay_override: "permanent",
+            affects_dna: true,
+            requires_human_ratification: true,
+        },
+        lifecycle: { validity: "identity", decay_policy: "permanent", resurrection_count: 0 },
+        governance_status: "ratified",
+    });
+}
+
+export function makeSkeletonNode(domain: string, overrides?: Partial<SkeletonNode>): SkeletonNode {
     return {
-        id,
-        source_ear: "conversation",
-        signal_type: "decision",
-        raw_data: { what: "test", subject: "test-subject" },
-        inferred: { probable_domain: "api-layer", confidence: "medium" },
-        captured_at: "2026-01-01T00:00:00Z",
+        domain,
+        role: `${domain} module`,
+        owns: ["feature_a", "feature_b"],
+        does_not_own: ["unrelated_feature"],
+        stability: "stable",
+        dependencies: [],
+        causal_keywords: [domain, "test"],
+        ...overrides,
+    };
+}
+
+export function makeDNA(overrides?: Partial<DNAIdentity>): DNAIdentity {
+    return {
+        traits: {},
+        status: "not_yet_emerged",
+        reevaluation_mode: false,
+        compression_threshold: {
+            min_evidence: 3,
+            min_timespan_months: 3,
+            min_confidence: 0.6,
+        },
+        ...overrides,
+    };
+}
+
+export function makeConfig(overrides?: Partial<Config>): Config {
+    return {
+        version: "3.0" as const,
+        project: { name: "test-project", created: "2026-01" },
+        domains: ["api-layer", "auth"],
+        cognitive_mode: "standard",
+        stage: { override: null },
+        tech_stack: [],
+        ...overrides,
+    };
+}
+
+export function makeState(overrides?: Partial<State>): State {
+    return {
+        initialization_status: "complete",
+        last_session: { commit: null, ended_at: null },
+        stage: {
+            phase: "growth",
+            confidence: 0.7,
+            status: "advisory",
+            evidence: [],
+            guidance: [],
+        },
+        activation_log: { recent_hits: {} },
         ...overrides,
     };
 }
@@ -56,99 +130,12 @@ export function makeSignal(id: string, overrides?: Partial<Signal>): Signal {
 export function makeStagedEntry(id: string, overrides?: Partial<StagedEntry>): StagedEntry {
     return {
         id,
-        origin_signal: "sig_001",
-        draft_memory: {
-            type: "rejection",
-            domain: "api-layer",
-            summary: "Rejected approach",
-            behavior_effect: { type: "avoid_suggestion", instruction: "Do not suggest" },
-        },
+        draft_event: makeEvolutionEvent(`draft_${id}`),
         review_status: "pending",
         routing_reason: "test routing",
-        created_at: "2026-01-01T00:00:00Z",
+        gravity: "G1",
+        governance_required: "auto_confirmable",
+        created_at: now,
         ...overrides,
     };
-}
-
-export const defaultConfig: Config = {
-    version: "2.0",
-    project: { name: "test", created: "2024-01" },
-    domains: { locked: ["api-layer", "auth"] },
-    trust_policy: {
-        L3_auto_write: [
-            "source.kind == 'git-revert' AND scope == 'local'",
-            "source.kind == 'git-dependency' AND type == 'rejection' AND scope == 'local'",
-            "source.kind == 'conversation' AND type == 'rejection'",
-            "source.kind == 'conversation' AND type == 'decision'",
-            "source.kind == 'conversation' AND type == 'debt'",
-        ],
-        L2_staged: [
-            "scope == 'global'",
-            "type == 'transition' AND affects_output == true",
-        ],
-        never_auto: [],
-    },
-    stage: { override: null, auto_constraint: false },
-};
-
-export function createTestPaths(prefix: string): { root: string; paths: CairnPaths } {
-    const root = join(tmpdir(), `cairn-test-${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
-    const cairnDir = join(root, ".cairn");
-    const paths: CairnPaths = {
-        root,
-        cairnDir,
-        configYaml: join(cairnDir, "config.yaml"),
-        stateYaml: join(cairnDir, "state.yaml"),
-        signalsDir: join(cairnDir, "signals"),
-        stagedDir: join(cairnDir, "staged"),
-        memoryDir: join(cairnDir, "memory"),
-        viewsDir: join(cairnDir, "views"),
-        viewsDomainsDir: join(cairnDir, "views", "domains"),
-        sessionsDir: join(cairnDir, "sessions"),
-    };
-    return { root, paths };
-}
-
-export interface CreateTestEnvOptions {
-    configOverrides?: Partial<Config>;
-    mockGitEar?: GitEar;
-}
-
-export function createTestEnv(options?: CreateTestEnvOptions): { ctx: CairnContext; root: string } {
-    const { root, paths } = createTestPaths("env");
-    for (const dir of [
-        paths.signalsDir, paths.stagedDir, paths.memoryDir,
-        paths.viewsDir, paths.viewsDomainsDir, paths.sessionsDir,
-    ]) {
-        mkdirSync(dir, { recursive: true });
-    }
-
-    const config: Config = { ...defaultConfig, ...options?.configOverrides };
-    writeFileSync(paths.configYaml, yamlStringify(config), "utf-8");
-
-    const memoryStore = new MemoryStore(paths.memoryDir);
-    const signalStore = new SignalStore(paths.signalsDir);
-    const stagedStore = new StagedStore(paths.stagedDir);
-    const stateStore = new StateStore(paths.stateYaml);
-    const viewsEngine = new ViewsEngine(paths, memoryStore, stateStore);
-    const memoryEngine = new MemoryEngine(memoryStore, viewsEngine);
-    const trustRouter = new TrustRouter(
-        memoryStore, signalStore, stagedStore, memoryEngine, stateStore,
-    );
-    const gitEar = options?.mockGitEar ?? new GitEar(root);
-    const stageEngine = new StageEngine();
-
-    const ctx: CairnContext = {
-        paths, memoryStore, signalStore, stagedStore, stateStore,
-        viewsEngine, trustRouter, gitEar, stageEngine, memoryEngine,
-    };
-
-    return { ctx, root };
-}
-
-export function createMockGitEar(signals: Signal[] = [], head: string | null = "abc123") {
-    return {
-        scanSinceLastSession: async () => signals,
-        getHeadCommit: async () => head,
-    } as unknown as GitEar;
 }

@@ -1,62 +1,79 @@
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { resolve, join } from "node:path";
 
 export interface CairnPaths {
     root: string;
-    cairnDir: string;
-    configYaml: string;
-    stateYaml: string;
-    signalsDir: string;
-    stagedDir: string;
-    memoryDir: string;
-    viewsDir: string;
-    viewsDomainsDir: string;
-    sessionsDir: string;
+    cairn: string;
+    config: string;
+    state: string;
+    skeleton: string;
+    domains: string;
+    blood: string;
+    dna: string;
+    dnaIdentity: string;
+    dnaImprint: string;
+    staged: string;
+    signals: string;
+    signalsGit: string;
+    signalsCalibration: string;
+    signalsConversation: string;
+    governance: string;
+    governancePolicy: string;
+    governanceAudit: string;
+    views: string;
+    viewsOutput: string;
+    viewsStage: string;
+    viewsDomains: string;
+    sessions: string;
 }
 
-export function findCairnRoot(startDir?: string): string | null {
-    const envRoot = process.env["CAIRN_ROOT"];
-    if (envRoot && existsSync(join(envRoot, ".cairn"))) {
-        return envRoot;
-    }
+export function buildPaths(projectRoot: string): CairnPaths {
+    const root = resolve(projectRoot);
+    const cairn = join(root, ".cairn");
+    const signals = join(cairn, "signals");
+    const governance = join(cairn, "governance");
+    const dna = join(cairn, "dna");
+    const views = join(cairn, "views");
 
-    let dir = startDir ?? process.cwd();
-    while (true) {
-        if (existsSync(join(dir, ".cairn"))) {
-            return dir;
-        }
-        const parent = dirname(dir);
-        if (parent === dir) break;
-        dir = parent;
-    }
-
-    return null;
-}
-
-export function buildPaths(root: string): CairnPaths {
-    const cairnDir = join(root, ".cairn");
-    const viewsDir = join(cairnDir, "views");
     return {
         root,
-        cairnDir,
-        configYaml: join(cairnDir, "config.yaml"),
-        stateYaml: join(cairnDir, "state.yaml"),
-        signalsDir: join(cairnDir, "signals"),
-        stagedDir: join(cairnDir, "staged"),
-        memoryDir: join(cairnDir, "memory"),
-        viewsDir,
-        viewsDomainsDir: join(viewsDir, "domains"),
-        sessionsDir: join(cairnDir, "sessions"),
+        cairn,
+        config: join(cairn, "config.yaml"),
+        state: join(cairn, "state.yaml"),
+        skeleton: join(cairn, "skeleton"),
+        domains: join(cairn, "domains"),
+        blood: join(cairn, "blood"),
+        dna,
+        dnaIdentity: join(dna, "identity.yaml"),
+        dnaImprint: join(dna, "imprint.yaml"),
+        staged: join(cairn, "staged"),
+        signals,
+        signalsGit: join(signals, "raw_git"),
+        signalsCalibration: join(signals, "raw_calibration"),
+        signalsConversation: join(signals, "raw_conversation"),
+        governance,
+        governancePolicy: join(governance, "policy.yaml"),
+        governanceAudit: join(governance, "audit.yaml"),
+        views,
+        viewsOutput: join(views, "output.md"),
+        viewsStage: join(views, "stage.md"),
+        viewsDomains: join(views, "domains"),
+        sessions: join(cairn, "sessions"),
     };
 }
 
-export function resolvePaths(startDir?: string): CairnPaths {
-    const root = findCairnRoot(startDir);
-    if (!root) {
-        throw new Error(
-            "No .cairn/ directory found in this directory or any parent.\n\n" +
-                "Cairn will auto-initialize on first MCP tool call.",
-        );
-    }
-    return buildPaths(root);
-}
+export const ALL_DIRS = (p: CairnPaths): string[] => [
+    p.cairn,
+    p.skeleton,
+    p.domains,
+    p.blood,
+    p.dna,
+    p.staged,
+    p.signals,
+    p.signalsGit,
+    p.signalsCalibration,
+    p.signalsConversation,
+    p.governance,
+    p.views,
+    p.viewsDomains,
+    p.sessions,
+];

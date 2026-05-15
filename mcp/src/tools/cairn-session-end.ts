@@ -1,9 +1,5 @@
-import { writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { stringify as yamlStringify } from "yaml";
-import type { CairnContext } from "../server.js";
-import { toolResult } from "../errors.js";
-import { DEFAULT_L3_AUTO_WRITE } from "../schemas/config.js";
+import type { CairnContext } from "../context.js";
+import { toolResult, formatToolError } from "../errors.js";
 import type { SessionRecord } from "../schemas/index.js";
 
 interface SessionEndArgs {
@@ -13,101 +9,72 @@ interface SessionEndArgs {
     unresolved?: string[];
 }
 
-export async function handleCairnSessionEnd(
-    ctx: CairnContext,
-    args: SessionEndArgs,
-) {
-    const now = new Date().toISOString();
-    const dateSlug = now.slice(0, 10).replace(/-/g, "_");
+function formatSessionId(now: Date): string {
+    const y = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const h = String(now.getHours()).padStart(2, "0");
+    const mi = String(now.getMinutes()).padStart(2, "0");
+    const s = String(now.getSeconds()).padStart(2, "0");
+    return `sess_${y}_${mo}_${d}_${h}${mi}${s}`;
+}
 
-    // 1. Process L1 signals — check for accumulation upgrades
-    const signals = ctx.signalStore.loadAll();
-    let newStaged = 0;
-    let newMemory = 0;
-
-    // Group by domain+subject for accumulation check
-    const groups = new Map<string, typeof signals>();
-    for (const signal of signals) {
-        const key = `${signal.inferred.probable_domain ?? "unknown"}::${(signal.raw_data as Record<string, unknown>)["subject"] ?? signal.signal_type}`;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)!.push(signal);
-    }
-
-    // Load config
-    let config;
+export async function handleSessionEnd(ctx: CairnContext, args: Record<string, unknown>) {
     try {
-        config = ctx.stateStore.loadConfig(ctx.paths.configYaml);
-    } catch {
-        config = {
-            version: "2.0",
-            project: { name: "unknown", created: now.slice(0, 7) },
-            domains: { locked: [] },
-            trust_policy: {
-                L3_auto_write: DEFAULT_L3_AUTO_WRITE,
-                L2_staged: [],
-                never_auto: [],
-            },
-            stage: { override: null, auto_constraint: false },
-            tech_stack: [],
-        };
-    }
+        const {
+            summary,
+            changed_domains: changedDomains,
+            decisions_made: decisionsMade,
+            unresolved,
+        } = args as unknown as SessionEndArgs;
 
-    const routedCounts = { L0: 0, L1: 0, L2: 0, L3: 0 };
+        const now = new Date();
+        const nowIso = now.toISOString();
+        const sessionId = formatSessionId(now);
 
-    for (const [, groupSignals] of groups) {
-        if (groupSignals.length >= 3) {
-            // Accumulated enough — re-route the latest
-            const latest = groupSignals[groupSignals.length - 1];
-            const result = ctx.trustRouter.route(latest, config);
-            routedCounts[result.level]++;
-            if (result.route === "staged") newStaged++;
-            if (result.route === "memory") newMemory++;
+        const headCommit = await ctx.gitEar.getHeadCommit();
+
+        const state = await ctx.stateStore.load();
+        state.last_session.commit = headCommit;
+        state.last_session.ended_at = nowIso;
+        await ctx.stateStore.save(state);
+
+        const config = await ctx.configStore.load();
+        const cognitiveMode = config?.cognitive_mode ?? "standard";
+        const decayActions = await ctx.decayEngine.checkDecay(cognitiveMode);
+
+        for (const action of decayActions) {
+            if (action.action === "mark_stale") {
+                await ctx.bloodEngine.archive(action.event_id, action.reason);
+            }
         }
+
+        await ctx.viewsEngine.regenerate();
+
+        const record: SessionRecord = {
+            id: sessionId,
+            started_at: nowIso,
+            ended_at: nowIso,
+            summary,
+            signals_captured: 0,
+            signals_routed: { G0: 0, G1: 0, G2: 0, G3: 0 },
+            domains_touched: changedDomains ?? [],
+            decisions_made: decisionsMade ?? [],
+            unresolved: unresolved ?? [],
+        };
+
+        await ctx.sessionStore.save(record);
+
+        const stagedCount = await ctx.stagedStore.count();
+
+        return toolResult(JSON.stringify({
+            session_id: sessionId,
+            commit: headCommit,
+            decay_actions: decayActions.length,
+            staged_pending: stagedCount,
+            summary,
+        }));
+    } catch (error) {
+        return formatToolError(error);
     }
-
-    // 2. Generate session record
-    mkdirSync(ctx.paths.sessionsDir, { recursive: true });
-    const session: SessionRecord = {
-        id: `sess_${dateSlug}_${Date.now().toString(36)}`,
-        started_at: ctx.stateStore.load().last_session_at ?? now,
-        ended_at: now,
-        summary: args.summary,
-        signals_captured: signals.length,
-        signals_routed: routedCounts,
-        domains_touched: args.changed_domains ?? [],
-        decisions_made: args.decisions_made ?? [],
-        unresolved: args.unresolved ?? [],
-        context_injections: [],
-    };
-
-    writeFileSync(
-        join(ctx.paths.sessionsDir, `${session.id}.yaml`),
-        yamlStringify(session),
-        "utf-8",
-    );
-
-    // 3. Regenerate views
-    ctx.viewsEngine.regenerate();
-
-    // 4. Update state
-    const state = ctx.stateStore.load();
-    state.last_session_at = now;
-    try {
-        const head = await ctx.gitEar.getHeadCommit();
-        if (head) state.last_session_commit = head;
-    } catch {}
-    ctx.stateStore.save(state);
-
-    return toolResult(
-        JSON.stringify(
-            {
-                signals_processed: signals.length,
-                new_staged: newStaged,
-                new_memory: newMemory,
-                views_regenerated: true,
-            },
-            null,
-            2,
-        ),
-    );
 }

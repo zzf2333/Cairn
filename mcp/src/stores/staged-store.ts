@@ -1,110 +1,71 @@
-import {
-    readFileSync,
-    writeFileSync,
-    readdirSync,
-    existsSync,
-    unlinkSync,
-} from "node:fs";
+import { readdir, readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import { StagedEntrySchema, type StagedEntry } from "../schemas/index.js";
-import {
-    MemoryEntrySchema,
-    type MemoryEntry,
-    type BehaviorEffect,
-} from "../schemas/memory-entry.js";
 
 export class StagedStore {
-    constructor(private dir: string) {}
+    constructor(private readonly dir: string) {}
 
-    loadAll(): StagedEntry[] {
-        if (!existsSync(this.dir)) return [];
-        const files = readdirSync(this.dir).filter((f) => f.endsWith(".yaml"));
-        const entries: StagedEntry[] = [];
-        for (const file of files) {
-            const entry = this.loadFile(join(this.dir, file));
-            if (entry) entries.push(entry);
+    async ensureDir(): Promise<void> {
+        await mkdir(this.dir, { recursive: true });
+    }
+
+    async loadAll(): Promise<StagedEntry[]> {
+        let entries: string[];
+        try {
+            entries = await readdir(this.dir);
+        } catch (err: unknown) {
+            if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+            throw err;
         }
-        return entries;
+        const results: StagedEntry[] = [];
+        for (const file of entries.filter(f => f.endsWith(".yaml"))) {
+            const raw = await readFile(join(this.dir, file), "utf-8");
+            results.push(StagedEntrySchema.parse(yamlParse(raw)));
+        }
+        return results;
     }
 
-    loadPending(): StagedEntry[] {
-        return this.loadAll().filter((e) => e.review_status === "pending");
+    async load(id: string): Promise<StagedEntry | null> {
+        try {
+            const raw = await readFile(join(this.dir, `${id}.yaml`), "utf-8");
+            return StagedEntrySchema.parse(yamlParse(raw));
+        } catch (err: unknown) {
+            if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+            throw err;
+        }
     }
 
-    save(entry: StagedEntry): void {
-        const parsed = StagedEntrySchema.parse(entry);
-        const filename = `${parsed.id}.yaml`;
-        writeFileSync(
-            join(this.dir, filename),
-            yamlStringify(parsed),
+    async save(entry: StagedEntry): Promise<void> {
+        await mkdir(this.dir, { recursive: true });
+        await writeFile(
+            join(this.dir, `${entry.id}.yaml`),
+            yamlStringify(entry),
             "utf-8",
         );
     }
 
-    accept(id: string): MemoryEntry | null {
-        const staged = this.loadAll().find((e) => e.id === id);
-        if (!staged) return null;
-
-        const now = new Date().toISOString();
-        const draft = staged.draft_memory;
-
-        const sourceKind = staged.origin_signal.startsWith("sig_git_") ? "manual" : "conversation";
-        const memory = MemoryEntrySchema.parse({
-            id: `mem_${id.replace("staged_", "")}`,
-            type: draft.type,
-            domain: draft.domain,
-            scope: draft.scope,
-            status: "active",
-            health: { state: "ok", reason: null },
-            confidence: draft.confidence ?? { level: "medium" },
-            source: {
-                kind: sourceKind as "conversation" | "manual" | "git-revert" | "git-dependency",
-                refs: [{ type: "session", id: staged.origin_signal }],
-                captured_at: staged.created_at,
-            },
-            subject: draft.subject ?? { name: draft.summary.slice(0, 50) },
-            summary: draft.summary,
-            rejected: draft.rejected,
-            chosen: draft.chosen,
-            behavior_effect: draft.behavior_effect,
-            revisit: draft.revisit ?? { when: [], status: "not_met" },
-            relations: { related: [], conflicts: [] },
-            created_at: staged.created_at,
-            updated_at: now,
-        } satisfies MemoryEntry);
-
-        // Update staged status
-        staged.review_status = "accepted";
-        this.save(staged);
-
-        return memory;
-    }
-
-    reject(id: string): boolean {
-        const staged = this.loadAll().find((e) => e.id === id);
-        if (!staged) return false;
-        staged.review_status = "rejected";
-        this.save(staged);
-        return true;
-    }
-
-    remove(id: string): boolean {
-        const filepath = join(this.dir, `${id}.yaml`);
-        if (existsSync(filepath)) {
-            unlinkSync(filepath);
-            return true;
-        }
-        return false;
-    }
-
-    private loadFile(filepath: string): StagedEntry | null {
+    async remove(id: string): Promise<void> {
         try {
-            const raw = readFileSync(filepath, "utf-8");
-            const data = yamlParse(raw);
-            return StagedEntrySchema.parse(data);
-        } catch {
-            return null;
+            await unlink(join(this.dir, `${id}.yaml`));
+        } catch (err: unknown) {
+            if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
+            throw err;
+        }
+    }
+
+    async findPending(): Promise<StagedEntry[]> {
+        const all = await this.loadAll();
+        return all.filter(e => e.review_status === "pending");
+    }
+
+    async count(): Promise<number> {
+        try {
+            const entries = await readdir(this.dir);
+            return entries.filter(f => f.endsWith(".yaml")).length;
+        } catch (err: unknown) {
+            if ((err as NodeJS.ErrnoException).code === "ENOENT") return 0;
+            throw err;
         }
     }
 }
