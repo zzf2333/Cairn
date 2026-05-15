@@ -151,7 +151,7 @@ export function createCairnServer(
     const server = new McpServer(
         {
             name: "cairn",
-            version: "0.2.2",
+            version: "0.2.3",
         },
         {
             instructions: CAIRN_INSTRUCTIONS,
