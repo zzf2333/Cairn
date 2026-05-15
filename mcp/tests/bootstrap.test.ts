@@ -187,4 +187,76 @@ describe("bootstrapCairnDir", () => {
         const output = readFileSync(join(dir, ".cairn", "views", "output.md"), "utf-8");
         expect(output).toContain("no-go");
     }, 30000);
+
+    it("detects workspace package dependencies in pnpm monorepo", async () => {
+        const dir = makeTempDir("monorepo");
+        dirs.push(dir);
+
+        writeFileSync(join(dir, "package.json"), JSON.stringify({
+            name: "my-monorepo", private: true,
+            devDependencies: { turbo: "^2.0.0" },
+        }));
+        writeFileSync(join(dir, "pnpm-workspace.yaml"), "packages:\n  - 'apps/*'\n");
+
+        mkdirSync(join(dir, "apps", "web"), { recursive: true });
+        writeFileSync(join(dir, "apps", "web", "package.json"), JSON.stringify({
+            name: "@mono/web",
+            dependencies: { next: "15.0.0", react: "^19.0.0", zustand: "^5.0.0" },
+            devDependencies: { vitest: "^2.0.0" },
+        }));
+
+        mkdirSync(join(dir, "apps", "api"), { recursive: true });
+        writeFileSync(join(dir, "apps", "api", "pyproject.toml"), [
+            '[project]',
+            'name = "api"',
+            'dependencies = [',
+            '    "fastapi>=0.115.0",',
+            '    "sqlalchemy>=2.0.0",',
+            '    "redis>=5.0.0",',
+            ']',
+        ].join("\n"));
+
+        const result = await bootstrapCairnDir(dir);
+
+        expect(result.created).toBe(true);
+        const memFiles = readdirSync(join(dir, ".cairn", "memory"))
+            .filter(f => f.endsWith(".yaml"));
+        const memNames = memFiles.map(f => f.replace(".yaml", ""));
+
+        expect(memNames).toContain("mem_bootstrap_next_js");
+        expect(memNames).toContain("mem_bootstrap_react");
+        expect(memNames).toContain("mem_bootstrap_zustand");
+        expect(memNames).toContain("mem_bootstrap_vitest");
+        expect(memNames).toContain("mem_bootstrap_fastapi");
+        expect(memNames).toContain("mem_bootstrap_sqlalchemy");
+        expect(memNames).toContain("mem_bootstrap_redis");
+        expect(memNames).toContain("mem_bootstrap_turborepo");
+        expect(memNames).toContain("mem_bootstrap_pnpm_workspaces");
+    });
+
+    it("detects npm workspace package dependencies", async () => {
+        const dir = makeTempDir("npm-ws");
+        dirs.push(dir);
+
+        writeFileSync(join(dir, "package.json"), JSON.stringify({
+            name: "npm-monorepo", private: true,
+            workspaces: ["packages/*"],
+        }));
+
+        mkdirSync(join(dir, "packages", "ui"), { recursive: true });
+        writeFileSync(join(dir, "packages", "ui", "package.json"), JSON.stringify({
+            name: "@mono/ui",
+            dependencies: { react: "^18.0.0", tailwindcss: "^3.0.0" },
+        }));
+
+        const result = await bootstrapCairnDir(dir);
+
+        expect(result.created).toBe(true);
+        const memFiles = readdirSync(join(dir, ".cairn", "memory"))
+            .filter(f => f.endsWith(".yaml"));
+        const memNames = memFiles.map(f => f.replace(".yaml", ""));
+
+        expect(memNames).toContain("mem_bootstrap_react");
+        expect(memNames).toContain("mem_bootstrap_tailwind_css");
+    });
 });

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-15
+
+### Changed
+
+- **Full-history git analysis**: First bootstrap now scans the complete commit history instead of only the last 5 commits. Dependency changes, large refactors, and reverts across the entire project history are detected
+- **Per-commit dependency analysis**: Rewrote `detectDependencyChanges` to analyze each commit individually via `git log --diff-filter=M`, fixing the "net diff" bug where intermediate removals were masked by the final state
+- **Rich signal metadata**: All git-ear signals now populate `what`, `reason`, and `subject` fields in `raw_data`, producing human-readable memory summaries instead of signal-type placeholders
+- **Package.json key filtering**: `extractPackageName` now skips structural keys (`dependencies`, `name`, `scripts`, etc.) to avoid false positive dependency signals
+
+### Added
+
+- **Monorepo workspace scanning**: Bootstrap discovers and scans workspace packages from `pnpm-workspace.yaml`, `package.json` workspaces, and `pyproject.toml` uv workspaces. Tech stack detection coverage goes from root-only to all workspace packages
+- **Expanded tech detection**: Added 15+ packages to NODE_TECH_MAP (React Query, Zustand, Redux, Turborepo, React Flow, Socket.IO, etc.) and 10+ Python libraries (SQLAlchemy, Alembic, asyncpg, Redis, APScheduler, Uvicorn, Pydantic, HTTPX)
+- **Domain inference from file paths**: New `classifyFilePath` and `inferDomainFromFiles` methods map changed files to domains (frontend, backend, worker, database, deployment, auth, testing)
+- **Dependency file domain inference**: `inferDomainFromDepFile` classifies dep files by their workspace location (e.g., `apps/api/pyproject.toml` → backend)
+- **Commit message pattern analysis**: New `detectCommitPatterns` method extracts domain activity signals from commit messages using keyword matching and conventional commit scope parsing
+- **Tech transition detection**: Detects migration patterns in commit messages (`migrate from X to Y`, `replace X with Y`, etc.) and produces decision signals
+- **Young project stage inference**: Projects younger than 3 months now default to "exploration" phase instead of falling through to the default "growth 0.4" branch
+- **Tests**: 15 new test cases covering full-history scanning, signal metadata, domain inference, commit patterns, tech transitions, young project stage, and monorepo workspace detection
+
 ## [0.2.9] - 2026-05-15
 
 ### Changed

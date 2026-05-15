@@ -40,6 +40,27 @@ export class StageEngine {
         let confidence: number;
         const evidence: StageSnapshot["evidence"] = [];
 
+        if (projectAgeMonths < 3) {
+            phase = "exploration";
+            confidence = dependencyChangeRate > 0.2 ? 0.65 : 0.55;
+            evidence.push(
+                { source: "git", signal: `Young project: ${projectAgeMonths} months (< 3)` },
+            );
+            if (dependencyChangeRate > 0.2) {
+                evidence.push(
+                    { source: "git", signal: `High dependency churn: ${dependencyChangeRate} (> 0.2)` },
+                );
+            }
+            return {
+                phase,
+                confidence,
+                status: "advisory",
+                evidence,
+                guidance: PHASE_GUIDANCE[phase],
+                last_updated: now,
+            };
+        }
+
         if (projectAgeMonths < 6 && dependencyChangeRate > 0.3) {
             phase = "exploration";
             confidence = 0.6;

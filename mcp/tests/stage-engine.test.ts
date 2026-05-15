@@ -92,6 +92,43 @@ describe("inferStage — boundary conditions", () => {
         expect(result.phase).not.toBe("exploration");
     });
 
+    it("young project (< 3 months) defaults to exploration", () => {
+        const result = engine.inferStage({
+            projectAgeMonths: 1,
+            commitTrend: 1.0,
+            dependencyChangeRate: 0.0,
+            newFileRatio: 0.3,
+        });
+
+        expect(result.phase).toBe("exploration");
+        expect(result.confidence).toBe(0.55);
+        expect(result.evidence.some(e => e.signal.includes("Young project"))).toBe(true);
+    });
+
+    it("young project with high dep churn gets higher confidence", () => {
+        const result = engine.inferStage({
+            projectAgeMonths: 2,
+            commitTrend: 1.0,
+            dependencyChangeRate: 0.3,
+            newFileRatio: 0.5,
+        });
+
+        expect(result.phase).toBe("exploration");
+        expect(result.confidence).toBe(0.65);
+    });
+
+    it("project at exactly 3 months does NOT enter young-project path", () => {
+        const result = engine.inferStage({
+            projectAgeMonths: 3,
+            commitTrend: 1.0,
+            dependencyChangeRate: 0.0,
+            newFileRatio: 0.3,
+        });
+
+        // Falls through to the default branch, not exploration young-project
+        expect(result.evidence.every(e => !e.signal.includes("Young project"))).toBe(true);
+    });
+
     it("commitTrend=1.2 exactly does NOT match > 1.2", () => {
         const result = engine.inferStage({
             projectAgeMonths: 12,

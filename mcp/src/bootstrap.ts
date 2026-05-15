@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { homedir } from "node:os";
+import { parse as yamlParse } from "yaml";
 import { stringify as yamlStringify } from "yaml";
 import { simpleGit } from "simple-git";
 import { buildPaths, type CairnPaths } from "./paths.js";
@@ -110,7 +111,104 @@ const NODE_TECH_MAP: Record<string, TechDetection> = {
     mongoose: { domain: "database", name: "Mongoose", summary: "MongoDB ODM: Mongoose" },
     sequelize: { domain: "database", name: "Sequelize", summary: "ORM: Sequelize" },
     typeorm: { domain: "database", name: "TypeORM", summary: "ORM: TypeORM" },
+    "@tanstack/react-query": { domain: "frontend", name: "React Query", summary: "Data fetching: React Query" },
+    "react-query": { domain: "frontend", name: "React Query", summary: "Data fetching: React Query" },
+    zustand: { domain: "state-management", name: "Zustand", summary: "State management: Zustand" },
+    redux: { domain: "state-management", name: "Redux", summary: "State management: Redux" },
+    "@reduxjs/toolkit": { domain: "state-management", name: "Redux Toolkit", summary: "State management: Redux Toolkit" },
+    turbo: { domain: "build", name: "Turborepo", summary: "Build tool: Turborepo" },
+    "@xyflow/react": { domain: "frontend", name: "React Flow", summary: "Diagramming: React Flow" },
+    reactflow: { domain: "frontend", name: "React Flow", summary: "Diagramming: React Flow" },
+    "socket.io": { domain: "backend", name: "Socket.IO", summary: "Real-time: Socket.IO" },
+    "socket.io-client": { domain: "frontend", name: "Socket.IO Client", summary: "Real-time: Socket.IO Client" },
+    jotai: { domain: "state-management", name: "Jotai", summary: "State management: Jotai" },
+    recoil: { domain: "state-management", name: "Recoil", summary: "State management: Recoil" },
+    mobx: { domain: "state-management", name: "MobX", summary: "State management: MobX" },
+    "next-auth": { domain: "auth", name: "NextAuth", summary: "Auth: NextAuth" },
+    "better-auth": { domain: "auth", name: "BetterAuth", summary: "Auth: BetterAuth" },
 };
+
+function discoverWorkspaceDirs(root: string): string[] {
+    const dirs: string[] = [];
+    const MAX_WORKSPACE_DIRS = 20;
+
+    function expandGlob(base: string, pattern: string): string[] {
+        const result: string[] = [];
+        const cleaned = pattern.replace(/\/\*\*$/, "/*").replace(/\/$/, "");
+        const parts = cleaned.split("/");
+        let current = base;
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            if (part === "*") {
+                try {
+                    const entries = readdirSync(current, { withFileTypes: true });
+                    for (const e of entries) {
+                        if (e.isDirectory() && !e.name.startsWith(".") && e.name !== "node_modules") {
+                            const full = join(current, e.name);
+                            if (i === parts.length - 1) {
+                                result.push(full);
+                            }
+                        }
+                    }
+                } catch { /* ignore */ }
+                return result;
+            }
+            current = join(current, part);
+        }
+        if (existsSync(current)) result.push(current);
+        return result;
+    }
+
+    // pnpm-workspace.yaml
+    try {
+        const wsFile = join(root, "pnpm-workspace.yaml");
+        if (existsSync(wsFile)) {
+            const content = readFileSync(wsFile, "utf-8");
+            const parsed = yamlParse(content) as { packages?: string[] };
+            if (Array.isArray(parsed?.packages)) {
+                for (const pattern of parsed.packages) {
+                    if (typeof pattern === "string" && !pattern.startsWith("!")) {
+                        dirs.push(...expandGlob(root, pattern));
+                    }
+                }
+            }
+        }
+    } catch { /* ignore */ }
+
+    // package.json workspaces (npm/yarn)
+    if (dirs.length === 0) {
+        try {
+            const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf-8"));
+            const workspaces = Array.isArray(pkg.workspaces)
+                ? pkg.workspaces
+                : Array.isArray(pkg.workspaces?.packages) ? pkg.workspaces.packages : [];
+            for (const pattern of workspaces) {
+                if (typeof pattern === "string" && !pattern.startsWith("!")) {
+                    dirs.push(...expandGlob(root, pattern));
+                }
+            }
+        } catch { /* ignore */ }
+    }
+
+    // Python uv workspace (pyproject.toml)
+    if (dirs.length === 0) {
+        try {
+            const pyproject = readFileSync(join(root, "pyproject.toml"), "utf-8");
+            const memberMatch = pyproject.match(/\[tool\.uv\.workspace\][\s\S]*?members\s*=\s*\[([^\]]*)\]/);
+            if (memberMatch) {
+                const members = memberMatch[1].match(/"([^"]+)"/g);
+                if (members) {
+                    for (const m of members) {
+                        const pattern = m.replace(/"/g, "");
+                        dirs.push(...expandGlob(root, pattern));
+                    }
+                }
+            }
+        } catch { /* ignore */ }
+    }
+
+    return dirs.slice(0, MAX_WORKSPACE_DIRS);
+}
 
 function detectTechStack(root: string): MemoryEntry[] {
     const entries: MemoryEntry[] = [];
@@ -185,6 +283,15 @@ function detectTechStack(root: string): MemoryEntry[] {
         if (py.includes("pytest")) addEntry({ domain: "testing", name: "pytest", summary: "Test runner: pytest" });
         if (py.includes("torch") || py.includes("pytorch")) addEntry({ domain: "ml", name: "PyTorch", summary: "ML framework: PyTorch" });
         if (py.includes("tensorflow")) addEntry({ domain: "ml", name: "TensorFlow", summary: "ML framework: TensorFlow" });
+        if (py.includes("sqlalchemy")) addEntry({ domain: "database", name: "SQLAlchemy", summary: "ORM: SQLAlchemy" });
+        if (py.includes("alembic")) addEntry({ domain: "database", name: "Alembic", summary: "Database migrations: Alembic" });
+        if (py.includes("asyncpg") || py.includes("psycopg")) addEntry({ domain: "database", name: "PostgreSQL", summary: "Database: PostgreSQL" });
+        if (/\bredis\b/.test(py) || py.includes("aioredis")) addEntry({ domain: "caching", name: "Redis", summary: "Cache/queue: Redis" });
+        if (py.includes("celery")) addEntry({ domain: "async", name: "Celery", summary: "Task queue: Celery" });
+        if (py.includes("apscheduler")) addEntry({ domain: "async", name: "APScheduler", summary: "Scheduler: APScheduler" });
+        if (py.includes("uvicorn")) addEntry({ domain: "backend", name: "Uvicorn", summary: "ASGI server: Uvicorn" });
+        if (py.includes("pydantic")) addEntry({ domain: "backend", name: "Pydantic", summary: "Validation: Pydantic" });
+        if (py.includes("httpx")) addEntry({ domain: "backend", name: "HTTPX", summary: "HTTP client: HTTPX" });
     } catch { /* not a python project */ }
 
     // Docker
@@ -209,6 +316,70 @@ function detectTechStack(root: string): MemoryEntry[] {
         addEntry({ domain: "infra", name: "Lerna", summary: "Monorepo: Lerna" });
     } else if (existsSync(join(root, "nx.json"))) {
         addEntry({ domain: "infra", name: "Nx", summary: "Monorepo: Nx" });
+    }
+
+    // Scan workspace packages for additional tech
+    const workspaceDirs = discoverWorkspaceDirs(root);
+    for (const wsDir of workspaceDirs) {
+        // Node.js / package.json in workspace
+        try {
+            const pkg = JSON.parse(readFileSync(join(wsDir, "package.json"), "utf-8"));
+            const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+            for (const dep of Object.keys(allDeps)) {
+                const tech = NODE_TECH_MAP[dep];
+                if (tech) addEntry(tech);
+            }
+        } catch { /* not a node package */ }
+
+        // TypeScript in workspace
+        if (existsSync(join(wsDir, "tsconfig.json"))) {
+            addEntry({ domain: "language", name: "TypeScript", summary: "Language: TypeScript" });
+        }
+
+        // Python in workspace
+        try {
+            const py = existsSync(join(wsDir, "pyproject.toml"))
+                ? readFileSync(join(wsDir, "pyproject.toml"), "utf-8")
+                : existsSync(join(wsDir, "requirements.txt"))
+                    ? readFileSync(join(wsDir, "requirements.txt"), "utf-8")
+                    : null;
+            if (py) {
+                addEntry({ domain: "language", name: "Python", summary: "Language: Python" });
+                if (py.includes("django")) addEntry({ domain: "backend", name: "Django", summary: "Web framework: Django" });
+                if (py.includes("fastapi")) addEntry({ domain: "backend", name: "FastAPI", summary: "Web framework: FastAPI" });
+                if (py.includes("flask")) addEntry({ domain: "backend", name: "Flask", summary: "Web framework: Flask" });
+                if (py.includes("pytest")) addEntry({ domain: "testing", name: "pytest", summary: "Test runner: pytest" });
+                if (py.includes("torch") || py.includes("pytorch")) addEntry({ domain: "ml", name: "PyTorch", summary: "ML framework: PyTorch" });
+                if (py.includes("tensorflow")) addEntry({ domain: "ml", name: "TensorFlow", summary: "ML framework: TensorFlow" });
+                if (py.includes("sqlalchemy")) addEntry({ domain: "database", name: "SQLAlchemy", summary: "ORM: SQLAlchemy" });
+                if (py.includes("alembic")) addEntry({ domain: "database", name: "Alembic", summary: "Database migrations: Alembic" });
+                if (py.includes("asyncpg") || py.includes("psycopg")) addEntry({ domain: "database", name: "PostgreSQL", summary: "Database: PostgreSQL" });
+                if (/\bredis\b/.test(py) || py.includes("aioredis")) addEntry({ domain: "caching", name: "Redis", summary: "Cache/queue: Redis" });
+                if (py.includes("celery")) addEntry({ domain: "async", name: "Celery", summary: "Task queue: Celery" });
+                if (py.includes("apscheduler")) addEntry({ domain: "async", name: "APScheduler", summary: "Scheduler: APScheduler" });
+                if (py.includes("uvicorn")) addEntry({ domain: "backend", name: "Uvicorn", summary: "ASGI server: Uvicorn" });
+                if (py.includes("pydantic")) addEntry({ domain: "backend", name: "Pydantic", summary: "Validation: Pydantic" });
+                if (py.includes("httpx")) addEntry({ domain: "backend", name: "HTTPX", summary: "HTTP client: HTTPX" });
+            }
+        } catch { /* not a python package */ }
+
+        // Rust in workspace
+        try {
+            const cargo = readFileSync(join(wsDir, "Cargo.toml"), "utf-8");
+            addEntry({ domain: "language", name: "Rust", summary: "Language: Rust" });
+            if (cargo.includes("actix")) addEntry({ domain: "backend", name: "Actix", summary: "Web framework: Actix" });
+            if (cargo.includes("axum")) addEntry({ domain: "backend", name: "Axum", summary: "Web framework: Axum" });
+            if (cargo.includes("tokio")) addEntry({ domain: "runtime", name: "Tokio", summary: "Async runtime: Tokio" });
+        } catch { /* not a rust package */ }
+
+        // Go in workspace
+        try {
+            const gomod = readFileSync(join(wsDir, "go.mod"), "utf-8");
+            addEntry({ domain: "language", name: "Go", summary: "Language: Go" });
+            if (gomod.includes("gin-gonic")) addEntry({ domain: "backend", name: "Gin", summary: "Web framework: Gin" });
+            if (gomod.includes("echo")) addEntry({ domain: "backend", name: "Echo", summary: "Web framework: Echo" });
+            if (gomod.includes("fiber")) addEntry({ domain: "backend", name: "Fiber", summary: "Web framework: Fiber" });
+        } catch { /* not a go package */ }
     }
 
     return entries;

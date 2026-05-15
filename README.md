@@ -132,8 +132,9 @@ cd Cairn/mcp && npm install && npm run build
 Installation automatically registers the MCP server with detected AI tools
 (Claude Code, Cursor, Windsurf, Claude Desktop). No manual configuration needed.
 
-Cairn auto-initializes on first use — it detects your project name, start date,
-and git history when AI first calls `cairn_context()`.
+Cairn auto-initializes on first use — it detects your project name, tech stack
+(including monorepo workspace packages), git history patterns, and project stage
+when AI first calls `cairn_context()`.
 
 <details>
 <summary>Manual MCP configuration</summary>
