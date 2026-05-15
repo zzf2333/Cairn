@@ -1,7 +1,7 @@
 # Cairn — Dynamic Project Memory Protocol
 
 `.cairn/` is an AI-maintained project memory engine. You interact with it
-through 6 MCP tools — not direct file operations. Cairn captures project
+through 11 MCP tools — not direct file operations. Cairn captures project
 signals, routes them through trust levels, and maintains structured memory
 that constrains your suggestions.
 
@@ -21,9 +21,37 @@ The response contains:
 - `no_go[]` — directions you MUST NOT suggest
 - `relevant_domains[]` — domain summaries relevant to the task
 - `active_debt[]` — accepted debts you must not attempt to fix
-- `warnings[]` — system health warnings
+- `challenges[]` — active challenges from project DNA
+- `warnings[]` — system health warnings (including pending staged entries)
 
 Respect all returned constraints for the remainder of the session.
+
+When `cairn_context` warns about **pending staged entries**, call
+`cairn_stage_list()`, present entries to the user with context, then
+accept/reject per their decision using `cairn_stage_accept({ id })`
+or `cairn_stage_reject({ id, reason })`.
+
+---
+
+## INITIALIZATION (NEW PROJECTS)
+
+For projects without `.cairn/`, use the two-step init flow:
+
+1. `cairn_init_status()` — check whether Cairn is initialized.
+2. If not initialized, analyze the project, then call:
+
+```
+cairn_init_commit({
+  config: { project_name, domains, cognitive_mode },
+  skeleton: [{ domain, role, owns, does_not_own, causal_keywords, dependencies? }],
+  blood_candidates: [...],
+  stage?: { phase, confidence, evidence },
+  dna?: { traits: [{ name, level, confidence, reasoning }] }
+})
+```
+
+This batch-writes initial cognition (config, skeleton, blood candidates,
+stage, DNA) in a single call.
 
 ---
 
@@ -34,10 +62,10 @@ When you detect a constraint-relevant event in conversation, call
 
 ```
 cairn_signal({
-  type: SignalType,
+  signal_type: SignalType,
   domain?: string,
   details: { what, reason?, rejected_alternatives?, revisit_when? },
-  evidence: { user_said?, files?, commit? }
+  evidence: { user_said?, files?, commit_ref? }
 })
 ```
 
@@ -49,8 +77,8 @@ cairn_signal({
 | A significant technical decision is made | `decision` |
 | A technical debt is discovered and accepted | `debt-acceptance` |
 
-The response tells you the routing result (`L0`–`L3`). No further action
-is needed — Cairn handles storage and trust routing automatically.
+The response tells you the routing result (`G0`–`G3` gravity). No further
+action is needed — Cairn handles storage and trust routing automatically.
 
 **Do not call `cairn_signal()` for:**
 - Routine bug fixes, formatting changes, or documentation edits
@@ -93,6 +121,7 @@ cairn_session_end({
 
 This triggers:
 - Batch processing of accumulated signals
+- Decay check on existing blood entries
 - Session record creation
 - Views regeneration
 
@@ -100,12 +129,28 @@ This triggers:
 
 ## STATUS AND DIAGNOSTICS
 
-- `cairn_status()` — memory count, staged count, conflicts, stage advisory
+- `cairn_status()` — blood count, staged count, conflicts, stage advisory
 - `cairn_doctor()` — health diagnostics: token budget, orphan no-gos,
   stale domains, staged backlog, TODO markers
 
 Call these when the user asks about Cairn health or when you notice
 warnings in `cairn_context()` output.
+
+---
+
+## STAGED ENTRY REVIEW
+
+When `cairn_context` warns of pending staged entries:
+
+1. `cairn_stage_list()` — list all pending entries with context
+2. Present each entry to the user with its domain, gravity, and content
+3. Per user decision:
+   - `cairn_stage_accept({ id })` — promote to blood
+   - `cairn_stage_reject({ id, reason })` — reject with reason
+
+Staged entries are agent-proposed signals awaiting human ratification.
+They follow the governance flow: `agent_proposed` -> `system_validated`
+-> `human_ratified`.
 
 ---
 
@@ -119,7 +164,7 @@ directly, explain the historical reason before offering alternatives.
 
 **`active_debt` entries**
 Do not attempt to fix accepted debts. Work within the constraint. Only
-reopen the discussion when the revisit conditions (from the memory entry)
+reopen the discussion when the revisit conditions (from the blood entry)
 are met.
 
 **`stage` advisory**
