@@ -188,6 +188,14 @@ export class TrustRouter {
                 scope === "local"
             )
                 return true;
+            if (
+                rule.includes("source.kind == 'conversation'") &&
+                sourceKind === "conversation"
+            ) {
+                if (rule.includes("type == 'rejection'") && type === "rejection") return true;
+                if (rule.includes("type == 'decision'") && type === "decision") return true;
+                if (rule.includes("type == 'debt'") && type === "debt") return true;
+            }
         }
         return false;
     }

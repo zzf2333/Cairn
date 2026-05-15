@@ -42,7 +42,11 @@ export async function handleCairnSessionEnd(
             project: { name: "unknown", created: now.slice(0, 7) },
             domains: { locked: [] },
             trust_policy: {
-                L3_auto_write: [],
+                L3_auto_write: [
+                    "source.kind == 'conversation' AND type == 'rejection'",
+                    "source.kind == 'conversation' AND type == 'decision'",
+                    "source.kind == 'conversation' AND type == 'debt'",
+                ],
                 L2_staged: [],
                 never_auto: [],
             },

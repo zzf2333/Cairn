@@ -58,7 +58,11 @@ export function handleCairnSignal(ctx: CairnContext, args: SignalArgs) {
             project: { name: "unknown", created: now.slice(0, 7) },
             domains: { locked: [] },
             trust_policy: {
-                L3_auto_write: [],
+                L3_auto_write: [
+                    "source.kind == 'conversation' AND type == 'rejection'",
+                    "source.kind == 'conversation' AND type == 'decision'",
+                    "source.kind == 'conversation' AND type == 'debt'",
+                ],
                 L2_staged: [],
                 never_auto: [],
             },
@@ -88,16 +92,18 @@ function inferMemoryType(
     switch (signalType) {
         case "user-rejection":
         case "dependency-removed":
+        case "revert":
             return "rejection";
         case "decision":
+        case "user-constraint":
+        case "historical-reference":
             return "decision";
         case "dependency-replaced":
         case "large-refactor":
+        case "stage-signal":
             return "transition";
         case "debt-acceptance":
             return "debt";
-        case "revert":
-            return "rejection";
         default:
             return "decision";
     }

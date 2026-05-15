@@ -49,6 +49,7 @@ export class StagedStore {
         const now = new Date().toISOString();
         const draft = staged.draft_memory;
 
+        const sourceKind = staged.origin_signal.startsWith("sig_git_") ? "manual" : "conversation";
         const memory = MemoryEntrySchema.parse({
             id: `mem_${id.replace("staged_", "")}`,
             type: draft.type,
@@ -56,13 +57,13 @@ export class StagedStore {
             scope: draft.scope,
             status: "active",
             health: { state: "ok", reason: null },
-            confidence: { level: "medium" },
+            confidence: draft.confidence ?? { level: "medium" },
             source: {
-                kind: "conversation",
+                kind: sourceKind as "conversation" | "manual" | "git-revert" | "git-dependency",
                 refs: [{ type: "session", id: staged.origin_signal }],
                 captured_at: staged.created_at,
             },
-            subject: { name: draft.summary.slice(0, 50) },
+            subject: draft.subject ?? { name: draft.summary.slice(0, 50) },
             summary: draft.summary,
             rejected: draft.rejected,
             chosen: draft.chosen,

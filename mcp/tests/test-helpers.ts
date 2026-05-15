@@ -78,6 +78,9 @@ export const defaultConfig: Config = {
         L3_auto_write: [
             "source.kind == 'git-revert' AND scope == 'local'",
             "source.kind == 'git-dependency' AND type == 'rejection' AND scope == 'local'",
+            "source.kind == 'conversation' AND type == 'rejection'",
+            "source.kind == 'conversation' AND type == 'decision'",
+            "source.kind == 'conversation' AND type == 'debt'",
         ],
         L2_staged: [
             "scope == 'global'",

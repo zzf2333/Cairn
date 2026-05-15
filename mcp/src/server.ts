@@ -46,7 +46,11 @@ export async function runStartupGitScan(ctx: CairnContext): Promise<void> {
                     },
                     domains: { locked: [] },
                     trust_policy: {
-                        L3_auto_write: [],
+                        L3_auto_write: [
+                            "source.kind == 'conversation' AND type == 'rejection'",
+                            "source.kind == 'conversation' AND type == 'decision'",
+                            "source.kind == 'conversation' AND type == 'debt'",
+                        ],
                         L2_staged: [],
                         never_auto: [],
                     },
@@ -106,7 +110,7 @@ export function createCairnServer(
     const server = new McpServer(
         {
             name: "cairn",
-            version: "0.2.7",
+            version: "0.2.8",
         },
         {
             instructions: CAIRN_INSTRUCTIONS,

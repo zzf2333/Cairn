@@ -172,7 +172,7 @@ describe("L1 accumulation", () => {
             source_ear: "conversation" as const,
             signal_type: "decision" as const,
             raw_data: { what: "use Prisma", subject: "prisma-orm" },
-            inferred: { probable_domain: "database", confidence: "medium" as const },
+            inferred: { probable_type: "experiment" as const, probable_domain: "database", confidence: "medium" as const },
         };
 
         const r1 = ctx.trustRouter.route(

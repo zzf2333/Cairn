@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2026-05-15
+
+### Fixed
+
+- **Critical: conversation signals now auto-write to memory (L3)**: User rejections, decisions, and debt acceptances reported via `cairn_signal()` are now immediately written to memory instead of being silently dropped into the L1 signals pool. This was the root cause of Cairn's core lifecycle being non-functional — constraints reported in one session were invisible in the next.
+- **Trust policy extensibility**: `matchesL3Policy()` now evaluates conversation-sourced signal rules, not just git-revert and git-dependency patterns
+- **`inferMemoryType` completeness**: Added missing mappings for `user-constraint`, `historical-reference`, and `stage-signal` signal types
+- **`staged-store.accept()` data loss**: Fixed hardcoded confidence level ("medium"), source kind ("conversation"), and subject name (truncated summary) — now preserves original values from the draft memory
+
+### Changed
+
+- **Default L3 trust policy**: Added 3 new auto-write rules for conversation signals (rejection, decision, debt) to all config templates and fallbacks
+- **Lifecycle test rewritten**: Now verifies the complete cross-session flow: signal capture → L3 memory → persistence → staged review → context retrieval
+
 ## [0.2.7] - 2026-05-15
 
 ### Added

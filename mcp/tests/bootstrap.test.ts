@@ -51,7 +51,7 @@ describe("bootstrapCairnDir", () => {
         expect(config.project.name).toBeTruthy();
         expect(config.project.created).toMatch(/^\d{4}-\d{2}$/);
         expect(config.domains.locked).toEqual([]);
-        expect(config.trust_policy.L3_auto_write).toHaveLength(2);
+        expect(config.trust_policy.L3_auto_write).toHaveLength(5);
     });
 
     it("writes valid state.yaml", async () => {
