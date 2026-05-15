@@ -147,7 +147,12 @@ const CAIRN_INSTRUCTIONS = [
 
 export function createCairnServer(
     startDir?: string,
-): { server: McpServer; runStartupScan: () => Promise<void>; setProjectRoot: (root: string) => void } {
+): {
+    server: McpServer;
+    runStartupScan: () => Promise<void>;
+    setProjectRoot: (root: string) => void;
+    setRootResolver: (resolver: () => Promise<string | undefined>) => void;
+} {
     const server = new McpServer(
         {
             name: "cairn",
@@ -161,9 +166,14 @@ export function createCairnServer(
     let ctx: CairnContext | null = null;
     let ctxPromise: Promise<CairnContext> | null = null;
     let projectRoot: string | undefined;
+    let rootResolver: (() => Promise<string | undefined>) | undefined;
 
     function setProjectRoot(root: string) {
         projectRoot = root;
+    }
+
+    function setRootResolver(resolver: () => Promise<string | undefined>) {
+        rootResolver = resolver;
     }
 
     async function getCtx(): Promise<CairnContext> {
@@ -171,6 +181,12 @@ export function createCairnServer(
         if (ctxPromise) return ctxPromise;
 
         ctxPromise = (async () => {
+            if (!projectRoot && rootResolver) {
+                try {
+                    const resolved = await rootResolver();
+                    if (resolved) projectRoot = resolved;
+                } catch { /* resolver failed — use fallback */ }
+            }
             const effectiveDir = projectRoot ?? startDir;
             const root = findCairnRoot(effectiveDir);
             if (root) {
@@ -396,5 +412,6 @@ export function createCairnServer(
             }
         },
         setProjectRoot,
+        setRootResolver,
     };
 }

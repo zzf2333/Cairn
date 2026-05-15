@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
+import { homedir } from "node:os";
 import { stringify as yamlStringify } from "yaml";
 import { simpleGit } from "simple-git";
 import { buildPaths, type CairnPaths } from "./paths.js";
@@ -114,6 +115,13 @@ export async function bootstrapCairnDir(startDir?: string): Promise<BootstrapRes
     const root = envRoot && existsSync(envRoot) ? envRoot : (startDir ?? process.cwd());
     const cairnDir = join(root, ".cairn");
     const paths = buildPaths(root);
+
+    if (root === homedir()) {
+        throw new Error(
+            "Refusing to bootstrap .cairn in home directory. " +
+            "Set CAIRN_ROOT env var or ensure MCP client provides roots.",
+        );
+    }
 
     if (existsSync(cairnDir)) {
         const { name, from } = detectProjectName(root);
