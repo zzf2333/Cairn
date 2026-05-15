@@ -1,10 +1,18 @@
 import type { Signal, StageSnapshot, StagePhase } from "../schemas/index.js";
 
+interface DomainActivity {
+    domain: string;
+    commitCount: number;
+    percentage: number;
+}
+
 interface StageSignals {
     projectAgeMonths: number;
     commitTrend: number;
     dependencyChangeRate: number;
     newFileRatio: number;
+    totalCommits?: number;
+    activeDomains?: DomainActivity[];
 }
 
 const PHASE_GUIDANCE: Record<StagePhase, string[]> = {
@@ -51,6 +59,7 @@ export class StageEngine {
                     { source: "git", signal: `High dependency churn: ${dependencyChangeRate} (> 0.2)` },
                 );
             }
+            this.appendActivityEvidence(evidence, signals);
             return {
                 phase,
                 confidence,
@@ -98,6 +107,8 @@ export class StageEngine {
             });
         }
 
+        this.appendActivityEvidence(evidence, signals);
+
         return {
             phase,
             confidence,
@@ -108,11 +119,37 @@ export class StageEngine {
         };
     }
 
+    private appendActivityEvidence(
+        evidence: StageSnapshot["evidence"],
+        signals: StageSignals,
+    ): void {
+        if (signals.totalCommits) {
+            evidence.push({
+                source: "git",
+                signal: `Total commits: ${signals.totalCommits}`,
+            });
+        }
+        if (signals.activeDomains && signals.activeDomains.length > 0) {
+            const top = signals.activeDomains
+                .sort((a, b) => b.commitCount - a.commitCount)
+                .slice(0, 5);
+            const summary = top
+                .map(d => `${d.domain} ${d.percentage}%`)
+                .join(", ");
+            evidence.push({
+                source: "git",
+                signal: `Active domains: ${summary}`,
+            });
+        }
+    }
+
     extractSignalsFromGitData(gitSignals: Signal[]): StageSignals {
         let projectAgeMonths = 12;
         let commitTrend = 1.0;
         let dependencyChangeRate = 0.1;
         let newFileRatio = 0.3;
+        let totalCommits: number | undefined;
+        const activeDomains: DomainActivity[] = [];
 
         for (const signal of gitSignals) {
             if (signal.signal_type !== "stage-signal") continue;
@@ -123,6 +160,16 @@ export class StageEngine {
             }
             if (raw["trend"] !== undefined) {
                 commitTrend = raw["trend"] as number;
+            }
+            if (raw["domain"] !== undefined && raw["commit_count"] !== undefined) {
+                activeDomains.push({
+                    domain: raw["domain"] as string,
+                    commitCount: raw["commit_count"] as number,
+                    percentage: (raw["percentage"] as number) ?? 0,
+                });
+                if (totalCommits === undefined && raw["total_commits"] !== undefined) {
+                    totalCommits = raw["total_commits"] as number;
+                }
             }
         }
 
@@ -144,6 +191,13 @@ export class StageEngine {
             newFileRatio = Math.min(1, filesChanged / 100);
         }
 
-        return { projectAgeMonths, commitTrend, dependencyChangeRate, newFileRatio };
+        return {
+            projectAgeMonths,
+            commitTrend,
+            dependencyChangeRate,
+            newFileRatio,
+            totalCommits,
+            activeDomains: activeDomains.length > 0 ? activeDomains : undefined,
+        };
     }
 }
