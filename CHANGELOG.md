@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] - 2026-05-15
+
+### Changed
+
+- **Config-driven L3 trust routing**: Removed hardcoded conversation signal bypass in `matchesL3Policy()`. Replaced manual `.includes()` pattern matching with a generic `evaluateRule()` method that parses `key == 'value' AND ...` expressions — trust_policy L3_auto_write rules are now truly configurable
+- **Unified default L3 rules**: Extracted `DEFAULT_L3_AUTO_WRITE` shared constant (5 rules) to eliminate inconsistent copies across bootstrap, server, cairn-signal, and cairn-session-end fallback configs
+- **Schema default updated**: `ConfigSchema` L3_auto_write default now includes all 5 rules (was 2 git-only rules)
+
+### Added
+
+- **Performance tests**: 8 benchmarks covering 200-entry scale — loadAll, findDuplicate, findConflicts, regenerate, consecutive regenerates, route with large memory, sequential signals, full pipeline
+- **Lifecycle Session 4**: historical-reference signal routing, review reject, memory show/archive, stage_confirm
+- **evaluateRule edge case tests**: single condition, extra whitespace, unknown variables, malformed rules, empty strings, multi-condition matching
+- **Config variation tests**: custom L3 rules, conversation-only config, stricter scope constraints, malformed rule strings
+
 ## [0.2.8] - 2026-05-15
 
 ### Fixed

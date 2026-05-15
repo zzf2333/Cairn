@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const VERSION = "0.2.8";
+const VERSION = "0.2.9";
 
 const args = process.argv.slice(2);
 const command = args[0];
