@@ -31,5 +31,7 @@ coverage/
 CLAUDE.md
 docs/design.md
 docs/roadmap.md
+docs/架构文档.md
+docs/设计哲学.md
 tasks/
 .cairn/
