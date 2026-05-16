@@ -4,7 +4,7 @@ import { COGNITIVE_MODE_PARAMS } from "../constants.js";
 
 export interface DecayAction {
     event_id: string;
-    action: "mark_stale" | "archive";
+    action: "mark_stale" | "archive" | "downgrade";
     reason: string;
 }
 
@@ -32,6 +32,15 @@ export class DecayEngine {
                             event_id: event.id,
                             action: "archive",
                             reason: `review_after passed ${daysPast} days ago with expire policy`,
+                        });
+                        continue;
+                    }
+
+                    if (event.lifecycle.decay_policy === "downgrade") {
+                        actions.push({
+                            event_id: event.id,
+                            action: "downgrade",
+                            reason: `review_after passed ${daysPast} days ago with downgrade policy`,
                         });
                         continue;
                     }

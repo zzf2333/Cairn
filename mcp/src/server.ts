@@ -92,6 +92,14 @@ export function createServer(ctx: CairnContext): McpServer {
                     reasoning: z.string(),
                 })).optional(),
             }).optional(),
+            imprint: z.object({
+                inherited_from: z.string(),
+                inherited_constraints: z.array(z.string()),
+                inherited_warnings: z.array(z.object({
+                    domain: z.string(),
+                    warning: z.string(),
+                })),
+            }).optional(),
         },
         async (args) => {
             try {

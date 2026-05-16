@@ -1,6 +1,7 @@
 import type { CairnContext } from "../context.js";
 import { toolResult, formatToolError } from "../errors.js";
 import type { SessionRecord } from "../schemas/index.js";
+import { downgradeGravity, type GravityLevel } from "../constants.js";
 
 interface SessionEndArgs {
     summary: string;
@@ -35,6 +36,15 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const headCommit = await ctx.gitEar.getHeadCommit();
 
         const state = await ctx.stateStore.load();
+
+        if (state.last_session.ended_at) {
+            const lastEnded = new Date(state.last_session.ended_at);
+            const daysSince = Math.floor((now.getTime() - lastEnded.getTime()) / (1000 * 60 * 60 * 24));
+            if (daysSince > 30) {
+                await ctx.stateStore.clearActivationLog();
+            }
+        }
+
         state.last_session.commit = headCommit;
         state.last_session.ended_at = nowIso;
         await ctx.stateStore.save(state);
@@ -46,6 +56,17 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         for (const action of decayActions) {
             if (action.action === "mark_stale") {
                 await ctx.bloodEngine.archive(action.event_id, action.reason);
+            } else if (action.action === "downgrade") {
+                const event = await ctx.bloodStore.load(action.event_id);
+                if (event) {
+                    event.gravity.level = downgradeGravity(event.gravity.level as GravityLevel);
+                    event.updated_at = new Date().toISOString();
+                    if (event.gravity.level === "G0") {
+                        await ctx.bloodEngine.archive(action.event_id, "downgraded to G0");
+                    } else {
+                        await ctx.bloodStore.save(event);
+                    }
+                }
             }
         }
 
@@ -68,11 +89,11 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const stagedCount = await ctx.stagedStore.count();
 
         return toolResult(JSON.stringify({
-            session_id: sessionId,
-            commit: headCommit,
-            decay_actions: decayActions.length,
-            staged_pending: stagedCount,
-            summary,
+            signals_processed: 0,
+            new_blood: 0,
+            new_staged: 0,
+            views_regenerated: true,
+            pending_review: stagedCount,
         }));
     } catch (error) {
         return formatToolError(error);

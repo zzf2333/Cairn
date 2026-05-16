@@ -150,13 +150,13 @@ export class ActivationEngine {
         relevant.sort((a, b) => {
             const gravDiff = GRAVITY_ORDER[b.gravity.level as GravityLevel] - GRAVITY_ORDER[a.gravity.level as GravityLevel];
             if (gravDiff !== 0) return gravDiff;
+            const traumaDiff = (b.trauma.is_trauma ? 1 : 0) - (a.trauma.is_trauma ? 1 : 0);
+            if (traumaDiff !== 0) return traumaDiff;
             return b.created_at.localeCompare(a.created_at);
         });
 
         for (const event of relevant) {
-            if (event.health.state === "resurrected") {
-                await this.stateStore.recordActivation(event.id);
-            }
+            await this.stateStore.recordActivation(event.id);
         }
 
         return { events: relevant, scannedCount };

@@ -41,4 +41,10 @@ export class StateStore {
         hits[eventId] = (hits[eventId] ?? 0) + 1;
         await this.save(state);
     }
+
+    async clearActivationLog(): Promise<void> {
+        const state = await this.load();
+        state.activation_log.recent_hits = {};
+        await this.save(state);
+    }
 }

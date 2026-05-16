@@ -82,16 +82,23 @@ export class ChallengeEngine {
         if (input.subject_name) searchTerms.push(input.subject_name.toLowerCase());
 
         for (const event of traumaEvents) {
-            {
-                const baseLevel = gravityToLevel(event.gravity.level as GravityLevel);
-                challenges.push({
-                    level: upgradeLevel(baseLevel),
-                    conflict_with: event.id,
-                    description: `Trauma event: ${event.subject.name} — ${event.behavior_effect.instruction}`,
-                    required_response: "Acknowledge trauma history and provide explicit justification",
-                    trauma: true,
-                });
+            if (searchTerms.length > 0) {
+                const eventText = [event.subject.name, event.trigger, event.decision_or_change]
+                    .join(" ").toLowerCase();
+                const isRelevant = searchTerms.some(term =>
+                    eventText.includes(term) || term.includes(event.subject.name.toLowerCase())
+                );
+                if (!isRelevant) continue;
             }
+
+            const baseLevel = gravityToLevel(event.gravity.level as GravityLevel);
+            challenges.push({
+                level: upgradeLevel(baseLevel),
+                conflict_with: event.id,
+                description: `Trauma event: ${event.subject.name} — ${event.behavior_effect.instruction}`,
+                required_response: "Acknowledge trauma history and provide explicit justification",
+                trauma: true,
+            });
         }
     }
 
@@ -132,9 +139,10 @@ export class ChallengeEngine {
         for (const capability of node.does_not_own) {
             if (taskLower.includes(capability.toLowerCase())) {
                 challenges.push({
-                    level: "suggestion",
+                    level: "reflective_challenge",
                     conflict_with: `skeleton:${input.domain}:does_not_own`,
                     description: `Task mentions "${capability}" which is outside the boundary of domain "${input.domain}". Check if another domain owns this.`,
+                    required_response: "Confirm whether this crosses module boundaries intentionally",
                 });
             }
         }

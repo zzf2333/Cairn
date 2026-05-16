@@ -59,6 +59,9 @@ export function makeTraumaEvent(id: string, domain: string): EvolutionEvent {
     return makeEvolutionEvent(id, {
         domain,
         type: "incident",
+        subject: { name: domain },
+        trigger: `${domain} incident`,
+        decision_or_change: `${domain} system failure`,
         gravity: { level: "G2", architectural: "high" },
         trauma: {
             is_trauma: true,

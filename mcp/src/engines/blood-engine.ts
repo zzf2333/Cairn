@@ -101,6 +101,21 @@ export class BloodEngine {
         await this.viewsEngine.regenerate();
     }
 
+    async mergeRefs(eventId: string, newRefs: Array<{ type: string; id: string }>): Promise<void> {
+        const event = await this.bloodStore.load(eventId);
+        if (!event) {
+            throw new CairnError(CairnErrorCode.EVENT_NOT_FOUND, `Event ${eventId} not found`);
+        }
+        for (const ref of newRefs) {
+            const exists = event.source.refs.some(r => r.type === ref.type && r.id === ref.id);
+            if (!exists) {
+                event.source.refs.push(ref);
+            }
+        }
+        event.updated_at = new Date().toISOString();
+        await this.bloodStore.save(event);
+    }
+
     async markTrauma(eventId: string): Promise<EvolutionEvent> {
         const event = await this.bloodStore.load(eventId);
         if (!event) {

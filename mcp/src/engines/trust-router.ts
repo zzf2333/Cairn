@@ -47,18 +47,13 @@ export class TrustRouter {
             };
         }
 
-        if (isTrauma || affectsSkeleton || affectsDna || isStageTransition) {
-            return {
-                destination: "staged",
-                gravity,
-                governance: "human_ratified",
-                reason: "governance hard rule: requires human ratification",
-            };
-        }
-
         const traumaEvents = await this.bloodStore.findTrauma(input.domain);
         if (traumaEvents.length > 0) {
+            const maxMultiplier = Math.max(...traumaEvents.map(e => e.trauma.sensitivity_multiplier));
             gravity = upgradeGravity(gravity);
+            if (maxMultiplier >= 2.0) {
+                gravity = upgradeGravity(gravity);
+            }
         }
 
         const identity = await this.dnaStore.loadIdentity();

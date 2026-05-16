@@ -98,15 +98,15 @@ describe("Full lifecycle integration", () => {
                 evidence: ["6 months old", "active development"],
             },
         })) as {
-            initialized: boolean;
-            skeleton_nodes: number;
-            blood_auto_confirmed: number;
-            blood_staged: number;
+            created: boolean;
+            written: { skeleton: number; blood_auto_confirmed: number; blood_staged: number };
+            pending_review: number;
+            initialization_status: string;
         };
 
-        expect(initResult.initialized).toBe(true);
-        expect(initResult.skeleton_nodes).toBe(2);
-        expect(initResult.blood_auto_confirmed + initResult.blood_staged).toBe(1);
+        expect(initResult.created).toBe(true);
+        expect(initResult.written.skeleton).toBe(2);
+        expect(initResult.written.blood_auto_confirmed + initResult.written.blood_staged).toBe(1);
 
         const config = await ctx.configStore.load();
         expect(config).not.toBeNull();
@@ -231,12 +231,11 @@ describe("Full lifecycle integration", () => {
             changed_domains: ["api-layer"],
             decisions_made: ["chose REST over GraphQL"],
         })) as {
-            session_id: string;
-            summary: string;
+            views_regenerated: boolean;
+            pending_review: number;
         };
 
-        expect(sessionResult.session_id).toMatch(/^sess_/);
-        expect(sessionResult.summary).toBe("worked on API endpoints");
+        expect(sessionResult.views_regenerated).toBe(true);
 
         const state = await ctx.stateStore.load();
         expect(state.last_session.ended_at).not.toBeNull();

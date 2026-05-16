@@ -195,7 +195,10 @@ export class CalibrationEar {
                 if (traitName === "infra_aggressiveness") {
                     return e.type === "transition" && e.subject.type === "dependency";
                 }
-                return false;
+                const eventText = [e.subject.name, e.decision_or_change, e.trigger]
+                    .join(" ").toLowerCase();
+                const traitWords = traitName.split("_").filter(w => w.length > 3);
+                return traitWords.some(word => eventText.includes(word));
             });
 
             if (contradicting.length > 3) {

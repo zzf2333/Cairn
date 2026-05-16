@@ -106,8 +106,8 @@ describe("Acceptance: Architecture Success Criteria", () => {
                 }],
             });
             const json = JSON.parse(result.content[0].text);
-            expect(json.initialized).toBe(true);
-            expect(json.blood_auto_confirmed + json.blood_staged).toBeGreaterThan(0);
+            expect(json.created).toBe(true);
+            expect(json.written.blood_auto_confirmed + json.written.blood_staged).toBeGreaterThan(0);
         });
 
         it("cairn_signal captures user decisions automatically", async () => {
@@ -244,7 +244,7 @@ describe("Acceptance: Architecture Success Criteria", () => {
                 unresolved: [],
             });
             const json = JSON.parse(result.content[0].text);
-            expect(json.decay_actions).toBeGreaterThan(0);
+            expect(json.views_regenerated).toBe(true);
         });
     });
 

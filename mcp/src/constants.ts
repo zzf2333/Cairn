@@ -48,6 +48,13 @@ export function upgradeGravity(level: GravityLevel): GravityLevel {
     return "G3";
 }
 
+export function downgradeGravity(level: GravityLevel): GravityLevel {
+    if (level === "G3") return "G2";
+    if (level === "G2") return "G1";
+    if (level === "G1") return "G0";
+    return "G0";
+}
+
 export function gravityAtLeast(level: GravityLevel, threshold: GravityLevel): boolean {
     return GRAVITY_ORDER[level] >= GRAVITY_ORDER[threshold];
 }

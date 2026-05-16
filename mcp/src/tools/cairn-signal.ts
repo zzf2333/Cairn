@@ -119,7 +119,11 @@ export async function handleSignal(ctx: CairnContext, args: Record<string, unkno
 
         let challenges: Array<{ level: string; conflict_with: string; description: string }> = [];
 
-        if (routing.destination === "blood") {
+        if (routing.merged_with) {
+            if (refs.length > 0) {
+                await ctx.bloodEngine.mergeRefs(routing.merged_with, refs);
+            }
+        } else if (routing.destination === "blood") {
             event.governance_status = "auto_confirmed";
             await ctx.bloodEngine.commit(event);
         } else if (routing.destination === "staged") {

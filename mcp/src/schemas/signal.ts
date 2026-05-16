@@ -54,7 +54,7 @@ export const ConversationSignalSchema = z.object({
     }),
     evidence: z.object({
         user_said: z.string().optional(),
-        files_involved: z.array(z.string()).optional(),
+        files: z.array(z.string()).optional(),
         commit_ref: z.string().optional(),
     }).default({}),
     confidence: z.number().min(0).max(1),

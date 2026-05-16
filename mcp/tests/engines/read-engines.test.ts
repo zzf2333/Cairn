@@ -247,7 +247,7 @@ describe("DecayEngine", () => {
         }));
         const actions = await engine.checkDecay("standard");
         expect(actions.length).toBeGreaterThanOrEqual(1);
-        expect(actions[0].action).toBe("mark_stale");
+        expect(actions[0].action).toBe("downgrade");
     });
 
     it("skips trauma events with permanent decay override", async () => {

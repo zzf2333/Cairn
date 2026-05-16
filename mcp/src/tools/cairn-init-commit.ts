@@ -29,6 +29,11 @@ interface InitCommitArgs {
     blood_candidates: BloodCandidate[];
     stage?: { phase: string; confidence: number; evidence: string[] };
     dna?: { traits?: Array<{ name: string; level: string; confidence: number; reasoning: string }> };
+    imprint?: {
+        inherited_from: string;
+        inherited_constraints: string[];
+        inherited_warnings: Array<{ domain: string; warning: string }>;
+    };
 }
 
 function buildEventFromCandidate(candidate: BloodCandidate, index: number): EvolutionEvent {
@@ -103,6 +108,7 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
             blood_candidates: bloodCandidates,
             stage,
             dna,
+            imprint,
         } = args as unknown as InitCommitArgs;
         const now = new Date().toISOString();
 
@@ -188,6 +194,16 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
             await ctx.dnaStore.saveIdentity(identity);
         }
 
+        if (imprint) {
+            await ctx.dnaStore.saveImprint({
+                inherited_from: imprint.inherited_from,
+                inherited_at: now,
+                inherited_constraints: imprint.inherited_constraints,
+                inherited_warnings: imprint.inherited_warnings,
+                identity_status: "not_yet_emerged",
+            });
+        }
+
         const state = await ctx.stateStore.load();
         state.initialization_status = "complete";
         await ctx.stateStore.save(state);
@@ -195,12 +211,17 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
         await ctx.viewsEngine.regenerate();
 
         return toolResult(JSON.stringify({
-            initialized: true,
-            skeleton_nodes: skeleton.length,
-            blood_auto_confirmed: autoConfirmed,
-            blood_staged: staged,
-            stage: stage ? stage.phase : null,
-            dna_traits: dna?.traits?.length ?? 0,
+            created: true,
+            written: {
+                config: true,
+                skeleton: skeleton.length,
+                blood_auto_confirmed: autoConfirmed,
+                blood_staged: staged,
+                stage: !!stage,
+                views: true,
+            },
+            pending_review: staged,
+            initialization_status: "complete",
         }));
     } catch (error) {
         return formatToolError(error);
