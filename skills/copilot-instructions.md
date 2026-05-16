@@ -2,6 +2,12 @@
 
 > Append this content to your project's `.github/copilot-instructions.md` file.
 
+## Setup
+
+Requires the `cairn` MCP server: `npm install -g cairn-mcp-server`
+Then add to your VS Code MCP config (`.vscode/mcp.json`).
+CLI fallback for manual inspection: `cairn status`, `cairn review`, `cairn dna list`.
+
 <!-- cairn:start -->
 ## Cairn (AI-maintained project memory)
 

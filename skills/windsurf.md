@@ -2,6 +2,12 @@
 
 > Append this content to your Windsurf global rules or project `.windsurfrules` file.
 
+## Setup
+
+Requires the `cairn` MCP server: `npm install -g cairn-mcp-server`
+Then add to your Windsurf MCP config (`~/.codeium/windsurf/mcp_config.json` or `.windsurf/mcp_config.json`).
+CLI fallback for manual inspection: `cairn status`, `cairn review`, `cairn dna list`.
+
 <!-- cairn:start -->
 ## Cairn (AI-maintained project memory)
 

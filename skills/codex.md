@@ -2,6 +2,12 @@
 
 > Append this file to `AGENTS.md` at your project root (or `~/.codex/AGENTS.md` for global scope).
 
+## Setup
+
+Requires the `cairn` MCP server: `npm install -g cairn-mcp-server`
+Then add to your Codex MCP config (`~/.codex/config.toml` or `.codex/config.toml`).
+CLI fallback for manual inspection: `cairn status`, `cairn review`, `cairn dna list`.
+
 <!-- cairn:start -->
 ## Cairn (AI-maintained project memory)
 

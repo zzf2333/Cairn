@@ -1,13 +1,25 @@
 import { bootstrapEmpty } from "../bootstrap.js";
 
 export async function runInit(args: string[]): Promise<void> {
-    const hasEmpty = args.includes("--empty");
-
-    if (!hasEmpty) {
-        console.error("Usage: cairn init --empty");
-        process.exit(1);
-    }
+    const silent = args.includes("--empty");
 
     await bootstrapEmpty(process.cwd());
-    console.log("Cairn V3 initialized (empty structure)");
+
+    if (silent) {
+        console.log("Cairn initialized (empty structure)");
+        return;
+    }
+
+    console.log("Cairn initialized — .cairn/ scaffold created.");
+    console.log("");
+    console.log("Next: configure cairn-mcp-server in your AI tool's MCP settings:");
+    console.log("");
+    console.log('  { "mcpServers": { "cairn": { "command": "cairn-mcp-server" } } }');
+    console.log("");
+    console.log("  Claude Code  — ~/.claude/mcp.json");
+    console.log("  Cursor       — .cursor/mcp.json");
+    console.log("  Codex CLI    — ~/.codex/config.toml");
+    console.log("");
+    console.log("Then open your AI tool — it will call cairn_init_status() and begin");
+    console.log("AI-native initialization automatically.");
 }

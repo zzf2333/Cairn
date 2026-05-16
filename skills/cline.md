@@ -2,6 +2,12 @@
 
 > Append this content to your Cline / Roo Code custom instructions.
 
+## Setup
+
+Requires the `cairn` MCP server: `npm install -g cairn-mcp-server`
+Then add to your Cline MCP settings (`~/Documents/cline/cline_mcp_settings.json`).
+CLI fallback for manual inspection: `cairn status`, `cairn review`, `cairn dna list`.
+
 <!-- cairn:start -->
 ## Cairn (AI-maintained project memory)
 

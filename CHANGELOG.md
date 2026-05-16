@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-05-16 (DX patch)
+
+### Improved
+
+- **Quick Start rewritten** — removed misleading "auto-registers" claim; MCP configuration is now the explicit step 2 with platform-specific paths
+- **postinstall hint** — `npm install -g cairn-mcp-server` now prints MCP setup instructions after install
+- **`cairn init` improved** — bare `cairn init` (without `--empty`) creates scaffold AND prints setup guide; `--empty` stays silent for scripts
+- **All 7 skill adapters gain Setup section** — each adapter file now includes MCP install + config path + CLI fallback instructions
+- **mcp/README.md updated** — CLI section lists all commands (including dna/stage subcommands), Codex CLI config added, tool count corrected to 14
+- **CAIRN_ROOT documented prominently** — multi-project/nested-repo tip in Quick Start
+
 ## [3.1.0] - 2026-05-16
 
 ### Added

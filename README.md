@@ -129,7 +129,7 @@ Every evolution event declares a `behavior_effect`:
 
 ## Quick Start
 
-### Install
+### 1. Install
 
 Requires Node.js 18+.
 
@@ -147,19 +147,9 @@ cd Cairn/mcp && npm install && npm run build
 
 </details>
 
-### That's it
+### 2. Configure MCP
 
-Installation automatically registers the MCP server with detected AI tools
-(Claude Code, Cursor, Windsurf, Claude Desktop). No manual configuration needed.
-
-Cairn uses a two-phase initialization: AI first calls `cairn_init_status()` to check
-the project state, analyzes the codebase, then calls `cairn_init_commit()` to write
-the initial cognition (skeleton, blood events, DNA traits, stage).
-
-<details>
-<summary>Manual MCP configuration</summary>
-
-If auto-setup didn't detect your tool, add this to your MCP config:
+Add cairn to your AI tool's MCP configuration:
 
 ```json
 {
@@ -170,23 +160,39 @@ If auto-setup didn't detect your tool, add this to your MCP config:
 ```
 
 Config file locations:
-- **Claude Code** — `~/.claude/mcp.json`
-- **Cursor** — `~/.cursor/mcp.json`
-- **Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
-</details>
+| Tool | Config Path |
+|------|-------------|
+| **Claude Code** | `~/.claude/mcp.json` or `.claude/mcp.json` (project) |
+| **Cursor** | `.cursor/mcp.json` |
+| **Codex CLI** | `~/.codex/config.toml` or `.codex/config.toml` |
+| **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) |
+
+> **Tip**: For multiple projects or nested repos, set `"env": { "CAIRN_ROOT": "/path/to/project" }` to pin the server to a specific project root.
+
+See [`mcp/README.md`](mcp/README.md) for all supported platforms (Cline, Windsurf, Copilot, Gemini CLI, OpenCode).
+
+### 3. Use
+
+Open your AI tool in a project — Cairn auto-initializes on first use:
+
+1. AI calls `cairn_init_status()`, detects uninitialized project
+2. AI analyzes your codebase (README, git history, dependencies, structure)
+3. AI calls `cairn_init_commit()` to write initial cognition (skeleton, blood, DNA, stage)
+
+Some high-gravity signals (G2+) enter a staged review queue rather than being auto-confirmed. This is intentional — they need your sign-off before influencing future suggestions. AI will prompt you to review them.
 
 <details>
-<summary>Manual initialization (optional)</summary>
+<summary>Manual scaffold (optional)</summary>
 
-If you prefer to create the `.cairn/` directory structure manually:
+To pre-create the `.cairn/` directory structure before AI initialization:
 
 ```bash
 cd my-project
-cairn init --empty
+cairn init
 ```
 
-This creates an empty `.cairn/` scaffold. AI will populate it on first `cairn_init_commit()`.
+This creates an empty scaffold and prints setup instructions. AI will populate it on first `cairn_init_commit()`. Use `cairn init --empty` for silent mode (scripts/CI).
 
 </details>
 

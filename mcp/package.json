@@ -31,11 +31,12 @@
         "access": "public"
     },
     "bin": {
-        "cairn": "dist/cli.js",
+        "cairn": "dist/cli/index.js",
         "cairn-mcp-server": "dist/index.js"
     },
     "scripts": {
         "build": "tsc",
+        "postinstall": "node dist/postinstall.js 2>/dev/null || true",
         "dev": "tsx src/index.ts",
         "test": "vitest run",
         "test:watch": "vitest",

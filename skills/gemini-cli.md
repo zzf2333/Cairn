@@ -3,6 +3,12 @@
 > Add this file to `GEMINI.md` at your project root (or `~/.gemini/GEMINI.md` for global scope).
 > Gemini CLI loads `GEMINI.md` from the global home directory, the project root, and any parent directories up to the filesystem root.
 
+## Setup
+
+Requires the `cairn` MCP server: `npm install -g cairn-mcp-server`
+Then add to your Gemini CLI settings (`~/.gemini/settings.json` or `.gemini/settings.json`).
+CLI fallback for manual inspection: `cairn status`, `cairn review`, `cairn dna list`.
+
 <!-- cairn:start -->
 ## Cairn (AI-maintained project memory)
 

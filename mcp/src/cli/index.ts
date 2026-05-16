@@ -15,7 +15,8 @@ const USAGE = `cairn v${VERSION}
 Usage: cairn <command> [options]
 
 Commands:
-  init                          Initialize .cairn/ directory (--empty for empty structure)
+  init                          Initialize .cairn/ scaffold and print setup guide
+  init --empty                  Initialize .cairn/ scaffold (silent, for scripts)
   status                        Show project cognitive status (DNA mode, drift, stage transitions)
   doctor                        Run consistency checks + auto-resurrect low-gravity archived events
   review                        List pending staged entries

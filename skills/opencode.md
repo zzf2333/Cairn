@@ -3,6 +3,12 @@
 > Append this file to `AGENTS.md` at your project root.
 > OpenCode also supports `CLAUDE.md` as a fallback if `AGENTS.md` is not present.
 
+## Setup
+
+Requires the `cairn` MCP server: `npm install -g cairn-mcp-server`
+Then add to your OpenCode config (`~/.config/opencode/opencode.json` or `opencode.json`).
+CLI fallback for manual inspection: `cairn status`, `cairn review`, `cairn dna list`.
+
 <!-- cairn:start -->
 ## Cairn (AI-maintained project memory)
 

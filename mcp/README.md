@@ -270,6 +270,15 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 }
 ```
 
+#### Codex CLI
+
+Add to `~/.codex/config.toml` or `.codex/config.toml`:
+
+```toml
+[mcp_servers.cairn]
+command = "cairn-mcp-server"
+```
+
 ### Project root detection
 
 The server resolves the `.cairn/` directory in this order:
@@ -300,19 +309,26 @@ To pin the server to a specific project:
 cairn <command> [options]
 
 Commands:
-  init [--empty]           Initialize .cairn/ directory
-  status                   Show project cognitive status
-  doctor                   Run consistency checks and health diagnostics
+  init                     Initialize .cairn/ scaffold and print setup guide
+  init --empty             Initialize .cairn/ scaffold (silent, for scripts)
+  status                   Show project cognitive status (DNA mode, drift, stage)
+  doctor                   Consistency checks + auto-resurrect low-gravity archived events
   review                   List pending staged entries
   audit                    Show governance audit log
-  dna show                 Show DNA traits
-  dna reevaluate           Trigger DNA reevaluation
+  dna show                 Show DNA traits + drift warnings + reevaluation_mode
+  dna reevaluate           Toggle DNA reevaluation_mode
+  dna list                 List pending DNA trait candidates
+  dna accept <id>          Confirm a DNA trait candidate
+  dna reject <id> <reason> Reject a DNA trait candidate
   skeleton show            Show skeleton nodes
   blood show [id]          Show blood events
   blood archive <id>       Archive a blood event
   blood resurrect <id>     Resurrect an archived event
   blood trauma <id>        Mark event as trauma
   stage confirm            Confirm stage advisory as official
+  stage list               List pending stage_transition entries
+  stage accept <id>        Accept a stage transition (applies new phase)
+  stage reject <id> <reason> Reject a stage transition
 
 Options:
   --version                Show version
@@ -349,7 +365,7 @@ mcp/src/
 ├── constants.ts             # Version, gravity constants, cognitive mode parameters
 ├── context.ts               # CairnContext factory: wires all stores and engines
 ├── bootstrap.ts             # Empty scaffold creation
-├── server.ts                # McpServer factory: registers 11 tools
+├── server.ts                # McpServer factory: registers 14 tools
 ├── paths.ts                 # .cairn/ root detection + path resolution
 ├── tokens.ts                # Token counting utilities
 ├── errors.ts                # Typed error codes
