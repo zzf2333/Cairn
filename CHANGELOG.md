@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.1.0] - 2026-05-16 (DX patch)
+## [0.3.0] - 2026-05-16 (DX patch)
 
 ### Improved
 
@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **mcp/README.md updated** — CLI section lists all commands (including dna/stage subcommands), Codex CLI config added, tool count corrected to 14
 - **CAIRN_ROOT documented prominently** — multi-project/nested-repo tip in Quick Start
 
-## [3.1.0] - 2026-05-16
+## [0.3.0] - 2026-05-16
 
 ### Added
 
@@ -65,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **11 YAML stores** (was 10, added `DnaStagedStore`)
 - **14 engines** retained but all activated
 
-## [3.0.0] - 2026-05-15
+## [0.3.0-rc.1] - 2026-05-15
 
 ### Breaking Changes
 
