@@ -11,6 +11,7 @@ export interface CairnPaths {
     dna: string;
     dnaIdentity: string;
     dnaImprint: string;
+    dnaStaged: string;
     staged: string;
     signals: string;
     signalsGit: string;
@@ -45,6 +46,7 @@ export function buildPaths(projectRoot: string): CairnPaths {
         dna,
         dnaIdentity: join(dna, "identity.yaml"),
         dnaImprint: join(dna, "imprint.yaml"),
+        dnaStaged: join(dna, "staged"),
         staged: join(cairn, "staged"),
         signals,
         signalsGit: join(signals, "raw_git"),
@@ -67,6 +69,7 @@ export const ALL_DIRS = (p: CairnPaths): string[] => [
     p.domains,
     p.blood,
     p.dna,
+    p.dnaStaged,
     p.staged,
     p.signals,
     p.signalsGit,

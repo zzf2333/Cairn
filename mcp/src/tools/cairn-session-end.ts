@@ -1,7 +1,207 @@
 import type { CairnContext } from "../context.js";
 import { toolResult, formatToolError } from "../errors.js";
-import type { SessionRecord } from "../schemas/index.js";
+import type { SessionRecord, State, EvolutionEvent } from "../schemas/index.js";
 import { downgradeGravity, type GravityLevel } from "../constants.js";
+import { mapGitSignalToEvent } from "../engines/git-signal-mapper.js";
+
+const STAGE_HYSTERESIS_DAYS = 14;
+const STAGE_MIN_CONFIDENCE = 0.6;
+
+interface StageInferenceResult {
+    inferred_phase: string;
+    inferred_confidence: number;
+    changed: boolean;
+    transitionStagedId: string | null;
+}
+
+interface CompressionInferenceResult {
+    candidates_detected: number;
+    new_staged: string[];
+}
+
+async function runCompressionInference(
+    ctx: CairnContext,
+    nowIso: string,
+): Promise<CompressionInferenceResult> {
+    const identity = await ctx.dnaStore.loadIdentity();
+    const threshold = identity.compression_threshold;
+    const candidates = await ctx.compressionEngine.detectCandidates(
+        threshold.min_evidence,
+        threshold.min_timespan_months,
+    );
+
+    const result: CompressionInferenceResult = {
+        candidates_detected: candidates.length,
+        new_staged: [],
+    };
+
+    if (candidates.length === 0) return result;
+
+    const pendingDna = await ctx.dnaStagedStore.findPending();
+    const pendingTraitNames = new Set(pendingDna.map(p => p.trait_name));
+
+    for (const candidate of candidates) {
+        const existingTrait = identity.traits[candidate.trait_name];
+        if (
+            existingTrait
+            && existingTrait.level === candidate.level
+            && Math.abs(existingTrait.confidence - candidate.confidence) < 0.1
+        ) {
+            continue;
+        }
+        if (pendingTraitNames.has(candidate.trait_name)) continue;
+
+        const id = `stg_dna_${candidate.trait_name}_${Date.now()}`;
+        await ctx.dnaStagedStore.save({
+            id,
+            trait_name: candidate.trait_name,
+            level: candidate.level,
+            confidence: candidate.confidence,
+            evidence_events: candidate.evidence_events,
+            reasoning: candidate.reasoning,
+            proposed_at: nowIso,
+            review_status: "pending",
+        });
+        pendingTraitNames.add(candidate.trait_name);
+        result.new_staged.push(id);
+    }
+
+    return result;
+}
+
+async function runStageInference(
+    ctx: CairnContext,
+    state: State,
+    nowIso: string,
+): Promise<StageInferenceResult> {
+    const stats = {
+        projectAgeMonths: await ctx.gitEar.getProjectAge(),
+        ...(await ctx.gitEar.getCommitStats()).count30d !== undefined ? {} : {},
+    };
+    const commitStats = await ctx.gitEar.getCommitStats();
+    const inferred = ctx.stageEngine.infer({
+        projectAgeMonths: stats.projectAgeMonths,
+        commitCount30d: commitStats.count30d,
+        projectAvgCommits30d: commitStats.projectAvg,
+        dependencyChangeRate: await ctx.gitEar.getDependencyChangeRate(30),
+        newFileRatio: await ctx.gitEar.getNewFileRatio(30),
+        contributorCount: await ctx.gitEar.getContributorCount(30),
+    });
+
+    const currentPhase = state.stage.phase;
+    if (inferred.phase === currentPhase) {
+        state.stage.confidence = inferred.confidence;
+        state.stage.evidence = inferred.evidence;
+        state.stage.guidance = inferred.guidance;
+        state.stage.last_updated = nowIso;
+        await ctx.stateStore.save(state);
+        return {
+            inferred_phase: inferred.phase,
+            inferred_confidence: inferred.confidence,
+            changed: false,
+            transitionStagedId: null,
+        };
+    }
+
+    if (inferred.confidence < STAGE_MIN_CONFIDENCE) {
+        return {
+            inferred_phase: inferred.phase,
+            inferred_confidence: inferred.confidence,
+            changed: false,
+            transitionStagedId: null,
+        };
+    }
+
+    if (state.stage.last_updated) {
+        const lastSetMs = new Date(state.stage.last_updated).getTime();
+        const daysSinceSet = (Date.now() - lastSetMs) / (1000 * 60 * 60 * 24);
+        if (daysSinceSet < STAGE_HYSTERESIS_DAYS) {
+            return {
+                inferred_phase: inferred.phase,
+                inferred_confidence: inferred.confidence,
+                changed: false,
+                transitionStagedId: null,
+            };
+        }
+    }
+
+    const transitionEvent: EvolutionEvent = {
+        id: `evt_stage_transition_${currentPhase}_to_${inferred.phase}_${Date.now()}`,
+        time: nowIso,
+        domain: "global",
+        type: "stage_transition",
+        gravity: { level: "G2" },
+        source: {
+            type: "runtime_observed",
+            confidence: inferred.confidence,
+            verified: false,
+            refs: [],
+        },
+        subject: { name: `phase:${inferred.phase}`, aliases: [currentPhase] },
+        trigger: `stage inference detected ${currentPhase} → ${inferred.phase}`,
+        decision_or_change: `transition project phase from ${currentPhase} to ${inferred.phase}`,
+        rejected_paths: [],
+        reasoning: inferred.evidence.map(e => `${e.source}: ${e.signal}`).join("; ") || "stage signals indicate phase change",
+        constraints_added: [],
+        constraints_removed: [],
+        accepted_debt: [],
+        behavior_effect: {
+            type: "prefer_approach",
+            instruction: inferred.guidance.join("; "),
+        },
+        affects: { skeleton: false, dna: false, domains: ["global"] },
+        lifecycle: { validity: "strategic", decay_policy: "downgrade", resurrection_count: 0 },
+        supersedes: null,
+        conflicts_with: [],
+        related: [],
+        health: { state: "ok", reason: null },
+        trauma: {
+            is_trauma: false,
+            sensitivity_multiplier: 1.0,
+            decay_override: null,
+            affects_dna: false,
+            requires_human_ratification: true,
+        },
+        created_at: nowIso,
+        updated_at: nowIso,
+        governance_status: "pending",
+    };
+
+    const routing = await ctx.trustRouter.route({
+        domain: transitionEvent.domain,
+        subject_name: transitionEvent.subject.name,
+        type: transitionEvent.type,
+        gravity: transitionEvent.gravity.level as GravityLevel,
+        isStageTransition: true,
+    });
+
+    if (routing.destination !== "staged") {
+        return {
+            inferred_phase: inferred.phase,
+            inferred_confidence: inferred.confidence,
+            changed: false,
+            transitionStagedId: null,
+        };
+    }
+
+    transitionEvent.gravity.level = routing.gravity;
+    await ctx.stagedStore.save({
+        id: transitionEvent.id,
+        draft_event: transitionEvent,
+        review_status: "pending",
+        routing_reason: routing.reason,
+        gravity: routing.gravity,
+        governance_required: "human_ratified",
+        created_at: nowIso,
+    });
+
+    return {
+        inferred_phase: inferred.phase,
+        inferred_confidence: inferred.confidence,
+        changed: true,
+        transitionStagedId: transitionEvent.id,
+    };
+}
 
 interface SessionEndArgs {
     summary: string;
@@ -36,12 +236,68 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const headCommit = await ctx.gitEar.getHeadCommit();
 
         const state = await ctx.stateStore.load();
+        const priorCommit = state.last_session.commit;
 
         if (state.last_session.ended_at) {
             const lastEnded = new Date(state.last_session.ended_at);
             const daysSince = Math.floor((now.getTime() - lastEnded.getTime()) / (1000 * 60 * 60 * 24));
             if (daysSince > 30) {
                 await ctx.stateStore.clearActivationLog();
+            }
+        }
+
+        const gitScan = priorCommit
+            ? await ctx.gitEar.scan(priorCommit)
+            : { signals: [] };
+
+        const gitNewBlood: string[] = [];
+        const gitNewStaged: string[] = [];
+        const gitDropped: string[] = [];
+        const signalsRouted = { G0: 0, G1: 0, G2: 0, G3: 0 };
+
+        for (const signal of gitScan.signals) {
+            await ctx.signalStore.saveGitSignal(signal);
+            const event = mapGitSignalToEvent(signal, nowIso);
+            if (!event) continue;
+
+            const routing = await ctx.trustRouter.route({
+                domain: event.domain,
+                subject_name: event.subject.name,
+                type: event.type,
+                gravity: event.gravity.level as GravityLevel,
+            });
+
+            signalsRouted[routing.gravity as keyof typeof signalsRouted] += 1;
+
+            if (routing.merged_with) {
+                continue;
+            }
+
+            if (routing.destination === "dropped") {
+                gitDropped.push(event.id);
+                continue;
+            }
+
+            event.gravity.level = routing.gravity;
+
+            if (routing.destination === "blood") {
+                event.governance_status = "auto_confirmed";
+                await ctx.bloodEngine.commit(event);
+                gitNewBlood.push(event.id);
+            } else if (routing.destination === "staged") {
+                event.governance_status = "pending";
+                await ctx.stagedStore.save({
+                    id: event.id,
+                    draft_event: event,
+                    review_status: "pending",
+                    routing_reason: routing.reason,
+                    gravity: routing.gravity,
+                    governance_required: routing.governance === "human_ratified"
+                        ? "human_ratified"
+                        : "auto_confirmable",
+                    created_at: nowIso,
+                });
+                gitNewStaged.push(event.id);
             }
         }
 
@@ -73,6 +329,13 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const calibration = await ctx.calibrationEar.calibrate();
         const safetyValve = await ctx.calibrationEar.applySafetyValve(calibration.signals);
 
+        const stageResult = await runStageInference(ctx, state, nowIso);
+        if (stageResult.transitionStagedId) {
+            gitNewStaged.push(stageResult.transitionStagedId);
+        }
+
+        const dnaResult = await runCompressionInference(ctx, nowIso);
+
         await ctx.viewsEngine.regenerate();
 
         const record: SessionRecord = {
@@ -80,8 +343,8 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
             started_at: nowIso,
             ended_at: nowIso,
             summary,
-            signals_captured: calibration.signals.length + safetyValve.signals.length,
-            signals_routed: { G0: 0, G1: 0, G2: 0, G3: 0 },
+            signals_captured: gitScan.signals.length + calibration.signals.length + safetyValve.signals.length,
+            signals_routed: signalsRouted,
             domains_touched: changedDomains ?? [],
             decisions_made: decisionsMade ?? [],
             unresolved: unresolved ?? [],
@@ -92,11 +355,27 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const stagedCount = await ctx.stagedStore.count();
 
         return toolResult(JSON.stringify({
-            signals_processed: calibration.signals.length,
-            new_blood: 0,
-            new_staged: 0,
+            signals_processed: gitScan.signals.length + calibration.signals.length,
+            new_blood: gitNewBlood.length,
+            new_staged: gitNewStaged.length,
             views_regenerated: true,
             pending_review: stagedCount,
+            git_signals: {
+                scanned: gitScan.signals.length,
+                new_blood: gitNewBlood.length,
+                new_staged: gitNewStaged.length,
+                dropped: gitDropped.length,
+            },
+            stage: {
+                phase: stageResult.inferred_phase,
+                confidence: stageResult.inferred_confidence,
+                changed: stageResult.changed,
+                transition_staged: stageResult.transitionStagedId,
+            },
+            dna_compression: {
+                candidates_detected: dnaResult.candidates_detected,
+                new_staged: dnaResult.new_staged,
+            },
             dna_safety_valve: {
                 triggered_traits: safetyValve.triggered_traits,
                 confidence_reduced: safetyValve.confidence_reduced,

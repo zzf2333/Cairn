@@ -13,6 +13,7 @@ import { DnaStore } from "../../src/stores/dna-store.js";
 import { DomainStore } from "../../src/stores/domain-store.js";
 import { SignalStore } from "../../src/stores/signal-store.js";
 import { StagedStore } from "../../src/stores/staged-store.js";
+import { DnaStagedStore } from "../../src/stores/dna-staged-store.js";
 import { StateStore } from "../../src/stores/state-store.js";
 import { ConfigStore } from "../../src/stores/config-store.js";
 import { GovernanceStore } from "../../src/stores/governance-store.js";
@@ -43,6 +44,9 @@ import { handleStageList } from "../../src/tools/cairn-stage-list.js";
 import { handleStageAccept } from "../../src/tools/cairn-stage-accept.js";
 import { handleStageReject } from "../../src/tools/cairn-stage-reject.js";
 import { handleDoctor } from "../../src/tools/cairn-doctor.js";
+import { handleDnaList } from "../../src/tools/cairn-dna-list.js";
+import { handleDnaAccept } from "../../src/tools/cairn-dna-accept.js";
+import { handleDnaReject } from "../../src/tools/cairn-dna-reject.js";
 
 function parseResult(result: { content: Array<{ type: string; text: string }>; isError?: boolean }) {
     return JSON.parse(result.content[0].text);
@@ -64,6 +68,7 @@ beforeEach(async () => {
     const domainStore = new DomainStore(paths.domains);
     const signalStore = new SignalStore(paths.signalsGit, paths.signalsCalibration, paths.signalsConversation);
     const stagedStore = new StagedStore(paths.staged);
+    const dnaStagedStore = new DnaStagedStore(paths.dnaStaged);
     const stateStore = new StateStore(paths.state);
     const configStore = new ConfigStore(paths.config);
     const governanceStore = new GovernanceStore(paths.governancePolicy, paths.governanceAudit);
@@ -84,6 +89,7 @@ beforeEach(async () => {
     const viewsEngine = new ViewsEngine(
         bloodStore, skeletonStore, domainStore, dnaStore, stateStore,
         paths.viewsOutput, paths.viewsStage, paths.viewsDomains,
+        dnaStagedStore,
     );
     const bloodEngine = new BloodEngine(bloodStore, domainStore, viewsEngine);
     const gitEar = new GitEar(paths.root, skeletonStore);
@@ -92,7 +98,7 @@ beforeEach(async () => {
     ctx = {
         paths,
         bloodStore, skeletonStore, dnaStore, domainStore,
-        signalStore, stagedStore, stateStore, configStore,
+        signalStore, stagedStore, dnaStagedStore, stateStore, configStore,
         governanceStore, sessionStore,
         activationEngine, challengeEngine, stageEngine,
         decayEngine, compressionEngine, resurrectionEngine,
@@ -430,6 +436,102 @@ describe("cairn_session_end", () => {
         expect(data.views_regenerated).toBe(true);
         expect(data.pending_review).toBeDefined();
     });
+
+    it("includes git_signals output shape", async () => {
+        const result = await handleSessionEnd(ctx, {
+            summary: "first session",
+        });
+        const data = parseResult(result);
+        expect(data.git_signals).toBeDefined();
+        expect(data.git_signals.scanned).toBe(0);
+        expect(data.git_signals.new_blood).toBe(0);
+        expect(data.git_signals.new_staged).toBe(0);
+    });
+
+    it("scans git history when prior commit exists and routes revert as rejection", async () => {
+        await handleSessionEnd(ctx, { summary: "first session" });
+
+        execSync("git commit --allow-empty -m 'feat: try thing'", { cwd: tmpDir });
+        execSync("git commit --allow-empty -m 'Revert feat: try thing'", { cwd: tmpDir });
+
+        const result = await handleSessionEnd(ctx, { summary: "second session" });
+        const data = parseResult(result);
+
+        expect(data.git_signals.scanned).toBeGreaterThanOrEqual(1);
+        const totalRouted = data.git_signals.new_blood + data.git_signals.new_staged + data.git_signals.dropped;
+        expect(totalRouted).toBeGreaterThanOrEqual(1);
+    });
+
+    it("includes stage output shape with current phase and confidence", async () => {
+        const result = await handleSessionEnd(ctx, { summary: "first session" });
+        const data = parseResult(result);
+        expect(data.stage).toBeDefined();
+        expect(typeof data.stage.phase).toBe("string");
+        expect(typeof data.stage.confidence).toBe("number");
+        expect(typeof data.stage.changed).toBe("boolean");
+    });
+
+    it("does not flip stage immediately after a recent stage update (hysteresis)", async () => {
+        const recent = new Date();
+        recent.setDate(recent.getDate() - 5);
+        const state = await ctx.stateStore.load();
+        state.stage.phase = "growth";
+        state.stage.confidence = 0.8;
+        state.stage.last_updated = recent.toISOString();
+        await ctx.stateStore.save(state);
+
+        const result = await handleSessionEnd(ctx, { summary: "session within hysteresis" });
+        const data = parseResult(result);
+        expect(data.stage.transition_staged).toBeNull();
+    });
+});
+
+describe("cairn_stage_accept — stage_transition", () => {
+    it("applies the new phase to state when stage_transition is accepted", async () => {
+        const transitionEvent = makeEvolutionEvent("evt_stage_transition_growth_to_maturity_1", {
+            type: "stage_transition",
+            subject: { name: "phase:maturity", aliases: ["growth"] },
+            behavior_effect: {
+                type: "prefer_approach",
+                instruction: "Stability first; avoid unnecessary new dependencies",
+            },
+        });
+        await ctx.stagedStore.save({
+            id: transitionEvent.id,
+            draft_event: transitionEvent,
+            review_status: "pending",
+            routing_reason: "test",
+            gravity: "G2",
+            governance_required: "human_ratified",
+            created_at: new Date().toISOString(),
+        });
+
+        const result = await handleStageAccept(ctx, { id: transitionEvent.id });
+        const data = parseResult(result);
+        expect(data.stage_applied).toBe(true);
+
+        const state = await ctx.stateStore.load();
+        expect(state.stage.phase).toBe("maturity");
+        expect(state.stage.status).toBe("confirmed");
+        expect(state.stage.guidance.length).toBeGreaterThan(0);
+    });
+
+    it("does not apply stage when event type is not stage_transition", async () => {
+        const event = makeEvolutionEvent("evt_normal_001");
+        await ctx.stagedStore.save({
+            id: event.id,
+            draft_event: event,
+            review_status: "pending",
+            routing_reason: "test",
+            gravity: "G1",
+            governance_required: "auto_confirmable",
+            created_at: new Date().toISOString(),
+        });
+
+        const result = await handleStageAccept(ctx, { id: event.id });
+        const data = parseResult(result);
+        expect(data.stage_applied).toBe(false);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -690,18 +792,39 @@ describe("cairn_doctor", () => {
         expect(data.issues.some((i: string) => i.includes("decay"))).toBe(true);
     });
 
-    it("detects resurrection candidates", async () => {
-        await ctx.bloodStore.save(makeEvolutionEvent("evt_archived", {
+    it("auto-resurrects archived G1 events with high reactivation", async () => {
+        await ctx.bloodStore.save(makeEvolutionEvent("evt_archived_g1", {
+            gravity: { level: "G1" },
             health: { state: "stale", reason: "old" },
         }));
         await ctx.stateStore.save(makeState({
             activation_log: {
-                recent_hits: { evt_archived: 10 },
+                recent_hits: { evt_archived_g1: 10 },
             },
         }));
         const result = await handleDoctor(ctx);
         const data = parseResult(result);
-        expect(data.health.resurrection_candidates.length).toBeGreaterThan(0);
+        expect(data.health.auto_resurrected).toContain("evt_archived_g1");
+        const resurrected = await ctx.bloodStore.load("evt_archived_g1");
+        expect(resurrected?.health.state).toBe("resurrected");
+    });
+
+    it("keeps archived G2+ events as resurrection candidates (no auto)", async () => {
+        await ctx.bloodStore.save(makeEvolutionEvent("evt_archived_g2", {
+            gravity: { level: "G2" },
+            health: { state: "stale", reason: "old" },
+        }));
+        await ctx.stateStore.save(makeState({
+            activation_log: {
+                recent_hits: { evt_archived_g2: 10 },
+            },
+        }));
+        const result = await handleDoctor(ctx);
+        const data = parseResult(result);
+        expect(data.health.resurrection_candidates.some((c: { event_id: string }) => c.event_id === "evt_archived_g2")).toBe(true);
+        expect(data.health.auto_resurrected).not.toContain("evt_archived_g2");
+        const stillArchived = await ctx.bloodStore.load("evt_archived_g2");
+        expect(stillArchived?.health.state).toBe("stale");
     });
 
     it("reports staged governance pending count", async () => {
@@ -736,5 +859,126 @@ describe("cairn_doctor", () => {
         const data = parseResult(result);
         expect(data.health.unratified_trauma.length).toBeGreaterThan(0);
         expect(data.issues.some((i: string) => i.includes("trauma"))).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// cairn_dna_list / accept / reject
+// ---------------------------------------------------------------------------
+
+describe("cairn_dna_*", () => {
+    async function stageOne() {
+        const id = `stg_dna_simplicity_bias_${Date.now()}`;
+        await ctx.dnaStagedStore.save({
+            id,
+            trait_name: "simplicity_bias",
+            level: "high",
+            confidence: 0.78,
+            evidence_events: ["evt_a", "evt_b", "evt_c"],
+            reasoning: "5 events show simplicity preference",
+            proposed_at: new Date().toISOString(),
+            review_status: "pending",
+        });
+        return id;
+    }
+
+    it("lists pending DNA candidates", async () => {
+        const id = await stageOne();
+        const result = await handleDnaList(ctx);
+        const data = parseResult(result);
+        expect(data.count).toBe(1);
+        expect(data.candidates[0].id).toBe(id);
+        expect(data.candidates[0].trait_name).toBe("simplicity_bias");
+    });
+
+    it("accept writes trait to identity and updates status", async () => {
+        const id = await stageOne();
+        const result = await handleDnaAccept(ctx, { id });
+        const data = parseResult(result);
+        expect(data.success).toBe(true);
+        expect(data.trait_name).toBe("simplicity_bias");
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.traits.simplicity_bias.level).toBe("high");
+        expect(identity.traits.simplicity_bias.confidence).toBeCloseTo(0.78);
+        expect(identity.status).toBe("emerged");
+
+        const entry = await ctx.dnaStagedStore.load(id);
+        expect(entry?.review_status).toBe("accepted");
+    });
+
+    it("reject does not write identity but records audit", async () => {
+        const id = await stageOne();
+        const result = await handleDnaReject(ctx, { id, reason: "not matched to project direction" });
+        const data = parseResult(result);
+        expect(data.success).toBe(true);
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.traits.simplicity_bias).toBeUndefined();
+
+        const entry = await ctx.dnaStagedStore.load(id);
+        expect(entry?.review_status).toBe("rejected");
+    });
+
+    it("accept twice is rejected (already accepted)", async () => {
+        const id = await stageOne();
+        await handleDnaAccept(ctx, { id });
+        const result = await handleDnaAccept(ctx, { id });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain("already accepted");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Compression → DNA staged closed loop (session_end driven)
+// ---------------------------------------------------------------------------
+
+describe("Compression closed loop via session_end", () => {
+    beforeEach(() => {
+        execSync("git init && git commit --allow-empty -m 'init'", { cwd: tmpDir });
+    });
+
+    it("session_end produces a DNA staged candidate when infra rejections accumulate", async () => {
+        const longAgo = new Date();
+        longAgo.setMonth(longAgo.getMonth() - 5);
+        const recent = new Date();
+        for (let i = 0; i < 6; i++) {
+            const t = new Date(longAgo.getTime() + i * 18 * 24 * 60 * 60 * 1000);
+            await ctx.bloodStore.save(makeEvolutionEvent(`evt_infra_${i}`, {
+                domain: "infra",
+                type: "rejection",
+                time: t.toISOString(),
+                behavior_effect: { type: "avoid_suggestion", instruction: "no kafka" },
+            }));
+        }
+
+        const result = await handleSessionEnd(ctx, { summary: "compression test" });
+        const data = parseResult(result);
+        expect(data.dna_compression).toBeDefined();
+        expect(data.dna_compression.new_staged.length).toBeGreaterThanOrEqual(1);
+
+        const pending = await ctx.dnaStagedStore.findPending();
+        expect(pending.length).toBeGreaterThanOrEqual(1);
+        expect(pending[0].trait_name).toBe("infra_aggressiveness");
+    });
+
+    it("does not re-stage the same trait while one is already pending", async () => {
+        const longAgo = new Date();
+        longAgo.setMonth(longAgo.getMonth() - 5);
+        for (let i = 0; i < 6; i++) {
+            const t = new Date(longAgo.getTime() + i * 18 * 24 * 60 * 60 * 1000);
+            await ctx.bloodStore.save(makeEvolutionEvent(`evt_infra_dup_${i}`, {
+                domain: "infra",
+                type: "rejection",
+                time: t.toISOString(),
+                behavior_effect: { type: "avoid_suggestion", instruction: "no thing" },
+            }));
+        }
+
+        await handleSessionEnd(ctx, { summary: "first" });
+        const firstCount = (await ctx.dnaStagedStore.findPending()).length;
+        await handleSessionEnd(ctx, { summary: "second" });
+        const secondCount = (await ctx.dnaStagedStore.findPending()).length;
+        expect(secondCount).toBe(firstCount);
     });
 });

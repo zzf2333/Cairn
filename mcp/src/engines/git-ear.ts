@@ -208,6 +208,65 @@ export class GitEar {
         }
     }
 
+    async getDependencyChangeRate(sinceDays: number): Promise<number> {
+        try {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - sinceDays);
+            const recentLog = await this.git.log({ "--after": cutoff.toISOString() });
+            if (recentLog.all.length === 0) return 0;
+
+            let depTouches = 0;
+            for (const commit of recentLog.all) {
+                try {
+                    const diff = await this.git.diff([`${commit.hash}~1`, commit.hash, "--name-only"]);
+                    const files = diff.split("\n").filter(Boolean);
+                    if (files.some(f => DEPENDENCY_FILES.some(d => f.endsWith(d)))) {
+                        depTouches++;
+                    }
+                } catch { continue; }
+            }
+            return depTouches / recentLog.all.length;
+        } catch {
+            return 0;
+        }
+    }
+
+    async getNewFileRatio(sinceDays: number): Promise<number> {
+        try {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - sinceDays);
+            const recentLog = await this.git.log({ "--after": cutoff.toISOString() });
+            if (recentLog.all.length === 0) return 0;
+
+            let added = 0;
+            let total = 0;
+            for (const commit of recentLog.all) {
+                try {
+                    const diff = await this.git.diff([`${commit.hash}~1`, commit.hash, "--name-status"]);
+                    for (const line of diff.split("\n").filter(Boolean)) {
+                        total++;
+                        if (line.startsWith("A\t")) added++;
+                    }
+                } catch { continue; }
+            }
+            return total > 0 ? added / total : 0;
+        } catch {
+            return 0;
+        }
+    }
+
+    async getContributorCount(sinceDays: number): Promise<number> {
+        try {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - sinceDays);
+            const recentLog = await this.git.log({ "--after": cutoff.toISOString() });
+            const authors = new Set(recentLog.all.map(c => c.author_email));
+            return authors.size;
+        } catch {
+            return 0;
+        }
+    }
+
     async getHeadCommit(): Promise<string | null> {
         try {
             const hash = await this.git.revparse(["HEAD"]);

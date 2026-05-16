@@ -6,11 +6,26 @@ export async function handleDoctor(
 ) {
     const cognitiveMode = await ctx.governanceEngine.getCognitiveMode();
 
-    const [consistencyReport, decayActions, resurrectionCandidates] = await Promise.all([
+    const [consistencyReport, decayActions, allResurrectionCandidates] = await Promise.all([
         ctx.consistencyEngine.runAll(),
         ctx.decayEngine.checkDecay(cognitiveMode),
         ctx.resurrectionEngine.checkResurrection(),
     ]);
+
+    const autoResurrected: string[] = [];
+    const resurrectionCandidates: typeof allResurrectionCandidates = [];
+    for (const candidate of allResurrectionCandidates) {
+        if (candidate.governance === "system_validated") {
+            try {
+                await ctx.bloodEngine.resurrect(candidate.event_id);
+                autoResurrected.push(candidate.event_id);
+            } catch {
+                resurrectionCandidates.push(candidate);
+            }
+        } else {
+            resurrectionCandidates.push(candidate);
+        }
+    }
 
     const [stagedCount, traumaEvents, policy, dnaIdentity] = await Promise.all([
         ctx.stagedStore.count(),
@@ -74,11 +89,16 @@ export async function handleDoctor(
         issues.push(`DNA trait "${traitName}" has ${count} unresolved drift warning(s)`);
     }
 
+    if (autoResurrected.length > 0) {
+        issues.push(`${autoResurrected.length} archived event(s) auto-resurrected (low gravity, high reactivation)`);
+    }
+
     const result = {
         consistency: consistencyReport,
         health: {
             decay_actions: decayActions,
             resurrection_candidates: resurrectionCandidates,
+            auto_resurrected: autoResurrected,
             unratified_trauma: unratifiedTrauma,
         },
         staged: {

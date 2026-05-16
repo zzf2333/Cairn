@@ -7,5 +7,6 @@ export * from "./config.js";
 export * from "./state.js";
 export * from "./governance.js";
 export * from "./staged-entry.js";
+export * from "./dna-staged.js";
 export * from "./signal.js";
 export * from "./session-record.js";

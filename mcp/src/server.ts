@@ -14,6 +14,9 @@ import { handleStageList } from "./tools/cairn-stage-list.js";
 import { handleStageAccept } from "./tools/cairn-stage-accept.js";
 import { handleStageReject } from "./tools/cairn-stage-reject.js";
 import { handleDoctor } from "./tools/cairn-doctor.js";
+import { handleDnaList } from "./tools/cairn-dna-list.js";
+import { handleDnaAccept } from "./tools/cairn-dna-accept.js";
+import { handleDnaReject } from "./tools/cairn-dna-reject.js";
 
 const CAIRN_INSTRUCTIONS = [
     "Cairn is a project memory engine. Follow this protocol:",
@@ -254,6 +257,50 @@ export function createServer(ctx: CairnContext): McpServer {
         async () => {
             try {
                 return await handleDoctor(ctx);
+            } catch (e) {
+                return formatToolError(e);
+            }
+        },
+    );
+
+    server.tool(
+        "cairn_dna_list",
+        "List pending DNA trait candidates awaiting human ratification",
+        {},
+        async () => {
+            try {
+                return await handleDnaList(ctx);
+            } catch (e) {
+                return formatToolError(e);
+            }
+        },
+    );
+
+    server.tool(
+        "cairn_dna_accept",
+        "Accept a DNA trait candidate, writing it to dna/identity.yaml",
+        {
+            id: z.string(),
+        },
+        async (args) => {
+            try {
+                return await handleDnaAccept(ctx, args);
+            } catch (e) {
+                return formatToolError(e);
+            }
+        },
+    );
+
+    server.tool(
+        "cairn_dna_reject",
+        "Reject a DNA trait candidate; records the rejection in audit log",
+        {
+            id: z.string(),
+            reason: z.string(),
+        },
+        async (args) => {
+            try {
+                return await handleDnaReject(ctx, args);
             } catch (e) {
                 return formatToolError(e);
             }

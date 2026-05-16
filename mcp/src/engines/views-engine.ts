@@ -1,6 +1,6 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { BloodStore, SkeletonStore, DomainStore, DnaStore, StateStore } from "../stores/index.js";
+import type { BloodStore, SkeletonStore, DomainStore, DnaStore, StateStore, DnaStagedStore } from "../stores/index.js";
 import { approxTokens } from "../tokens.js";
 import { VIEWS_TOKEN_TARGETS } from "../constants.js";
 
@@ -20,6 +20,7 @@ export class ViewsEngine {
         private readonly viewsOutputPath: string,
         private readonly viewsStagePath: string,
         private readonly viewsDomainsDir: string,
+        private readonly dnaStagedStore?: DnaStagedStore,
     ) {}
 
     async regenerate(): Promise<void> {
@@ -97,6 +98,17 @@ export class ViewsEngine {
             output += `_None_\n`;
         }
         output += `\n`;
+
+        if (this.dnaStagedStore) {
+            const pendingDna = await this.dnaStagedStore.findPending();
+            if (pendingDna.length > 0) {
+                output += `## DNA Candidates (pending review)\n\n`;
+                for (const c of pendingDna) {
+                    output += `- **${c.trait_name}** (${c.level}, confidence ${c.confidence.toFixed(2)}): ${c.reasoning}\n`;
+                }
+                output += `\n`;
+            }
+        }
 
         output += `## Hooks\n\n`;
         if (skeletonNodes.length === 0) {

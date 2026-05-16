@@ -2,7 +2,7 @@ import { buildPaths, ALL_DIRS, type CairnPaths } from "./paths.js";
 import { mkdir } from "node:fs/promises";
 import {
     BloodStore, SkeletonStore, DnaStore, DomainStore,
-    SignalStore, StagedStore, StateStore, ConfigStore,
+    SignalStore, StagedStore, DnaStagedStore, StateStore, ConfigStore,
     GovernanceStore, SessionStore,
 } from "./stores/index.js";
 import {
@@ -20,6 +20,7 @@ export interface CairnContext {
     domainStore: DomainStore;
     signalStore: SignalStore;
     stagedStore: StagedStore;
+    dnaStagedStore: DnaStagedStore;
     stateStore: StateStore;
     configStore: ConfigStore;
     governanceStore: GovernanceStore;
@@ -48,6 +49,7 @@ export async function createContext(projectRoot: string): Promise<CairnContext> 
     const domainStore = new DomainStore(paths.domains);
     const signalStore = new SignalStore(paths.signalsGit, paths.signalsCalibration, paths.signalsConversation);
     const stagedStore = new StagedStore(paths.staged);
+    const dnaStagedStore = new DnaStagedStore(paths.dnaStaged);
     const stateStore = new StateStore(paths.state);
     const configStore = new ConfigStore(paths.config);
     const governanceStore = new GovernanceStore(paths.governancePolicy, paths.governanceAudit);
@@ -65,6 +67,7 @@ export async function createContext(projectRoot: string): Promise<CairnContext> 
     const viewsEngine = new ViewsEngine(
         bloodStore, skeletonStore, domainStore, dnaStore, stateStore,
         paths.viewsOutput, paths.viewsStage, paths.viewsDomains,
+        dnaStagedStore,
     );
     const bloodEngine = new BloodEngine(bloodStore, domainStore, viewsEngine);
     const gitEar = new GitEar(paths.root, skeletonStore);
@@ -73,7 +76,7 @@ export async function createContext(projectRoot: string): Promise<CairnContext> 
     return {
         paths,
         bloodStore, skeletonStore, dnaStore, domainStore,
-        signalStore, stagedStore, stateStore, configStore,
+        signalStore, stagedStore, dnaStagedStore, stateStore, configStore,
         governanceStore, sessionStore,
         activationEngine, challengeEngine, stageEngine,
         decayEngine, compressionEngine, resurrectionEngine,

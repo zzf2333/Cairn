@@ -20,6 +20,9 @@ or write `.cairn/` files directly (except `views/` in degraded mode).
 | `cairn_stage_reject` | Reject staged entry with reason |
 | `cairn_status` | System state summary |
 | `cairn_doctor` | Cognitive consistency validator |
+| `cairn_dna_list` | List pending DNA trait candidates from compression |
+| `cairn_dna_accept` | Confirm a DNA trait candidate (writes identity.yaml) |
+| `cairn_dna_reject` | Reject a DNA trait candidate with reason |
 
 ---
 
@@ -206,6 +209,25 @@ Staged entries follow the governance flow:
 
 **Never auto-accept staged entries.** They exist precisely because they
 require human judgment.
+
+### 4.1 DNA Candidates Review
+
+When `cairn_context` returns a non-empty DNA candidates list, or
+`views/output.md` shows a `## DNA Candidates` section, treat it the same
+way as staged entries:
+
+1. `cairn_dna_list()` — fetch pending candidates
+2. For each, present to the user with:
+   - `trait_name` (one of the system-recognized traits — currently
+     `simplicity_bias`, `infra_aggressiveness`)
+   - `level`, `confidence`, count of supporting events, `reasoning`
+3. Per user decision:
+   - `cairn_dna_accept({ id })` — writes to `dna/identity.yaml`; the trait
+     starts modulating routing, challenges, and gravity
+   - `cairn_dna_reject({ id, reason })` — discards candidate, records audit
+
+DNA candidates always require human ratification — never auto-accept. A
+wrong DNA trait will silently distort every future decision until removed.
 
 ---
 

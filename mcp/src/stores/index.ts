@@ -4,6 +4,7 @@ export { DnaStore } from "./dna-store.js";
 export { DomainStore } from "./domain-store.js";
 export { SignalStore } from "./signal-store.js";
 export { StagedStore } from "./staged-store.js";
+export { DnaStagedStore } from "./dna-staged-store.js";
 export { StateStore } from "./state-store.js";
 export { ConfigStore } from "./config-store.js";
 export { GovernanceStore } from "./governance-store.js";
