@@ -484,6 +484,18 @@ describe("cairn_session_end", () => {
         const data = parseResult(result);
         expect(data.stage.transition_staged).toBeNull();
     });
+
+    it("does not emit a stage_transition on first session (no last_updated yet)", async () => {
+        const state = await ctx.stateStore.load();
+        expect(state.stage.last_updated).toBeUndefined();
+
+        const result = await handleSessionEnd(ctx, { summary: "first ever session" });
+        const data = parseResult(result);
+        expect(data.stage.transition_staged).toBeNull();
+
+        const after = await ctx.stateStore.load();
+        expect(after.stage.last_updated).toBeDefined();
+    });
 });
 
 describe("cairn_stage_accept — stage_transition", () => {

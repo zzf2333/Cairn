@@ -74,13 +74,10 @@ async function runStageInference(
     state: State,
     nowIso: string,
 ): Promise<StageInferenceResult> {
-    const stats = {
-        projectAgeMonths: await ctx.gitEar.getProjectAge(),
-        ...(await ctx.gitEar.getCommitStats()).count30d !== undefined ? {} : {},
-    };
+    const projectAgeMonths = await ctx.gitEar.getProjectAge();
     const commitStats = await ctx.gitEar.getCommitStats();
     const inferred = ctx.stageEngine.infer({
-        projectAgeMonths: stats.projectAgeMonths,
+        projectAgeMonths,
         commitCount30d: commitStats.count30d,
         projectAvgCommits30d: commitStats.projectAvg,
         dependencyChangeRate: await ctx.gitEar.getDependencyChangeRate(30),
@@ -112,17 +109,26 @@ async function runStageInference(
         };
     }
 
-    if (state.stage.last_updated) {
-        const lastSetMs = new Date(state.stage.last_updated).getTime();
-        const daysSinceSet = (Date.now() - lastSetMs) / (1000 * 60 * 60 * 24);
-        if (daysSinceSet < STAGE_HYSTERESIS_DAYS) {
-            return {
-                inferred_phase: inferred.phase,
-                inferred_confidence: inferred.confidence,
-                changed: false,
-                transitionStagedId: null,
-            };
-        }
+    if (!state.stage.last_updated) {
+        state.stage.last_updated = nowIso;
+        await ctx.stateStore.save(state);
+        return {
+            inferred_phase: inferred.phase,
+            inferred_confidence: inferred.confidence,
+            changed: false,
+            transitionStagedId: null,
+        };
+    }
+
+    const lastSetMs = new Date(state.stage.last_updated).getTime();
+    const daysSinceSet = (Date.now() - lastSetMs) / (1000 * 60 * 60 * 24);
+    if (daysSinceSet < STAGE_HYSTERESIS_DAYS) {
+        return {
+            inferred_phase: inferred.phase,
+            inferred_confidence: inferred.confidence,
+            changed: false,
+            transitionStagedId: null,
+        };
     }
 
     const transitionEvent: EvolutionEvent = {
@@ -256,7 +262,6 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const signalsRouted = { G0: 0, G1: 0, G2: 0, G3: 0 };
 
         for (const signal of gitScan.signals) {
-            await ctx.signalStore.saveGitSignal(signal);
             const event = mapGitSignalToEvent(signal, nowIso);
             if (!event) continue;
 

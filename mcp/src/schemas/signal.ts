@@ -3,8 +3,7 @@ import { GravityLevelEnum } from "./shared.js";
 
 export const GIT_SIGNAL_TYPES = [
     "revert", "dependency_removed", "dependency_replaced",
-    "large_refactor", "commit_frequency_change",
-    "new_contributor", "todo_fixme_cluster",
+    "large_refactor",
 ] as const;
 
 export const GitSignalSchema = z.object({

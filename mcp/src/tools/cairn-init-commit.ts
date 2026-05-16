@@ -102,6 +102,11 @@ function buildEventFromCandidate(candidate: BloodCandidate, index: number): Evol
 }
 
 export async function handleInitCommit(ctx: CairnContext, args: Record<string, unknown>) {
+    // Init intentionally does NOT call gitEar.scan() to backscan git history.
+    // Initial cognition is curated by the AI via the blood_candidates argument
+    // (higher quality than mass-scanning historical commits would produce).
+    // Auto git scanning begins on the first session_end after init, using
+    // state.last_session.commit (set below) as the starting point.
     try {
         const {
             config,

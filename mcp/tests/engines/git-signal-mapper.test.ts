@@ -84,13 +84,6 @@ describe("mapGitSignalToEvent", () => {
         expect(event!.behavior_effect.type).toBe("prefer_approach");
     });
 
-    it("returns null for commit_frequency_change / new_contributor / todo_fixme_cluster", () => {
-        for (const t of ["commit_frequency_change", "new_contributor", "todo_fixme_cluster"] as const) {
-            const sig = makeGitSignal({ signal_type: t });
-            expect(mapGitSignalToEvent(sig, NOW)).toBeNull();
-        }
-    });
-
     it("uses 'global' domain when inferred_domain is missing", () => {
         const sig: GitSignal = {
             id: "sig_test_no_domain",

@@ -114,66 +114,10 @@ export class GitEar {
                 }
             }
 
-            await this.scanCommitFrequencyChange(signals, index, now);
-            await this.scanNewContributors(signals, index, now);
-
             return { signals };
         } catch {
             return { signals: [] };
         }
-    }
-
-    private async scanCommitFrequencyChange(
-        signals: GitSignal[], index: number, now: string,
-    ): Promise<void> {
-        try {
-            const stats = await this.getCommitStats();
-            if (stats.projectAvg === 0) return;
-            const monthlyRecent = stats.count30d;
-            const monthlyAvg = stats.projectAvg;
-            const ratio = monthlyRecent / monthlyAvg;
-            if (ratio > 1.5 || ratio < 0.5) {
-                signals.push({
-                    id: `sig_git_${Date.now()}_commit_frequency_${index}`,
-                    signal_type: "commit_frequency_change",
-                    raw_data: {
-                        stats: { commit_count_30d: stats.count30d, project_avg: stats.projectAvg },
-                    },
-                    inferred_gravity: "G1",
-                    confidence: 0.6,
-                    captured_at: now,
-                });
-            }
-        } catch { /* ignore */ }
-    }
-
-    private async scanNewContributors(
-        signals: GitSignal[], index: number, now: string,
-    ): Promise<void> {
-        try {
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            const recentLog = await this.git.log({ "--after": thirtyDaysAgo.toISOString() });
-            const allLog = await this.git.log();
-            const allAuthors = new Set(allLog.all.map(c => c.author_email));
-            const recentAuthors = new Set(recentLog.all.map(c => c.author_email));
-            for (const author of recentAuthors) {
-                const isNew = !allLog.all.some(
-                    c => c.author_email === author && new Date(c.date) < thirtyDaysAgo,
-                );
-                if (isNew) {
-                    signals.push({
-                        id: `sig_git_${Date.now()}_new_contributor_${index}`,
-                        signal_type: "new_contributor",
-                        raw_data: {},
-                        inferred_gravity: "G0",
-                        confidence: 0.9,
-                        captured_at: now,
-                    });
-                    break;
-                }
-            }
-        } catch { /* ignore */ }
     }
 
     async getProjectAge(): Promise<number> {

@@ -121,11 +121,6 @@ export function mapGitSignalToEvent(signal: GitSignal, now: string): EvolutionEv
             };
         }
 
-        case "commit_frequency_change":
-        case "new_contributor":
-        case "todo_fixme_cluster":
-            return null;
-
         default:
             return null;
     }
