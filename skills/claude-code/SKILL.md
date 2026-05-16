@@ -4,7 +4,7 @@ Cairn is an AI-native engineering cognition engine. `.cairn/` stores
 structured project memory — decisions, rejections, trade-offs, trauma —
 that constrains your suggestions and prevents repeated mistakes.
 
-You interact with Cairn exclusively through **11 MCP tools**. Never read
+You interact with Cairn exclusively through **14 MCP tools**. Never read
 or write `.cairn/` files directly (except `views/` in degraded mode).
 
 | Tool | Purpose |
@@ -14,12 +14,12 @@ or write `.cairn/` files directly (except `views/` in degraded mode).
 | `cairn_context` | Activate constraints before any task |
 | `cairn_signal` | Capture real-time constraint signals |
 | `cairn_plan` | Get history-aware planning guidance (read-only) |
-| `cairn_session_end` | Close session, trigger decay + views regen |
-| `cairn_stage_list` | List staged entries pending review |
-| `cairn_stage_accept` | Promote staged entry to blood |
+| `cairn_session_end` | Close session, run automated maintenance pipeline |
+| `cairn_stage_list` | List staged EvolutionEvent entries pending review |
+| `cairn_stage_accept` | Promote staged entry to blood (and apply stage_transition to state if applicable) |
 | `cairn_stage_reject` | Reject staged entry with reason |
 | `cairn_status` | System state summary |
-| `cairn_doctor` | Cognitive consistency validator |
+| `cairn_doctor` | Cognitive consistency validator (has side effects: auto-resurrects G0/G1 archived events with high reactivation) |
 | `cairn_dna_list` | List pending DNA trait candidates from compression |
 | `cairn_dna_accept` | Confirm a DNA trait candidate (writes identity.yaml) |
 | `cairn_dna_reject` | Reject a DNA trait candidate with reason |
@@ -87,7 +87,7 @@ Returns:
   "stage": { "phase", "confidence", "status", "guidance" },
   "dna": { "relevant_traits": [{ "name", "level", "implication" }] },
   "constraints": {
-    "no_go": [{ "what", "reason", "gravity", "source_event" }],
+    "no_go": [{ "what", "reason", "gravity", "source_event", "archived?": boolean }],
     "accepted_debt": [{ "what", "reason", "revisit_when" }],
     "stage_constraints": [string]
   },
@@ -99,7 +99,7 @@ Returns:
   "challenges": [{
     "level": "suggestion" | "reflective_challenge" | "hard_constraint",
     "conflict_with", "description",
-    "required_response?", "trauma?"
+    "required_response?", "trauma?", "archived?": boolean
   }],
   "meta": { "skeleton_nodes_activated", "blood_events_scanned", "context_token_estimate" }
 }
@@ -244,24 +244,44 @@ cairn_session_end({
 })
 ```
 
-This triggers:
-- Batch processing of accumulated signals
-- Decay check on existing blood entries
-- Session record creation
-- Views regeneration
+This triggers a full maintenance pipeline (in order):
+
+1. **GitEar scan** of commits since last session — auto-routes revert /
+   dependency removed / dependency replaced / large refactor signals
+   through TrustRouter into blood or staged
+2. **Decay check** — mark_stale, downgrade (per `decay_policy`), or
+   archive events that passed their `review_after`
+3. **CalibrationEar** — produces 4 calibration signal types
+   (no-go vs deps, skeleton drift, debt resolution, DNA drift)
+4. **Auto safety valve** — drift_warnings reduce trait confidence by
+   ×0.9; ≥2 warnings with confidence <0.7 auto-flip `reevaluation_mode`
+5. **Stage inference** — runs StageEngine on git stats. If phase
+   changed + confidence ≥0.6 + last_updated ≥14 days, emits a
+   `stage_transition` event to staged for human review
+6. **Compression** — runs CompressionEngine; if a known trait
+   (`simplicity_bias` / `infra_aggressiveness`) emerges, candidate goes
+   to DNA staged channel
+7. **Views regeneration** + session record
+
+Output exposes `git_signals`, `stage`, `dna_compression`, and
+`dna_safety_valve` sub-objects.
 
 ---
 
 ## 6. DIAGNOSTICS
 
-- `cairn_status()` — blood count, staged count, skeleton nodes, DNA status,
-  stage advisory, governance pending
-- `cairn_doctor()` — 5 consistency rules + health checks:
+- `cairn_status()` — blood/staged counts, DNA status + reevaluation_mode +
+  drift warnings, stage advisory + last_updated, pending DNA candidates,
+  governance pending
+- `cairn_doctor()` — 5 consistency rules + auto-resurrection:
   1. DNA vs recent event consistency
   2. No-go entries have blood support
   3. Skeleton nodes match reality
   4. Archived events not over-activated
   5. No contradictory constraints in same domain
+  **Side effect**: archived events with `governance="system_validated"`
+  (G0/G1, ≥5 hits in 30 days) are auto-resurrected; G2+ surface as
+  `resurrection_candidates` for human ratification.
 
 Call when the user asks about Cairn health, or when you notice anomalies.
 
@@ -304,6 +324,12 @@ If `confidence < 0.5`, treat stage guidance as informational only.
 
 Trauma-flagged challenges (`trauma: true`) indicate historical incidents.
 Treat these with extra caution — acknowledge the trauma history explicitly.
+
+Archived-flagged constraints / challenges (`archived: true`) come from
+stale events that are still being reactivated (≥5 hits in 30 days). The
+constraint is downgraded one level (G3→reflective, G2→suggestion,
+G1→silent), but the historical reasoning still applies — surface it to
+the user as "this was previously rejected but recently revisited".
 
 ---
 

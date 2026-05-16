@@ -15,18 +15,25 @@ const USAGE = `cairn v${VERSION}
 Usage: cairn <command> [options]
 
 Commands:
-  init        Initialize .cairn/ directory (--empty for empty structure)
-  status      Show project cognitive status
-  doctor      Run consistency checks and health diagnostics
-  review      List pending staged entries
-  audit       Show governance audit log
-  dna         Show/manage DNA traits
-  skeleton    Show skeleton nodes
-  blood       Show/manage blood events
-  stage       Manage project stage
+  init                          Initialize .cairn/ directory (--empty for empty structure)
+  status                        Show project cognitive status (DNA mode, drift, stage transitions)
+  doctor                        Run consistency checks + auto-resurrect low-gravity archived events
+  review                        List pending staged entries
+  audit                         Show governance audit log
+  dna show                      List current DNA traits
+  dna reevaluate                Toggle reevaluation_mode
+  dna list                      List pending DNA trait candidates
+  dna accept <id>               Confirm a DNA trait candidate
+  dna reject <id> <reason>      Reject a DNA trait candidate
+  skeleton                      Show skeleton nodes
+  blood                         Show/manage blood events
+  stage confirm                 Confirm current stage advisory
+  stage list                    List pending stage_transition entries
+  stage accept <id>             Accept a stage transition (applies new phase)
+  stage reject <id> <reason>    Reject a stage transition
 
 Options:
-  --version   Show version
+  --version                     Show version
 `;
 
 async function main() {

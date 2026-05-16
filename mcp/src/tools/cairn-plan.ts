@@ -17,12 +17,21 @@ export async function handlePlan(
         }
     }
 
+    const driftWarnings: string[] = [];
+    for (const [name, trait] of Object.entries(identity.traits)) {
+        if (trait.drift_warning_count > 0) {
+            driftWarnings.push(`${name} has ${trait.drift_warning_count} unresolved drift warning(s) — recent behavior may contradict this trait`);
+        }
+    }
+
     const warnings: string[] = [];
     for (const noGo of activation.constraints.no_go) {
-        warnings.push(`No-go: "${noGo.what}" — ${noGo.reason}`);
+        const prefix = noGo.archived ? "Archived no-go (reactivating)" : "No-go";
+        warnings.push(`${prefix}: "${noGo.what}" — ${noGo.reason}`);
     }
     for (const challenge of activation.challenges) {
-        warnings.push(`[${challenge.level}] ${challenge.description}`);
+        const tag = challenge.archived ? "archived " : (challenge.trauma ? "trauma " : "");
+        warnings.push(`[${tag}${challenge.level}] ${challenge.description}`);
     }
 
     const openQuestions: string[] = [];
@@ -32,9 +41,17 @@ export async function handlePlan(
         }
     }
 
+    const pendingStaged = await ctx.stagedStore.findPending();
+    for (const entry of pendingStaged) {
+        if (entry.draft_event.type === "stage_transition") {
+            openQuestions.push(`[stage_transition_pending] ${entry.draft_event.decision_or_change} (id: ${entry.id})`);
+        }
+    }
+
     const historicalConstraints: string[] = [];
     for (const noGo of activation.constraints.no_go) {
-        historicalConstraints.push(`[no-go] ${noGo.what}: ${noGo.reason} (${noGo.gravity})`);
+        const archivedTag = noGo.archived ? "[archived] " : "";
+        historicalConstraints.push(`[no-go]${archivedTag} ${noGo.what}: ${noGo.reason} (${noGo.gravity})`);
     }
     for (const debt of activation.constraints.accepted_debt) {
         historicalConstraints.push(`[debt] ${debt.what}: ${debt.reason}`);
@@ -61,6 +78,10 @@ export async function handlePlan(
             guidance: activation.stage.guidance,
         },
         dna_guidance: dnaGuidance,
+        dna_health: {
+            reevaluation_mode: identity.reevaluation_mode,
+            drift_warnings: driftWarnings,
+        },
         historical_constraints: historicalConstraints,
         recommended_direction: preferredApproaches.length > 0
             ? preferredApproaches.join(". ")

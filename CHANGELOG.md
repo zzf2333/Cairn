@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-05-16
+
+### Added
+
+- **DNA emergence closed loop** — `CompressionEngine.detectCandidates()` now runs automatically in `cairn_session_end`, producing trait candidates that flow into a dedicated `dna/staged/` channel for human review
+- **3 new MCP tools** — `cairn_dna_list`, `cairn_dna_accept`, `cairn_dna_reject` for reviewing DNA trait candidates (total tools: 14)
+- **`DnaStagedStore`** — new YAML-backed store at `.cairn/dna/staged/` for DNA trait candidates
+- **DNA Safety Valve** — `CalibrationEar.applySafetyValve()` auto-reduces trait confidence (×0.9 per drift warning) and flips `reevaluation_mode = true` after ≥2 cumulative warnings with confidence <0.7
+- **`DNATrait.drift_warning_count`** + **`DNATrait.last_safety_valve_at`** fields tracking safety valve state per trait
+- **GitEar auto-scan** — `cairn_session_end` now calls `gitEar.scan(state.last_session.commit)` and routes signals (revert / dependency removed / dependency replaced / large refactor) through `TrustRouter` automatically
+- **Automatic stage inference** — `StageEngine.infer()` runs in `cairn_session_end` with 14-day hysteresis and confidence ≥0.6 threshold; phase changes are emitted as `stage_transition` events to staged for human review
+- **`state.stage.last_updated`** field powering stage hysteresis
+- **Doctor auto-resurrection** — `cairn_doctor` now auto-resurrects archived G0/G1 events with high reactivation count (≥5 hits / 30 days); G2+ remain as human-reviewed candidates
+- **Archived event surfacing** — `ActivationEngine` includes stale events with high recent hits as `archived: true` entries in `cairn_context` output, and `ChallengeEngine` emits downgraded challenges (G3 → reflective, G2 → suggestion) tagged `archived: true`
+- **`subject.aliases` field** on EvolutionEvent — explicit synonyms (`["document store", "nosql"]`) used by ChallengeEngine for semantic matching beyond exact subject name
+- **CLI subcommands** — `cairn dna list/accept/reject`, `cairn stage list/accept/reject`
+- **Trauma sensitivity multiplier honored** — TrustRouter now applies the `sensitivity_multiplier` per trauma event (≥2.0 → gravity upgrades twice)
+- **Cognitive Resurrection auto-trigger via Activation** — `cairn_context` records activations for archived events that match domain, advancing them toward resurrection candidacy
+- **Constraints and Hooks sections** in `views/output.md`; **Owns / Does Not Own** in `views/domains/<d>.md`
+
+### Changed
+
+- `cairn_session_end` output expanded with `git_signals`, `stage`, `dna_compression`, `dna_safety_valve` sub-objects
+- `cairn_status` exposes `dna.reevaluation_mode`, `dna.pending_candidates`, `dna.drift_warning_traits`, `stage.last_updated`, `staged.stage_transitions_pending`
+- `cairn_plan` surfaces `dna_health: { reevaluation_mode, drift_warnings }`, archived-tagged constraints, and pending `stage_transition` entries as open questions
+- `cairn_doctor` is no longer purely read-only — auto-resurrect is a side effect; output splits `resurrection_candidates` (G2+) and `auto_resurrected` (G0/G1)
+- `ChallengeEngine` no longer filters to active-only events — stale no-go events still produce downgraded challenges
+- `CompressionEngine` only emits `simplicity_bias` and `infra_aggressiveness` (the trait names recognized by trust-router/challenge-engine); other patterns are no longer surfaced as DNA candidates
+- `TrustRouter` removed duplicated inline governance hard-rule branch; routing is fully delegated to `GovernanceEngine.checkPermission()` which respects cognitive_mode
+- `cairn_init_commit` output restructured: `created`, `written: { config, skeleton, blood_auto_confirmed, blood_staged, stage, views }`, `pending_review`, `initialization_status`
+- `ConversationSignal.evidence.files_involved` renamed to `files`
+- Removed dead `commit_frequency_change`, `new_contributor`, `todo_fixme_cluster` from `GIT_SIGNAL_TYPES` (never properly consumed by mapper)
+
+### Fixed
+
+- `ActivationEngine.activate()` no longer returns empty challenges array — it now invokes `ChallengeEngine.detectConflicts()` internally and includes the result
+- `ChallengeEngine.checkTrauma()` previously collected search terms but never filtered against them — trauma challenges now only fire when the task or subject_name actually relates
+- `ConsistencyEngine.checkSkeletonReality()` now flags blood events whose domain has no skeleton node
+- `CalibrationEar` now performs all four documented checks (no-go conflicts, skeleton drift, debt resolution candidates, DNA drift warnings)
+- `cairn_init_commit` accepts `imprint` parameter (inherited cognition for forked projects)
+- `runStageInference` no longer makes a redundant `getCommitStats()` call
+
+### Architecture
+
+- **All 13 engines now active at runtime** — previously dormant `StageEngine.infer`, `CompressionEngine.detectCandidates`, `GitEar.scan`, and partial `ResurrectionEngine` are now wired into `cairn_session_end` and `cairn_doctor`
+- **14 MCP tools** (was 11)
+- **11 YAML stores** (was 10, added `DnaStagedStore`)
+- **14 engines** retained but all activated
+
 ## [3.0.0] - 2026-05-15
 
 ### Breaking Changes

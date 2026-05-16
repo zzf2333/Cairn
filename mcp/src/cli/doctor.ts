@@ -6,11 +6,27 @@ export async function runDoctor(): Promise<void> {
 
     const cognitiveMode = await ctx.governanceEngine.getCognitiveMode();
 
-    const [report, decayActions, resurrectionCandidates] = await Promise.all([
+    const [report, decayActions, allCandidates, dnaIdentity] = await Promise.all([
         ctx.consistencyEngine.runAll(),
         ctx.decayEngine.checkDecay(cognitiveMode),
         ctx.resurrectionEngine.checkResurrection(),
+        ctx.dnaStore.loadIdentity(),
     ]);
+
+    const autoResurrected: string[] = [];
+    const pendingCandidates: typeof allCandidates = [];
+    for (const candidate of allCandidates) {
+        if (candidate.governance === "system_validated") {
+            try {
+                await ctx.bloodEngine.resurrect(candidate.event_id);
+                autoResurrected.push(candidate.event_id);
+            } catch {
+                pendingCandidates.push(candidate);
+            }
+        } else {
+            pendingCandidates.push(candidate);
+        }
+    }
 
     let hasViolations = false;
 
@@ -37,11 +53,31 @@ export async function runDoctor(): Promise<void> {
         }
     }
 
-    if (resurrectionCandidates.length > 0) {
-        console.log("\n=== Resurrection Candidates ===");
-        for (const candidate of resurrectionCandidates) {
+    if (autoResurrected.length > 0) {
+        console.log("\n=== Auto-Resurrected ===");
+        for (const id of autoResurrected) {
+            console.log(`  ${id} (G0/G1, system_validated)`);
+        }
+    }
+
+    if (pendingCandidates.length > 0) {
+        console.log("\n=== Resurrection Candidates (pending human review) ===");
+        for (const candidate of pendingCandidates) {
             console.log(`  ${candidate.event_id}: ${candidate.reason}`);
             console.log(`    ${candidate.recommendation} (${candidate.governance})`);
+        }
+    }
+
+    if (dnaIdentity.reevaluation_mode) {
+        console.log("\n=== DNA Reevaluation Mode ACTIVE ===");
+        console.log("  Traits are not currently modulating routing/challenges.");
+    }
+    const driftEntries = Object.entries(dnaIdentity.traits)
+        .filter(([, t]) => t.drift_warning_count > 0);
+    if (driftEntries.length > 0) {
+        console.log("\n=== DNA Drift Warnings ===");
+        for (const [name, trait] of driftEntries) {
+            console.log(`  ${name}: ${trait.drift_warning_count} unresolved warning(s)`);
         }
     }
 

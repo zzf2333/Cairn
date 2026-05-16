@@ -208,21 +208,42 @@ The only human action: periodically review staged entries when AI prompts you.
 
 ## MCP Tools
 
+14 tools across 4 phases (init / runtime / review / diagnostics):
+
 | Tool | Purpose | Stability |
 |------|---------|-----------|
 | `cairn_init_status` | Check initialization status | Stable |
 | `cairn_init_commit` | Batch write initial cognition after project analysis | Stable |
 | `cairn_context` | Activate relevant cognition for the current task | Stable |
-| `cairn_signal` | Report decisions, rejections, constraints | Stable |
-| `cairn_session_end` | End-of-session batch processing | Stable |
-| `cairn_status` | System status overview | Stable |
-| `cairn_plan` | History-aware planning framework | Stable |
-| `cairn_stage_list` | List pending staged entries | Stable |
-| `cairn_stage_accept` | Accept a staged entry into blood | Stable |
+| `cairn_signal` | Report decisions, rejections, constraints (now accepts `details.aliases`) | Stable |
+| `cairn_session_end` | End-of-session pipeline (git scan / decay / calibration + safety valve / stage inference / compression) | Stable |
+| `cairn_status` | System status (DNA mode, drift, stage transitions, pending candidates) | Stable |
+| `cairn_plan` | History-aware planning (includes archived constraints + DNA health) | Stable |
+| `cairn_stage_list` | List pending staged entries (EvolutionEvent) | Stable |
+| `cairn_stage_accept` | Accept staged entry; applies stage_transition to state if applicable | Stable |
 | `cairn_stage_reject` | Reject a staged entry | Stable |
-| `cairn_doctor` | Cognitive consistency validation | Stable |
+| `cairn_dna_list` | List pending DNA trait candidates from compression | Stable |
+| `cairn_dna_accept` | Confirm a DNA trait candidate (writes to identity.yaml) | Stable |
+| `cairn_dna_reject` | Reject a DNA trait candidate | Stable |
+| `cairn_doctor` | Consistency validation + auto-resurrect G0/G1 archived events | Stable |
 
 See [`mcp/README.md`](mcp/README.md) for full tool schemas and recommended workflow.
+
+### DNA Emergence Flow
+
+Repeated patterns in blood events automatically produce DNA trait candidates
+during `cairn_session_end`. Candidates land in `.cairn/dna/staged/` and require
+human ratification via `cairn_dna_accept` / `cairn_dna_reject` before they start
+modulating routing and challenges. A wrong DNA trait silently distorts every
+future decision — always review.
+
+### Doctor Side Effects
+
+`cairn_doctor` is no longer purely read-only. Archived events with high
+recent reactivation (≥5 hits / 30 days):
+
+- **G0/G1**: auto-resurrected via `BloodEngine.resurrect()`; listed under `auto_resurrected`
+- **G2+**: surface as `resurrection_candidates` awaiting human ratification
 
 ---
 
@@ -269,22 +290,28 @@ The data layer (`.cairn/`) is fully tool-agnostic — it travels with your repos
 cairn <command> [options]
 
 Commands:
-  init [--empty]           Initialize .cairn/ directory
-  status                   Show project cognitive status
-  doctor                   Run consistency checks and health diagnostics
-  review                   List pending staged entries
-  audit                    Show governance audit log
-  dna show                 Show DNA traits
-  dna reevaluate           Trigger DNA reevaluation
-  skeleton show            Show skeleton nodes
-  blood show [id]          Show blood events
-  blood archive <id>       Archive a blood event
-  blood resurrect <id>     Resurrect an archived event
-  blood trauma <id>        Mark event as trauma
-  stage confirm            Confirm stage advisory as official
+  init [--empty]                    Initialize .cairn/ directory
+  status                            Show project status (DNA mode, drift, stage transitions)
+  doctor                            Consistency checks + auto-resurrect low-gravity archived events
+  review                            List pending staged entries
+  audit                             Show governance audit log
+  dna show                          Show DNA traits + drift warnings + reevaluation_mode
+  dna reevaluate                    Toggle DNA reevaluation_mode
+  dna list                          List pending DNA trait candidates
+  dna accept <id>                   Confirm a DNA trait candidate
+  dna reject <id> <reason>          Reject a DNA trait candidate
+  skeleton show                     Show skeleton nodes
+  blood show [id]                   Show blood events
+  blood archive <id>                Archive a blood event
+  blood resurrect <id>              Resurrect an archived event
+  blood trauma <id>                 Mark event as trauma
+  stage confirm                     Confirm stage advisory as official
+  stage list                        List pending stage_transition entries
+  stage accept <id>                 Accept a stage transition (applies new phase)
+  stage reject <id> <reason>        Reject a stage transition
 
 Options:
-  --version                Show version
+  --version                         Show version
 ```
 
 ---
@@ -320,7 +347,8 @@ a stage as official, use `cairn stage confirm` or via AI-mediated `cairn_stage_a
 │   └── evt_002.yaml
 ├── dna/                     # Emergent project personality
 │   ├── identity.yaml        # Current DNA traits
-│   └── imprint.yaml         # Inherited constraints (for forked projects)
+│   ├── imprint.yaml         # Inherited constraints (for forked projects)
+│   └── staged/              # DNA trait candidates pending human ratification
 ├── domains/                 # Per-domain capillary projections
 │   ├── frontend/
 │   │   ├── constraints.yaml
@@ -328,10 +356,10 @@ a stage as official, use `cairn stage confirm` or via AI-mediated `cairn_stage_a
 │   │   └── rejected_paths.yaml
 │   └── backend/
 ├── staged/                  # Entries awaiting human review
-├── signals/                 # Raw captured signals
-│   ├── raw_git/
-│   ├── raw_conversation/
-│   └── raw_calibration/
+├── signals/                 # Signal dirs preserved for future audit infra
+│   ├── raw_git/             # (not written to currently — audit lives in blood.source.refs)
+│   ├── raw_conversation/    # (not written to currently)
+│   └── raw_calibration/     # (not written to currently)
 ├── governance/              # Governance policy and audit log
 │   ├── policy.yaml
 │   └── audit.yaml
