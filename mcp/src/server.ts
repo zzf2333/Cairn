@@ -79,8 +79,9 @@ export function createServer(ctx: CairnContext): McpServer {
 
     server.tool(
         "cairn_init_commit",
-        "Batch write initial cognition after project analysis",
+        "Batch write initial cognition after project analysis. Pass dry_run: true to preview TrustRouter routing without writing.",
         {
+            dry_run: z.boolean().optional(),
             config: z.object({
                 project_name: z.string(),
                 domains: z.array(z.string()),

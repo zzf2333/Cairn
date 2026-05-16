@@ -47,27 +47,65 @@ If `status` is `"not_initialized"`, perform **AI-native initialization**:
    - **Blood candidates**: decisions, rejections, transitions, constraints
    - **Stage advisory**: project lifecycle phase estimate
    - **DNA traits**: personality patterns (optional, if enough evidence)
-3. Present findings to user for confirmation
-4. Write via:
+3. **Recommended two-step write flow** (dry-run first):
+
+   **Step 3a** — preview routing:
+
+   ```
+   cairn_init_commit({
+     dry_run: true,
+     config: { project_name, domains, cognitive_mode },
+     skeleton: [...],
+     blood_candidates: [...],
+     stage?, dna?
+   })
+   ```
+
+   Returns a preview report:
+   ```json
+   {
+     "dry_run": true,
+     "would_write": {
+       "config": { ... },
+       "skeleton": [{ "domain", "role" }],
+       "blood_auto_confirm": [{ "id", "summary", "gravity", "domain" }],
+       "blood_staged": [{ "id", "summary", "gravity", "routing_reason" }],
+       "blood_dropped": [{ "id", "summary", "reason" }],
+       "stage": { "phase", "confidence" },
+       "dna_traits": [...]
+     },
+     "summary": { "skeleton_nodes", "blood_auto_confirm", "blood_staged", ... },
+     "warnings": [...]
+   }
+   ```
+
+   **Step 3b** — present the report to the user. They should see:
+   - How many entries will land in blood (auto-confirmed) vs. staged (require review)
+   - Any warnings (unknown DNA trait names, too many candidates, missing skeleton/stage)
+   - What will be dropped
+
+4. **Step 4** — after user confirmation, call again without `dry_run`:
+
+   ```
+   cairn_init_commit({
+     config, skeleton, blood_candidates, stage?, dna?, imprint?
+   })
+   ```
+
+   All candidates pass through the Trust Router — G2+ items enter `staged/`
+   and require human ratification. Do not bypass this.
+
+### Blood candidate schema
 
 ```
-cairn_init_commit({
-  config: { project_name, domains, cognitive_mode },
-  skeleton: [{ domain, role, owns, does_not_own, causal_keywords, dependencies? }],
-  blood_candidates: [{
-    type, domain, gravity: { level },
-    summary, behavior_effect: { type, instruction },
-    source: { type, confidence },
-    lifecycle: { validity },
-    rejected_paths?, revisit?, trauma?
-  }],
-  stage?: { phase, confidence, evidence },
-  dna?: { traits: [{ name, level, confidence, reasoning }] }
-})
+blood_candidates: [{
+  type, domain, gravity: { level },
+  summary, behavior_effect: { type, instruction },
+  source: { type, confidence },
+  lifecycle: { validity },
+  rejected_paths?, revisit?, trauma?
+}]
 ```
-
-All candidates pass through the Trust Router — G2+ items enter `staged/`
-and require human ratification. Do not bypass this.
 
 ---
 
@@ -233,18 +271,32 @@ wrong DNA trait will silently distort every future decision until removed.
 
 ## 5. SESSION END — cairn_session_end
 
-Call at the end of every session:
+**Critical: not optional.** Skipping `session_end` means git commits aren't
+scanned, decay doesn't run, DNA candidates never emerge, calibration misses
+drift. Call at the end of every session.
 
 ```
 cairn_session_end({
-  summary: string,
+  summary: string,          // 1-3 sentences: what changed, decisions, unresolved
   changed_domains?: string[],
   decisions_made?: string[],
   unresolved?: string[]
 })
 ```
 
-This triggers a full maintenance pipeline (in order):
+### Summary guidance
+
+**Good summary** (1-3 sentences mentioning what changed, key decisions, open questions):
+
+> *"Refactored auth middleware to drop session-token storage per legal req.
+> User rejected Redis-backed sessions due to operational complexity.
+> Open: need to verify JWT TTL meets compliance audit window."*
+
+**Bad summary** (no specifics, no decisions, no open items):
+
+> *"Made some changes to auth."*
+
+### Pipeline (in order)
 
 1. **GitEar scan** of commits since last session — auto-routes revert /
    dependency removed / dependency replaced / large refactor signals
@@ -263,8 +315,35 @@ This triggers a full maintenance pipeline (in order):
    to DNA staged channel
 7. **Views regeneration** + session record
 
-Output exposes `git_signals`, `stage`, `dna_compression`, and
-`dna_safety_valve` sub-objects.
+### Output
+
+```json
+{
+  "signals_processed", "new_blood", "new_staged", "views_regenerated", "pending_review",
+  "git_signals": { "scanned", "new_blood", "new_staged", "dropped" },
+  "decay": {
+    "events_processed",
+    "archived": [{ "id", "reason" }],
+    "downgraded": [{ "id", "from", "to" }]
+  },
+  "calibration": {
+    "signals_detected",
+    "by_type": { "calibration_conflict": N, "skeleton_drift": N, ... }
+  },
+  "stage": { "phase", "confidence", "changed", "transition_staged" },
+  "dna_compression": { "candidates_detected", "new_staged": [...] },
+  "dna_safety_valve": { "triggered_traits", "confidence_reduced", "entered_reevaluation" }
+}
+```
+
+### Required follow-up
+
+After `session_end`, **proactively report to the user** when any of these are true:
+
+- `dna_safety_valve.entered_reevaluation: true` — DNA paused; traits won't modulate routing until reviewed
+- `stage.changed: true && stage.transition_staged` — phase transition queued; needs `cairn_stage_accept/reject`
+- `decay.archived.length > 0` — N old events archived this session
+- `dna_compression.new_staged.length > 0` — N DNA trait candidates need review via `cairn_dna_list`
 
 ---
 

@@ -258,6 +258,68 @@ describe("cairn_init_commit", () => {
         const state = await ctx.stateStore.load();
         expect(state.initialization_status).toBe("complete");
     });
+
+    describe("dry_run preview", () => {
+        it("returns preview without writing config or skeleton", async () => {
+            const args = {
+                dry_run: true,
+                ...baseArgs,
+                blood_candidates: [
+                    {
+                        type: "architecture_decision",
+                        domain: "api",
+                        gravity: { level: "G3" },
+                        summary: "Drop tRPC for REST",
+                        behavior_effect: { type: "prefer_approach", instruction: "Use REST" },
+                        source: { type: "conversation", confidence: 0.9 },
+                        lifecycle: { validity: "strategic" },
+                    },
+                ],
+            };
+            const result = await handleInitCommit(ctx, args);
+            const data = parseResult(result);
+
+            expect(data.dry_run).toBe(true);
+            expect(data.would_write).toBeDefined();
+            expect(data.would_write.blood_staged.length).toBe(1);
+            expect(data.summary.blood_staged).toBe(1);
+
+            // Dry-run does not mark init complete or stage the candidate
+            const state = await ctx.stateStore.load();
+            expect(state.initialization_status).toBe("not_initialized");
+            const pending = await ctx.stagedStore.findPending();
+            const stagedIds = pending.map(p => p.id);
+            expect(stagedIds.some(id => id.includes("Drop tRPC for REST") || id.includes("api_architecture_decision"))).toBe(false);
+        });
+
+        it("warns when DNA trait name is unknown", async () => {
+            const args = {
+                dry_run: true,
+                ...baseArgs,
+                dna: {
+                    traits: [
+                        { name: "unknown_trait", level: "high", confidence: 0.8, reasoning: "test" },
+                    ],
+                },
+            };
+            const result = await handleInitCommit(ctx, args);
+            const data = parseResult(result);
+            expect(data.warnings.some((w: string) => w.includes("unknown_trait"))).toBe(true);
+        });
+
+        it("warns when no skeleton or stage is provided", async () => {
+            const args = {
+                dry_run: true,
+                config: { project_name: "p", domains: [], cognitive_mode: "standard" },
+                skeleton: [],
+                blood_candidates: [],
+            };
+            const result = await handleInitCommit(ctx, args);
+            const data = parseResult(result);
+            expect(data.warnings.some((w: string) => w.includes("skeleton"))).toBe(true);
+            expect(data.warnings.some((w: string) => w.includes("stage"))).toBe(true);
+        });
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -446,6 +508,22 @@ describe("cairn_session_end", () => {
         expect(data.git_signals.scanned).toBe(0);
         expect(data.git_signals.new_blood).toBe(0);
         expect(data.git_signals.new_staged).toBe(0);
+    });
+
+    it("includes decay and calibration output shape", async () => {
+        const result = await handleSessionEnd(ctx, {
+            summary: "first session",
+        });
+        const data = parseResult(result);
+
+        expect(data.decay).toBeDefined();
+        expect(data.decay.events_processed).toBeGreaterThanOrEqual(0);
+        expect(Array.isArray(data.decay.archived)).toBe(true);
+        expect(Array.isArray(data.decay.downgraded)).toBe(true);
+
+        expect(data.calibration).toBeDefined();
+        expect(data.calibration.signals_detected).toBeGreaterThanOrEqual(0);
+        expect(typeof data.calibration.by_type).toBe("object");
     });
 
     it("scans git history when prior commit exists and routes revert as rejection", async () => {

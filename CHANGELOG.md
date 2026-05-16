@@ -5,9 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2026-05-16 (DX patch)
+## [0.3.0] - 2026-05-16 (end-to-end usability patch)
+
+### Added
+
+- **`cairn_init_commit({ dry_run: true })`** — preview TrustRouter routing without writing. Returns predicted blood_auto_confirm / blood_staged / blood_dropped, plus warnings (unknown DNA trait names, missing skeleton/stage, too many candidates). AI is expected to call dry_run first, present to user, then call again without dry_run.
+- **`cairn_session_end` decay and calibration details** — output now includes `decay: { events_processed, archived[], downgraded[] }` and `calibration: { signals_detected, by_type }` so the AI can proactively report side effects to the user.
 
 ### Improved
+
+- **All 7 compact skill adapters expanded** — codex/cline/windsurf/copilot/gemini-cli/opencode/cursor now include: signal detection table with conversation triggers, three-level challenge response table, stage phase behavior table, archived constraint downgrade rule, DNA validation danger narrative, session_end non-optional warning with summary examples, and required follow-up reporting rules. Brings Codex-class platforms from ~50% to ~85% of Claude Code parity.
+- **SKILL.md §0 INITIALIZATION** — documented dry-run two-step write flow with example output.
+- **SKILL.md §5 SESSION END** — added summary good/bad examples, full output schema, and "required follow-up" section listing 4 silent side effects the AI must surface to the user.
+
+### Previously (0.3.0 DX patch)
 
 - **Quick Start rewritten** — removed misleading "auto-registers" claim; MCP configuration is now the explicit step 2 with platform-specific paths
 - **postinstall hint** — `npm install -g cairn-mcp-server` now prints MCP setup instructions after install

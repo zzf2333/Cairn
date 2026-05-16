@@ -1,7 +1,7 @@
 import type { CairnContext } from "../context.js";
 import { toolResult, formatToolError } from "../errors.js";
 import type { EvolutionEvent } from "../schemas/index.js";
-import type { GravityLevel } from "../constants.js";
+import { KNOWN_DNA_TRAITS, type GravityLevel } from "../constants.js";
 
 interface BloodCandidate {
     type: string;
@@ -17,6 +17,7 @@ interface BloodCandidate {
 }
 
 interface InitCommitArgs {
+    dry_run?: boolean;
     config: { project_name: string; domains: string[]; cognitive_mode: string };
     skeleton: Array<{
         domain: string;
@@ -109,6 +110,7 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
     // state.last_session.commit (set below) as the starting point.
     try {
         const {
+            dry_run: dryRun,
             config,
             skeleton,
             blood_candidates: bloodCandidates,
@@ -117,6 +119,12 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
             imprint,
         } = args as unknown as InitCommitArgs;
         const now = new Date().toISOString();
+
+        if (dryRun) {
+            return await previewInit(ctx, {
+                config, skeleton, bloodCandidates, stage, dna, imprint,
+            });
+        }
 
         await ctx.configStore.save({
             version: "3.0",
@@ -234,4 +242,88 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
     } catch (error) {
         return formatToolError(error);
     }
+}
+
+interface PreviewArgs {
+    config: InitCommitArgs["config"];
+    skeleton: InitCommitArgs["skeleton"];
+    bloodCandidates: BloodCandidate[];
+    stage?: InitCommitArgs["stage"];
+    dna?: InitCommitArgs["dna"];
+    imprint?: InitCommitArgs["imprint"];
+}
+
+async function previewInit(ctx: CairnContext, args: PreviewArgs) {
+    const { config, skeleton, bloodCandidates, stage, dna, imprint } = args;
+
+    const autoConfirm: Array<{ id: string; summary: string; gravity: string; domain: string }> = [];
+    const willStage: Array<{ id: string; summary: string; gravity: string; domain: string; routing_reason: string }> = [];
+    const willDrop: Array<{ id: string; summary: string; reason: string }> = [];
+
+    for (let i = 0; i < bloodCandidates.length; i++) {
+        const candidate = bloodCandidates[i];
+        const event = buildEventFromCandidate(candidate, i);
+        const routing = await ctx.trustRouter.route({
+            domain: event.domain,
+            subject_name: event.subject.name,
+            type: event.type,
+            gravity: event.gravity.level as GravityLevel,
+            isTrauma: event.trauma.is_trauma,
+        });
+
+        const row = {
+            id: event.id,
+            summary: event.subject.name,
+            gravity: routing.gravity,
+            domain: event.domain,
+        };
+        if (routing.destination === "blood") autoConfirm.push(row);
+        else if (routing.destination === "staged") willStage.push({ ...row, routing_reason: routing.reason });
+        else willDrop.push({ id: event.id, summary: event.subject.name, reason: routing.reason });
+    }
+
+    const warnings: string[] = [];
+    if (dna?.traits) {
+        for (const trait of dna.traits) {
+            if (!(KNOWN_DNA_TRAITS as readonly string[]).includes(trait.name)) {
+                warnings.push(`DNA trait "${trait.name}" is not in KNOWN_DNA_TRAITS (${KNOWN_DNA_TRAITS.join(", ")}) — it will not influence routing or challenges.`);
+            }
+        }
+    }
+    if (bloodCandidates.length > 50) {
+        warnings.push(`${bloodCandidates.length} blood candidates is unusually high — consider whether all are signal-worthy or if some are noise from git history.`);
+    }
+    if (skeleton.length === 0) {
+        warnings.push("No skeleton nodes — cairn_context will have no domain boundaries to activate.");
+    }
+    if (!stage) {
+        warnings.push("No stage advisory — context() will report 'unknown' phase until session_end infers one.");
+    }
+
+    return toolResult(JSON.stringify({
+        dry_run: true,
+        would_write: {
+            config: {
+                project_name: config.project_name,
+                domains: config.domains,
+                cognitive_mode: config.cognitive_mode,
+            },
+            skeleton: skeleton.map(s => ({ domain: s.domain, role: s.role })),
+            blood_auto_confirm: autoConfirm,
+            blood_staged: willStage,
+            blood_dropped: willDrop,
+            stage: stage ? { phase: stage.phase, confidence: stage.confidence } : null,
+            dna_traits: dna?.traits ?? [],
+            imprint: imprint ? { inherited_from: imprint.inherited_from } : null,
+        },
+        summary: {
+            skeleton_nodes: skeleton.length,
+            blood_auto_confirm: autoConfirm.length,
+            blood_staged: willStage.length,
+            blood_dropped: willDrop.length,
+            dna_traits: dna?.traits?.length ?? 0,
+        },
+        warnings,
+        next_step: "Review with user, then call cairn_init_commit again with dry_run: false (or omit) to write.",
+    }));
 }

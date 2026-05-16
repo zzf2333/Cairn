@@ -314,18 +314,25 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const cognitiveMode = config?.cognitive_mode ?? "standard";
         const decayActions = await ctx.decayEngine.checkDecay(cognitiveMode);
 
+        const decayArchived: Array<{ id: string; reason: string }> = [];
+        const decayDowngraded: Array<{ id: string; from: string; to: string }> = [];
+
         for (const action of decayActions) {
             if (action.action === "mark_stale") {
                 await ctx.bloodEngine.archive(action.event_id, action.reason);
+                decayArchived.push({ id: action.event_id, reason: action.reason });
             } else if (action.action === "downgrade") {
                 const event = await ctx.bloodStore.load(action.event_id);
                 if (event) {
-                    event.gravity.level = downgradeGravity(event.gravity.level as GravityLevel);
+                    const fromGravity = event.gravity.level as GravityLevel;
+                    event.gravity.level = downgradeGravity(fromGravity);
                     event.updated_at = new Date().toISOString();
                     if (event.gravity.level === "G0") {
                         await ctx.bloodEngine.archive(action.event_id, "downgraded to G0");
+                        decayArchived.push({ id: action.event_id, reason: "downgraded to G0" });
                     } else {
                         await ctx.bloodStore.save(event);
+                        decayDowngraded.push({ id: action.event_id, from: fromGravity, to: event.gravity.level });
                     }
                 }
             }
@@ -333,6 +340,11 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
 
         const calibration = await ctx.calibrationEar.calibrate();
         const safetyValve = await ctx.calibrationEar.applySafetyValve(calibration.signals);
+
+        const calibrationByType: Record<string, number> = {};
+        for (const sig of calibration.signals) {
+            calibrationByType[sig.signal_type] = (calibrationByType[sig.signal_type] ?? 0) + 1;
+        }
 
         const stageResult = await runStageInference(ctx, state, nowIso);
         if (stageResult.transitionStagedId) {
@@ -370,6 +382,15 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
                 new_blood: gitNewBlood.length,
                 new_staged: gitNewStaged.length,
                 dropped: gitDropped.length,
+            },
+            decay: {
+                events_processed: decayActions.length,
+                archived: decayArchived,
+                downgraded: decayDowngraded,
+            },
+            calibration: {
+                signals_detected: calibration.signals.length,
+                by_type: calibrationByType,
             },
             stage: {
                 phase: stageResult.inferred_phase,
