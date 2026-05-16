@@ -4,6 +4,7 @@ import type { SkeletonStore } from "../stores/skeleton-store.js";
 import type { DnaStore } from "../stores/dna-store.js";
 import type { DomainStore } from "../stores/domain-store.js";
 import type { StateStore } from "../stores/state-store.js";
+import type { ChallengeEngine } from "./challenge-engine.js";
 import { GRAVITY_ORDER, type GravityLevel } from "../constants.js";
 import { approxTokens } from "../tokens.js";
 
@@ -70,6 +71,7 @@ export class ActivationEngine {
         private readonly dnaStore: DnaStore,
         private readonly domainStore: DomainStore,
         private readonly stateStore: StateStore,
+        private readonly challengeEngine: ChallengeEngine,
     ) {}
 
     async activate(input: ActivationInput): Promise<CairnContextResult> {
@@ -77,7 +79,7 @@ export class ActivationEngine {
         const expandedDomains = await this.expandCapillaries(matchedNodes);
         const { events, scannedCount } = await this.traverseBlood(expandedDomains);
         const relevantTraits = await this.activateDna(expandedDomains);
-        return this.assembleContext(matchedNodes, expandedDomains, events, scannedCount, relevantTraits);
+        return this.assembleContext(input, matchedNodes, expandedDomains, events, scannedCount, relevantTraits);
     }
 
     private async taskToSkeleton(input: ActivationInput): Promise<SkeletonNode[]> {
@@ -197,6 +199,7 @@ export class ActivationEngine {
     }
 
     private async assembleContext(
+        input: ActivationInput,
         matchedNodes: SkeletonNode[],
         domains: string[],
         events: EvolutionEvent[],
@@ -263,6 +266,20 @@ export class ActivationEngine {
             });
         }
 
+        const challenges: Challenge[] = [];
+        for (const domain of domains) {
+            const domainChallenges = await this.challengeEngine.detectConflicts({
+                task: input.task,
+                domain,
+                subject_name: noGo.length > 0 ? noGo[0].what : undefined,
+            });
+            for (const c of domainChallenges) {
+                if (!challenges.some(existing => existing.conflict_with === c.conflict_with)) {
+                    challenges.push(c);
+                }
+            }
+        }
+
         const resultObj: CairnContextResult = {
             stage: {
                 phase: state.stage.phase,
@@ -277,7 +294,7 @@ export class ActivationEngine {
                 stage_constraints: stageConstraints,
             },
             relevant_domains: relevantDomains,
-            challenges: [],
+            challenges,
             meta: {
                 skeleton_nodes_activated: matchedNodes.map(n => n.domain),
                 blood_events_scanned: scannedCount,

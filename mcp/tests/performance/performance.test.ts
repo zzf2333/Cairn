@@ -13,6 +13,7 @@ import { StateStore } from "../../src/stores/state-store.js";
 import { ConfigStore } from "../../src/stores/config-store.js";
 import { GovernanceStore } from "../../src/stores/governance-store.js";
 import { ActivationEngine } from "../../src/engines/activation-engine.js";
+import { ChallengeEngine } from "../../src/engines/challenge-engine.js";
 import { ViewsEngine } from "../../src/engines/views-engine.js";
 import { TrustRouter } from "../../src/engines/trust-router.js";
 import { GovernanceEngine } from "../../src/engines/governance-engine.js";
@@ -60,7 +61,8 @@ describe("Performance", () => {
             }));
         }
 
-        const engine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore);
+        const challengeEngine = new ChallengeEngine(bloodStore, skeletonStore, dnaStore);
+        const engine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore, challengeEngine);
 
         const start = performance.now();
         const result = await engine.activate({ task: "fix the API endpoint" });

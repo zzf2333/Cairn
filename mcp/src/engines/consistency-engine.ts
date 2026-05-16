@@ -119,7 +119,25 @@ export class ConsistencyEngine {
     }
 
     async checkSkeletonReality(): Promise<ConsistencyResult> {
-        return { passed: true, violations: [] };
+        const allNodes = await this.skeletonStore.loadAll();
+        const skeletonDomains = new Set(allNodes.map(n => n.domain));
+
+        const allEvents = await this.bloodStore.loadAll();
+        const bloodDomains = new Set(allEvents.map(e => e.domain));
+
+        const violations: ConsistencyViolation[] = [];
+
+        for (const domain of bloodDomains) {
+            if (!skeletonDomains.has(domain)) {
+                violations.push({
+                    rule: "skeleton_reality",
+                    description: `Domain "${domain}" has blood events but no skeleton node`,
+                    recommendation: `Create a skeleton node for "${domain}" or reassign its events to an existing domain`,
+                });
+            }
+        }
+
+        return { passed: violations.length === 0, violations };
     }
 
     async checkArchivedReactivation(): Promise<ConsistencyResult> {

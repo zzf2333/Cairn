@@ -53,8 +53,8 @@ export async function createContext(projectRoot: string): Promise<CairnContext> 
     const governanceStore = new GovernanceStore(paths.governancePolicy, paths.governanceAudit);
     const sessionStore = new SessionStore(paths.sessions);
 
-    const activationEngine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore);
     const challengeEngine = new ChallengeEngine(bloodStore, skeletonStore, dnaStore);
+    const activationEngine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore, challengeEngine);
     const stageEngine = new StageEngine();
     const decayEngine = new DecayEngine(bloodStore);
     const compressionEngine = new CompressionEngine(bloodStore);
@@ -68,7 +68,7 @@ export async function createContext(projectRoot: string): Promise<CairnContext> 
     );
     const bloodEngine = new BloodEngine(bloodStore, domainStore, viewsEngine);
     const gitEar = new GitEar(paths.root, skeletonStore);
-    const calibrationEar = new CalibrationEar(paths.root, bloodStore, skeletonStore, domainStore);
+    const calibrationEar = new CalibrationEar(paths.root, bloodStore, skeletonStore, domainStore, dnaStore);
 
     return {
         paths,

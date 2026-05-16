@@ -51,8 +51,8 @@ function buildContext(p: ReturnType<typeof buildPaths>): CairnContext {
     const configStore = new ConfigStore(p.config);
     const governanceStore = new GovernanceStore(p.governancePolicy, p.governanceAudit);
     const sessionStore = new SessionStore(p.sessions);
-    const activationEngine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore);
     const challengeEngine = new ChallengeEngine(bloodStore, skeletonStore, dnaStore);
+    const activationEngine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore, challengeEngine);
     const stageEngine = new StageEngine();
     const decayEngine = new DecayEngine(bloodStore);
     const compressionEngine = new CompressionEngine(bloodStore);
@@ -63,7 +63,7 @@ function buildContext(p: ReturnType<typeof buildPaths>): CairnContext {
     const viewsEngine = new ViewsEngine(bloodStore, skeletonStore, domainStore, dnaStore, stateStore, p.viewsOutput, p.viewsStage, p.viewsDomains);
     const bloodEngine = new BloodEngine(bloodStore, domainStore, viewsEngine);
     const gitEar = new GitEar(p.root, skeletonStore);
-    const calibrationEar = new CalibrationEar(p.root, bloodStore, skeletonStore, domainStore);
+    const calibrationEar = new CalibrationEar(p.root, bloodStore, skeletonStore, domainStore, dnaStore);
 
     return {
         paths: p,

@@ -266,7 +266,7 @@ describe("ViewsEngine", () => {
 describe("CalibrationEar", () => {
     let ear: CalibrationEar;
     beforeEach(() => {
-        ear = new CalibrationEar(tmpDir, bloodStore, skeletonStore, domainStore);
+        ear = new CalibrationEar(tmpDir, bloodStore, skeletonStore, domainStore, dnaStore);
     });
 
     it("returns empty when no conflicts", async () => {

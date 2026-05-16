@@ -8,13 +8,6 @@ export async function handleContext(ctx: CairnContext, args: Record<string, unkn
 
         const result = await ctx.activationEngine.activate({ task, files });
 
-        const challenges = await ctx.challengeEngine.detectConflicts({
-            task,
-            domain: result.relevant_domains[0]?.domain,
-        });
-
-        result.challenges = [...result.challenges, ...challenges];
-
         return toolResult(JSON.stringify(result));
     } catch (error) {
         return formatToolError(error);

@@ -48,8 +48,10 @@ afterEach(async () => {
 
 describe("ActivationEngine", () => {
     let engine: ActivationEngine;
+    let challengeEngine: ChallengeEngine;
     beforeEach(() => {
-        engine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore);
+        challengeEngine = new ChallengeEngine(bloodStore, skeletonStore, dnaStore);
+        engine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore, challengeEngine);
     });
 
     it("returns empty context when no data exists", async () => {
@@ -87,6 +89,22 @@ describe("ActivationEngine", () => {
     it("includes stage advisory", async () => {
         const result = await engine.activate({});
         expect(result.stage.phase).toBe("growth");
+    });
+
+    it("populates challenges from ChallengeEngine", async () => {
+        await skeletonStore.save(makeSkeletonNode("api-layer", {
+            causal_keywords: ["api", "REST"],
+        }));
+        await bloodStore.save(makeEvolutionEvent("evt_nogo", {
+            domain: "api-layer",
+            gravity: { level: "G2" },
+            subject: { name: "tRPC" },
+            behavior_effect: { type: "avoid_suggestion", instruction: "no tRPC" },
+        }));
+
+        const result = await engine.activate({ task: "migrate api to tRPC" });
+        expect(result.challenges.length).toBeGreaterThanOrEqual(1);
+        expect(result.challenges[0].conflict_with).toBe("evt_nogo");
     });
 });
 
@@ -316,6 +334,23 @@ describe("ConsistencyEngine", () => {
         const result = await engine.checkConstraintConsistency();
         expect(result.passed).toBe(false);
         expect(result.violations.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("detects blood domain without skeleton node", async () => {
+        await bloodStore.save(makeEvolutionEvent("evt_orphan", {
+            domain: "orphan-domain",
+        }));
+        const result = await engine.checkSkeletonReality();
+        expect(result.passed).toBe(false);
+        expect(result.violations[0].rule).toBe("skeleton_reality");
+        expect(result.violations[0].description).toContain("orphan-domain");
+    });
+
+    it("passes skeleton reality when domains match", async () => {
+        await skeletonStore.save(makeSkeletonNode("api-layer"));
+        await bloodStore.save(makeEvolutionEvent("evt_001", { domain: "api-layer" }));
+        const result = await engine.checkSkeletonReality();
+        expect(result.passed).toBe(true);
     });
 
     it("detects archived high-activation events", async () => {

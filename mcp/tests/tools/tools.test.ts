@@ -72,8 +72,8 @@ beforeEach(async () => {
     await configStore.save(makeConfig());
     await stateStore.save(makeState());
 
-    const activationEngine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore);
     const challengeEngine = new ChallengeEngine(bloodStore, skeletonStore, dnaStore);
+    const activationEngine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore, challengeEngine);
     const stageEngine = new StageEngine();
     const decayEngine = new DecayEngine(bloodStore);
     const compressionEngine = new CompressionEngine(bloodStore);
@@ -87,7 +87,7 @@ beforeEach(async () => {
     );
     const bloodEngine = new BloodEngine(bloodStore, domainStore, viewsEngine);
     const gitEar = new GitEar(paths.root, skeletonStore);
-    const calibrationEar = new CalibrationEar(paths.root, bloodStore, skeletonStore, domainStore);
+    const calibrationEar = new CalibrationEar(paths.root, bloodStore, skeletonStore, domainStore, dnaStore);
 
     ctx = {
         paths,
