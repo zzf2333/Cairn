@@ -26,6 +26,7 @@ interface SignalArgs {
     domain?: string;
     details: {
         what: string;
+        aliases?: string[];
         reason?: string;
         rejected_alternatives?: Array<{ path: string; reason: string }>;
         revisit_when?: string[];
@@ -69,7 +70,7 @@ export async function handleSignal(ctx: CairnContext, args: Record<string, unkno
                 verified: false,
                 refs,
             },
-            subject: { name: details.what },
+            subject: { name: details.what, aliases: details.aliases ?? [] },
             trigger: evidence.user_said ?? signalType,
             decision_or_change: details.what,
             rejected_paths: details.rejected_alternatives ?? [],

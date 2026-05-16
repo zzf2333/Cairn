@@ -45,6 +45,7 @@ export const SUBJECT_TYPES = [
 export const SubjectSchema = z.object({
     type: z.enum(SUBJECT_TYPES).optional(),
     name: z.string(),
+    aliases: z.array(z.string()).default([]),
 });
 export type Subject = z.infer<typeof SubjectSchema>;
 

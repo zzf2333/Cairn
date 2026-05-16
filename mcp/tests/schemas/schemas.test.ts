@@ -82,10 +82,15 @@ describe("Shared schemas", () => {
     });
 
     it("validates Subject", () => {
-        expect(SubjectSchema.parse({ name: "Redis" })).toEqual({ name: "Redis" });
+        expect(SubjectSchema.parse({ name: "Redis" })).toEqual({ name: "Redis", aliases: [] });
         expect(SubjectSchema.parse({ type: "technology", name: "Redis" })).toEqual({
             type: "technology",
             name: "Redis",
+            aliases: [],
+        });
+        expect(SubjectSchema.parse({ name: "MongoDB", aliases: ["document store", "mongo"] })).toEqual({
+            name: "MongoDB",
+            aliases: ["document store", "mongo"],
         });
     });
 

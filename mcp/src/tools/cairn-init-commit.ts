@@ -57,6 +57,7 @@ function buildEventFromCandidate(candidate: BloodCandidate, index: number): Evol
         },
         subject: {
             name: candidate.summary,
+            aliases: [],
         },
         trigger: "initialization",
         decision_or_change: candidate.summary,
@@ -188,6 +189,8 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
                     evidence_count: 1,
                     last_updated: now,
                     reasoning: trait.reasoning,
+                    drift_warning_count: 0,
+                    last_safety_valve_at: null,
                 };
             }
             identity.status = "emerging";

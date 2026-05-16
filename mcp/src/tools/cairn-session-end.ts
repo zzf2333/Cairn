@@ -70,6 +70,9 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
             }
         }
 
+        const calibration = await ctx.calibrationEar.calibrate();
+        const safetyValve = await ctx.calibrationEar.applySafetyValve(calibration.signals);
+
         await ctx.viewsEngine.regenerate();
 
         const record: SessionRecord = {
@@ -77,7 +80,7 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
             started_at: nowIso,
             ended_at: nowIso,
             summary,
-            signals_captured: 0,
+            signals_captured: calibration.signals.length + safetyValve.signals.length,
             signals_routed: { G0: 0, G1: 0, G2: 0, G3: 0 },
             domains_touched: changedDomains ?? [],
             decisions_made: decisionsMade ?? [],
@@ -89,11 +92,16 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const stagedCount = await ctx.stagedStore.count();
 
         return toolResult(JSON.stringify({
-            signals_processed: 0,
+            signals_processed: calibration.signals.length,
             new_blood: 0,
             new_staged: 0,
             views_regenerated: true,
             pending_review: stagedCount,
+            dna_safety_valve: {
+                triggered_traits: safetyValve.triggered_traits,
+                confidence_reduced: safetyValve.confidence_reduced,
+                entered_reevaluation: safetyValve.entered_reevaluation,
+            },
         }));
     } catch (error) {
         return formatToolError(error);

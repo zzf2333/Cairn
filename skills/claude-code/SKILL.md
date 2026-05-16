@@ -119,6 +119,7 @@ cairn_signal({
   domain?: string,
   details: {
     what: string,
+    aliases?: string[],            // 等价名/类别，让免疫系统能识别同义改写。例：what="MongoDB" → aliases=["document store","nosql"]
     reason?: string,
     rejected_alternatives?: [{ path, reason }],
     revisit_when?: string[]

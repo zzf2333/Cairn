@@ -8,6 +8,8 @@ export const DNATraitSchema = z.object({
     evidence_count: z.number().int().min(0),
     last_updated: z.string(),
     reasoning: z.string(),
+    drift_warning_count: z.number().int().min(0).default(0),
+    last_safety_valve_at: z.string().nullable().default(null),
 });
 export type DNATrait = z.infer<typeof DNATraitSchema>;
 

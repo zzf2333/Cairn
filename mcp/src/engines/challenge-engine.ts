@@ -24,6 +24,12 @@ function upgradeLevel(level: Challenge["level"]): Challenge["level"] {
     return "hard_constraint";
 }
 
+function downgradeLevelForArchived(level: Challenge["level"]): Challenge["level"] | null {
+    if (level === "hard_constraint") return "reflective_challenge";
+    if (level === "reflective_challenge") return "suggestion";
+    return null;
+}
+
 export class ChallengeEngine {
     constructor(
         private readonly bloodStore: BloodStore,
@@ -45,8 +51,11 @@ export class ChallengeEngine {
     }
 
     private async checkNoGo(input: ChallengeInput, challenges: Challenge[]): Promise<void> {
-        const activeEvents = await this.bloodStore.findActive();
-        const avoidEvents = activeEvents.filter(e => e.behavior_effect.type === "avoid_suggestion");
+        const allEvents = await this.bloodStore.loadAll();
+        const avoidEvents = allEvents.filter(e =>
+            e.behavior_effect.type === "avoid_suggestion"
+            && e.health.state !== "conflicted",
+        );
 
         const searchTerms: string[] = [];
         if (input.task) searchTerms.push(input.task.toLowerCase());
@@ -55,20 +64,33 @@ export class ChallengeEngine {
         if (searchTerms.length === 0) return;
 
         for (const event of avoidEvents) {
-            const subjectLower = event.subject.name.toLowerCase();
-            const matches = searchTerms.some(term =>
-                term.includes(subjectLower) || subjectLower.includes(term)
+            const matchTerms = [
+                event.subject.name,
+                ...event.subject.aliases,
+                ...event.rejected_paths.map(rp => rp.path),
+            ].map(t => t.toLowerCase()).filter(t => t.length > 0);
+
+            const matches = matchTerms.some(mt =>
+                searchTerms.some(st => st.includes(mt) || mt.includes(st)),
             );
-            if (matches) {
-                challenges.push({
-                    level: gravityToLevel(event.gravity.level as GravityLevel),
-                    conflict_with: event.id,
-                    description: `Conflicts with no-go: ${event.subject.name} — ${event.behavior_effect.instruction}`,
-                    required_response: GRAVITY_ORDER[event.gravity.level as GravityLevel] >= GRAVITY_ORDER.G2
-                        ? "Explain why this direction is necessary despite previous decision"
-                        : undefined,
-                });
-            }
+            if (!matches) continue;
+
+            const baseLevel = gravityToLevel(event.gravity.level as GravityLevel);
+            const isArchived = event.health.state === "stale";
+            const finalLevel = isArchived ? downgradeLevelForArchived(baseLevel) : baseLevel;
+            if (finalLevel === null) continue;
+
+            challenges.push({
+                level: finalLevel,
+                conflict_with: event.id,
+                description: isArchived
+                    ? `[archived] Was no-go: ${event.subject.name} — ${event.behavior_effect.instruction}`
+                    : `Conflicts with no-go: ${event.subject.name} — ${event.behavior_effect.instruction}`,
+                required_response: !isArchived && GRAVITY_ORDER[event.gravity.level as GravityLevel] >= GRAVITY_ORDER.G2
+                    ? "Explain why this direction is necessary despite previous decision"
+                    : undefined,
+                archived: isArchived || undefined,
+            });
         }
     }
 
@@ -83,8 +105,12 @@ export class ChallengeEngine {
 
         for (const event of traumaEvents) {
             if (searchTerms.length > 0) {
-                const eventText = [event.subject.name, event.trigger, event.decision_or_change]
-                    .join(" ").toLowerCase();
+                const eventText = [
+                    event.subject.name,
+                    ...event.subject.aliases,
+                    event.trigger,
+                    event.decision_or_change,
+                ].join(" ").toLowerCase();
                 const isRelevant = searchTerms.some(term =>
                     eventText.includes(term) || term.includes(event.subject.name.toLowerCase())
                 );

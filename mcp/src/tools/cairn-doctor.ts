@@ -12,11 +12,19 @@ export async function handleDoctor(
         ctx.resurrectionEngine.checkResurrection(),
     ]);
 
-    const [stagedCount, traumaEvents, policy] = await Promise.all([
+    const [stagedCount, traumaEvents, policy, dnaIdentity] = await Promise.all([
         ctx.stagedStore.count(),
         ctx.bloodStore.findTrauma(),
         ctx.governanceStore.loadPolicy(),
+        ctx.dnaStore.loadIdentity(),
     ]);
+
+    const driftCounts: Record<string, number> = {};
+    for (const [name, trait] of Object.entries(dnaIdentity.traits)) {
+        if (trait.drift_warning_count > 0) {
+            driftCounts[name] = trait.drift_warning_count;
+        }
+    }
 
     const pendingGovernance = await ctx.stagedStore.findPending();
     const governancePendingCount = pendingGovernance.filter(
@@ -58,6 +66,14 @@ export async function handleDoctor(
         issues.push(`${governancePendingCount} entry/entries pending human ratification`);
     }
 
+    if (dnaIdentity.reevaluation_mode) {
+        issues.push("DNA is in reevaluation_mode — traits no longer modulating routing/challenges");
+    }
+
+    for (const [traitName, count] of Object.entries(driftCounts)) {
+        issues.push(`DNA trait "${traitName}" has ${count} unresolved drift warning(s)`);
+    }
+
     const result = {
         consistency: consistencyReport,
         health: {
@@ -68,6 +84,10 @@ export async function handleDoctor(
         staged: {
             total: stagedCount,
             governance_pending: governancePendingCount,
+        },
+        dna: {
+            reevaluation_mode: dnaIdentity.reevaluation_mode,
+            drift_warning_counts: driftCounts,
         },
         cognitive_mode: policy.cognitive_mode,
         issues_count: issues.length,

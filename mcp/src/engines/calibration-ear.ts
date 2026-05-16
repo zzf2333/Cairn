@@ -7,6 +7,13 @@ export interface CalibrationResult {
     signals: CalibrationSignal[];
 }
 
+export interface SafetyValveResult {
+    triggered_traits: string[];
+    confidence_reduced: Record<string, { from: number; to: number }>;
+    entered_reevaluation: boolean;
+    signals: CalibrationSignal[];
+}
+
 export class CalibrationEar {
     constructor(
         private readonly projectRoot: string,
@@ -36,6 +43,78 @@ export class CalibrationEar {
         signals.push(...dnaDriftSignals);
 
         return { signals };
+    }
+
+    async applySafetyValve(calibrationSignals: CalibrationSignal[]): Promise<SafetyValveResult> {
+        const result: SafetyValveResult = {
+            triggered_traits: [],
+            confidence_reduced: {},
+            entered_reevaluation: false,
+            signals: [],
+        };
+
+        const driftWarnings = calibrationSignals.filter(
+            s => s.signal_type === "dna_drift_warning" && s.affected_trait,
+        );
+        if (driftWarnings.length === 0) return result;
+
+        const affectedTraits = new Set<string>();
+        for (const w of driftWarnings) {
+            if (w.affected_trait) affectedTraits.add(w.affected_trait);
+        }
+
+        const identity = await this.dnaStore.loadIdentity();
+        const now = new Date().toISOString();
+        let modified = false;
+        let signalIndex = 0;
+
+        for (const traitName of affectedTraits) {
+            const trait = identity.traits[traitName];
+            if (!trait) continue;
+            if (trait.level !== "high") continue;
+
+            const fromConfidence = trait.confidence;
+            const toConfidence = Math.max(0, fromConfidence * 0.9);
+
+            trait.drift_warning_count = (trait.drift_warning_count ?? 0) + 1;
+            trait.confidence = toConfidence;
+            trait.last_safety_valve_at = now;
+            modified = true;
+
+            result.triggered_traits.push(traitName);
+            result.confidence_reduced[traitName] = { from: fromConfidence, to: toConfidence };
+
+            if (
+                trait.drift_warning_count >= 2
+                && toConfidence < 0.7
+                && !identity.reevaluation_mode
+            ) {
+                identity.reevaluation_mode = true;
+                result.entered_reevaluation = true;
+                trait.drift_warning_count = 0;
+
+                result.signals.push({
+                    id: `sig_cal_${Date.now()}_dna_safety_valve_triggered_${signalIndex++}`,
+                    signal_type: "dna_safety_valve_triggered",
+                    affected_trait: traitName,
+                    description: `Safety valve auto-triggered for trait "${traitName}"; DNA entered reevaluation_mode`,
+                    evidence: {
+                        expected: "DNA trait stability above 0.7 confidence",
+                        actual: `Trait "${traitName}" dropped to ${toConfidence.toFixed(2)} after ${trait.drift_warning_count + 1}+ drift warnings`,
+                        source: "calibration",
+                    },
+                    inferred_gravity: "G2",
+                    confidence: 0.95,
+                    captured_at: now,
+                });
+            }
+        }
+
+        if (modified) {
+            await this.dnaStore.saveIdentity(identity);
+        }
+
+        return result;
     }
 
     private async checkNoGoConflicts(startIndex: number): Promise<CalibrationSignal[]> {
@@ -205,6 +284,7 @@ export class CalibrationEar {
                 signals.push({
                     id: `sig_cal_${Date.now()}_dna_drift_warning_${index++}`,
                     signal_type: "dna_drift_warning",
+                    affected_trait: traitName,
                     description: `DNA trait "${traitName}" (${trait.level}) contradicted by ${contradicting.length} recent high-gravity events`,
                     evidence: {
                         expected: `Behavior consistent with ${traitName}: ${trait.level}`,

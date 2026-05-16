@@ -65,12 +65,14 @@ export type ConversationSignal = z.infer<typeof ConversationSignalSchema>;
 export const CALIBRATION_SIGNAL_TYPES = [
     "calibration_conflict", "skeleton_drift",
     "debt_resolution_candidate", "dna_drift_warning",
+    "dna_safety_valve_triggered",
 ] as const;
 
 export const CalibrationSignalSchema = z.object({
     id: z.string(),
     signal_type: z.enum(CALIBRATION_SIGNAL_TYPES),
     domain: z.string().optional(),
+    affected_trait: z.string().optional(),
     description: z.string(),
     evidence: z.object({
         expected: z.string(),

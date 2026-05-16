@@ -62,6 +62,9 @@ export function gravityAtLeast(level: GravityLevel, threshold: GravityLevel): bo
 export const DNA_MIN_TIMESPAN_MONTHS = 3;
 export const DNA_MIN_CONFIDENCE = 0.6;
 
+export const KNOWN_DNA_TRAITS = ["simplicity_bias", "infra_aggressiveness"] as const;
+export type KnownDnaTrait = typeof KNOWN_DNA_TRAITS[number];
+
 export const RESURRECTION_THRESHOLD = 5; // hits in 30 days
 
 export const VIEWS_TOKEN_TARGETS = {

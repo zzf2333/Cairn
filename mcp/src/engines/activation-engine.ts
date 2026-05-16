@@ -5,7 +5,7 @@ import type { DnaStore } from "../stores/dna-store.js";
 import type { DomainStore } from "../stores/domain-store.js";
 import type { StateStore } from "../stores/state-store.js";
 import type { ChallengeEngine } from "./challenge-engine.js";
-import { GRAVITY_ORDER, type GravityLevel } from "../constants.js";
+import { GRAVITY_ORDER, type GravityLevel, RESURRECTION_THRESHOLD } from "../constants.js";
 import { approxTokens } from "../tokens.js";
 
 export interface Challenge {
@@ -14,6 +14,7 @@ export interface Challenge {
     description: string;
     required_response?: string;
     trauma?: boolean;
+    archived?: boolean;
 }
 
 export interface ActivationInput {
@@ -41,6 +42,7 @@ export interface CairnContextResult {
             reason: string;
             gravity: string;
             source_event: string;
+            archived?: boolean;
         }>;
         accepted_debt: Array<{
             what: string;
@@ -77,9 +79,12 @@ export class ActivationEngine {
     async activate(input: ActivationInput): Promise<CairnContextResult> {
         const matchedNodes = await this.taskToSkeleton(input);
         const expandedDomains = await this.expandCapillaries(matchedNodes);
-        const { events, scannedCount } = await this.traverseBlood(expandedDomains);
+        const { events, archivedReactivating, scannedCount } = await this.traverseBlood(expandedDomains);
         const relevantTraits = await this.activateDna(expandedDomains);
-        return this.assembleContext(input, matchedNodes, expandedDomains, events, scannedCount, relevantTraits);
+        return this.assembleContext(
+            input, matchedNodes, expandedDomains,
+            events, archivedReactivating, scannedCount, relevantTraits,
+        );
     }
 
     private async taskToSkeleton(input: ActivationInput): Promise<SkeletonNode[]> {
@@ -136,30 +141,49 @@ export class ActivationEngine {
         return [...domains];
     }
 
-    private async traverseBlood(domains: string[]): Promise<{ events: EvolutionEvent[]; scannedCount: number }> {
+    private async traverseBlood(domains: string[]): Promise<{
+        events: EvolutionEvent[];
+        archivedReactivating: EvolutionEvent[];
+        scannedCount: number;
+    }> {
         const allEvents = await this.bloodStore.loadAll();
         const scannedCount = allEvents.length;
+        const state = await this.stateStore.load();
 
-        const relevant = allEvents.filter(e => {
-            if (!domains.includes(e.domain)) return false;
-            if (GRAVITY_ORDER[e.gravity.level as GravityLevel] < GRAVITY_ORDER.G1) return false;
-            if (e.health.state !== "ok" && e.health.state !== "resurrected") return false;
-            return true;
+        const matchesDomainAndGravity = (e: EvolutionEvent): boolean =>
+            domains.includes(e.domain)
+            && GRAVITY_ORDER[e.gravity.level as GravityLevel] >= GRAVITY_ORDER.G1;
+
+        const relevant = allEvents.filter(e =>
+            matchesDomainAndGravity(e)
+            && (e.health.state === "ok" || e.health.state === "resurrected"),
+        );
+
+        const archivedReactivating = allEvents.filter(e => {
+            if (!matchesDomainAndGravity(e)) return false;
+            if (e.health.state !== "stale") return false;
+            const hits = state.activation_log.recent_hits[e.id] ?? 0;
+            return hits >= RESURRECTION_THRESHOLD;
         });
 
-        relevant.sort((a, b) => {
+        const sortByPriority = (a: EvolutionEvent, b: EvolutionEvent) => {
             const gravDiff = GRAVITY_ORDER[b.gravity.level as GravityLevel] - GRAVITY_ORDER[a.gravity.level as GravityLevel];
             if (gravDiff !== 0) return gravDiff;
             const traumaDiff = (b.trauma.is_trauma ? 1 : 0) - (a.trauma.is_trauma ? 1 : 0);
             if (traumaDiff !== 0) return traumaDiff;
             return b.created_at.localeCompare(a.created_at);
-        });
+        };
+        relevant.sort(sortByPriority);
+        archivedReactivating.sort(sortByPriority);
 
         for (const event of relevant) {
             await this.stateStore.recordActivation(event.id);
         }
+        for (const event of archivedReactivating) {
+            await this.stateStore.recordActivation(event.id);
+        }
 
-        return { events: relevant, scannedCount };
+        return { events: relevant, archivedReactivating, scannedCount };
     }
 
     private async activateDna(domains: string[]): Promise<Array<{ name: string; level: string; implication: string }>> {
@@ -203,6 +227,7 @@ export class ActivationEngine {
         matchedNodes: SkeletonNode[],
         domains: string[],
         events: EvolutionEvent[],
+        archivedReactivating: EvolutionEvent[],
         scannedCount: number,
         relevantTraits: Array<{ name: string; level: string; implication: string }>,
     ): Promise<CairnContextResult> {
@@ -216,6 +241,17 @@ export class ActivationEngine {
                     reason: event.behavior_effect.instruction,
                     gravity: event.gravity.level,
                     source_event: event.id,
+                });
+            }
+        }
+        for (const event of archivedReactivating) {
+            if (event.behavior_effect.type === "avoid_suggestion") {
+                noGo.push({
+                    what: event.subject.name,
+                    reason: `[archived, reactivating] ${event.behavior_effect.instruction}`,
+                    gravity: event.gravity.level,
+                    source_event: event.id,
+                    archived: true,
                 });
             }
         }

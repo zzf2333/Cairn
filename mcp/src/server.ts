@@ -134,6 +134,7 @@ export function createServer(ctx: CairnContext): McpServer {
             domain: z.string().optional(),
             details: z.object({
                 what: z.string(),
+                aliases: z.array(z.string()).optional(),
                 reason: z.string().optional(),
                 rejected_alternatives: z.array(z.object({
                     path: z.string(),
