@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-05-17 (docs philosophical redesign)
+
+Docs-only release. No engine, store, or tool behavior changed; 268 existing unit tests pass unchanged.
+
+The flat docs/ layout shipped in 0.4.1 was a competent product manual. This release rebuilds it as the **operational shape of the philosophy itself** — six volumes organized around the cognitive-organism metaphor that the philosophy doc describes. Reading top-to-bottom now traces the same argument the system itself follows.
+
+### Removed
+
+- The flat `docs/*.md` layout from 0.4.1 (`PHILOSOPHY.md`, `ARCHITECTURE.md`, `QUICK_START.md`, `SCHEMA.md`, `GLOSSARY.md`, `EXAMPLES.md`, `TROUBLESHOOTING.md`, `RECOVERY.md`, `PERFORMANCE.md`, `STABILITY.md`, `MIGRATION.md`, `RELEASE_READINESS.md`).
+
+### Added
+
+Six-volume `docs/` tree:
+
+- **`0-enter.md`** — single-page conceptual entry
+- **`i-origin/`** (3) — `code-abundance.md`, `cognitive-collapse.md`, `not-a-memory.md`
+- **`ii-anatomy/`** (6) — `skeleton.md`, `blood.md`, `dna.md`, `capillaries.md`, `gravity.md`, `governance.md`
+- **`iii-life/`** (4) — `capture-and-ratify.md`, `decay-and-resurrection.md`, `compression.md`, `trauma.md`
+- **`iv-self/`** (3) — `trust-router.md`, `calibration.md`, `reevaluation.md`
+- **`v-intervene/`** (3) — `enter.md`, `protocol.md`, `tend.md`
+- **`vi-coordinates/`** (5) — `glossary.md`, `schema.md`, `stability.md`, `performance.md`, `migration.md`
+
+25 documents total. Each ~800–1500 words, one-line conceptual opener, philosophy + engineering interleaved (not separated), explicit "see also" cross-links forming the documentation as a graph rather than a tree.
+
+### Rewritten
+
+- `README.md` and `README.zh.md` — front pages restructured around the six-volume table; hero diagram is `02-three-layer-architecture`.
+
+### Unchanged
+
+- All 6 architecture / flow diagrams (`docs/diagrams/01-06`) — stay in Claude Official style 6 from 0.4.1.
+- `docs/internal/{philosophy,architecture}.zh.md` — local-only Chinese source-of-intent; gitignored.
+
+### Verification
+
+- `npm run build` clean.
+- `npm test` 268/268 passing.
+- `npm pack --dry-run` does not include `.claude/`, deleted docs, or removed adapters.
+
 ## [0.4.1] - 2026-05-17 (docs redesign, two-platform focus)
 
 Docs-and-scope-only patch on top of 0.4.0. No engine, store, or tool behavior changed; 268 existing unit tests pass unchanged.

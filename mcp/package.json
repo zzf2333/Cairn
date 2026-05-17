@@ -1,6 +1,6 @@
 {
     "name": "cairn-mcp-server",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "description": "Cairn — AI-native engineering cognition engine via MCP",
     "type": "module",
     "license": "MIT",
