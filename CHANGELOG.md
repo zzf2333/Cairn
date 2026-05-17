@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-05-17 (docs redesign, two-platform focus)
+
+Docs-and-scope-only patch on top of 0.4.0. No engine, store, or tool behavior changed; 268 existing unit tests pass unchanged.
+
+### Removed
+
+- **`spec/`** directory (9 files: DESIGN, FORMAT, adoption-guide, glossary, vs-adr × EN/ZH). Content folded into the redesigned `docs/` tree.
+- **5 platform adapters** — `skills/{cline, copilot-instructions, cursor.mdc, gemini-cli, opencode, windsurf}`. Only Claude Code + Codex are actively maintained for now; the others will return in the 1.x line once each can pass the same reverse-regression suite as the supported two.
+- **`TRANSLATIONS.md`** — its only job was to index the deleted `spec/` EN/ZH pairs.
+
+### Added (English-only, authoritative)
+
+- **`docs/PHILOSOPHY.md`** — why Cairn exists: cognition scarcity, cognitive thermodynamics, project as cognitive organism, the three principles, ADR comparison.
+- **`docs/ARCHITECTURE.md`** — how the philosophy becomes a running system: four layers, signal flow, the six-step `cairn_session_end` pipeline, cognitive modes, `.cairn/` anatomy.
+- **`docs/QUICK_START.md`** — 5-minute path: install + configure Claude Code or Codex + verify + worked example + CLI fallback.
+- **`docs/SCHEMA.md`** — field-level YAML reference for every file under `.cairn/`, with examples and the load-bearing field semantics (gravity, behavior_effect, trauma, lifecycle, DNA traits).
+- **`docs/GLOSSARY.md`** — every term used across docs, organized by conceptual dependency, plus comparisons to ADR / RFC / linter.
+
+### Moved
+
+- `docs/架构文档.md` → `docs/internal/architecture.zh.md` (still gitignored — local source-of-intent)
+- `docs/设计哲学.md` → `docs/internal/philosophy.zh.md` (still gitignored)
+
+### Repainted
+
+All 6 architecture / flow / decision diagrams repainted using the fireworks-tech-graph **style 6 (Claude Official)** palette — warm cream background, soft blue/teal/beige nodes, 12px radius:
+
+- `01-problem-vs-solution.{svg,png}` — comparison: AI without Cairn vs with
+- `02-three-layer-architecture.{svg,png}` — Host AI → MCP server → `.cairn/`
+- `03-integration-overview.{svg,png}` — Claude Code + Codex talking to one MCP server
+- `04-how-it-works.{svg,png}` — three signal sources → TrustRouter → three destinations → maintenance pipeline
+- `05-daily-usage.{svg,png}` — sequence diagram of one user turn
+- `06-trust-router-flow.{svg,png}` — TrustRouter decision tree
+
+### Rewritten
+
+- `README.md` — new hero (02), explicit "Supported AI tools" section, doc table points only to the new English tree, dead links to deleted adapters / spec files removed.
+- `README.zh.md` — slimmer Chinese overview, points to `docs/internal/*.zh.md` for depth, states English as the authoritative version.
+
+### Verification
+
+- `npm run build` clean.
+- `npm test` 268/268 passing.
+- `npm pack --dry-run` does not include `.claude/`, `spec/`, or any removed adapter.
+- `git ls-files .claude` returns empty; `.claude/` remains gitignored.
+
 ## [0.4.0] - 2026-05-17 (release readiness — stability, recovery, observability)
 
 Published to npm as `cairn-mcp-server@0.4.0`. Tag: [v0.4.0](https://github.com/zzf2333/Cairn/releases/tag/v0.4.0). First release on the 0.4 line — 0.3.x existed in git/CHANGELOG only and never reached npm; users on `0.2.10` should upgrade directly to `0.4.0`.
