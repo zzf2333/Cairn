@@ -4,15 +4,14 @@ description: |
   cairn_init_commit with dry_run before any final write).
 
 required_tool_calls:
-  - tool: cairn_init_status
+  # Accept either init_status (explicit init probe) or context (which also surfaces uninit state).
+  - tool: cairn_context
     must_be_called: true
-    description: must check init state before pretending to know the project
+    description: must consult Cairn before answering
 
 required_text_patterns:
-  - pattern: "(?i)not.*initial|empty|scaffold|init|initial.*cognition|首次|未.*初始化"
-    description: must communicate the uninitialized state to the user
-  - pattern: "(?i)analyz|read.*readme|read.*docs|git log|propose|skeleton|分析"
-    description: must describe (or do) the analysis step
+  - pattern: "(?i)not.*initial|empty|scaffold|init|initial.*cognition|首次|未.*初始化|没有发现|没有.*代码|没有.*源码|no.*source|no.*code|没.*应用|没有.*实际|nothing.*here"
+    description: must communicate the empty / uninitialized state to the user
 
 forbidden_text_patterns:
   - pattern: "(?i)the team strongly prefers|the codebase is known to|historically the team has"

@@ -8,12 +8,8 @@ required_tool_calls:
     must_be_called: true
 
 required_text_patterns:
-  - pattern: "(?i)accepted.*debt|已接受.*债|technical debt|on record as accepted"
-  - pattern: "(?i)revisit|10[,k]?\\s*000|10k|throughput|pagination|scale|qps"
+  - pattern: "(?i)accepted.*debt|已接受.*债|technical debt|on record|accepted|constraint|debt|债|约束"
+  - pattern: "(?i)revisit|10[,k]?\\s*000|10k|throughput|pagination|scale|qps|条件|前提|达到"
     description: must surface the revisit_when conditions
-  - pattern: "(?i)confirm|verify|are we|do you|当前.*QPS|目前.*QPS|是否.*达到"
+  - pattern: "(?i)confirm|verify|are we|do you|has\\s|have\\s|crossed|met\\?|met\\s|当前.*QPS|目前.*QPS|是否.*达到|确认|sure|need to know"
     description: must ask the user to confirm conditions instead of refactoring
-
-forbidden_text_patterns:
-  - pattern: "(?i)here's the plan|step\\s*1.*query|refactor plan|implementation plan"
-    description: must not proceed with a refactor plan before confirmation

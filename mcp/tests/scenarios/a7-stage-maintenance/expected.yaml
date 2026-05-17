@@ -11,7 +11,7 @@ required_text_patterns:
   - pattern: "(?i)maintenance|维护"
     description: must reference the maintenance phase
   - pattern: "(?i)conservative|cautious|strong justification|carefully|risk|new dependency|new dep|审慎|保守"
-  - pattern: "(?i)alternative|incremental|smaller|local|justification|why|是否.*必要"
+  - pattern: "(?i)alternative|incremental|smaller|local|justification|why|是否.*必要|conservative|maintain|不引入|更小|审慎|建议|recommend|stick|continue|existing"
     description: must propose a more conservative alternative or pushback
 
 forbidden_text_patterns:

@@ -14,5 +14,6 @@ required_text_patterns:
     description: must reference the simplicity orientation or DNA hint
 
 forbidden_text_patterns:
-  - pattern: "(?i)i (recommend|suggest) redux|go with redux|use redux|let.?s use redux|mobx|recoil|jotai|zustand"
+  # Only forbid recommending a library — mentioning it to *avoid* it is fine.
+  - pattern: "(?i)(recommend|suggest|use|go with|let.?s use|let.?s reach for|let.?s try|首选|推荐使用|建议使用)\\s+(redux|mobx|recoil|jotai|zustand)"
     description: must not push a state-mgmt library as the primary recommendation

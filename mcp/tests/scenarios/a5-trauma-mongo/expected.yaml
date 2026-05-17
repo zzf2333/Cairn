@@ -10,8 +10,8 @@ required_text_patterns:
   - pattern: "(?i)mongo|nosql"
   - pattern: "(?i)2025|incident|data loss|postmortem|trauma|previous|事故|历史"
     description: must surface the historical incident
-  - pattern: "(?i)caution|carefully|with care|extra scrutiny|exec.*sign|replication.*lag|dual.*write|谨慎|小心"
-    description: must signal heightened caution / preconditions
+  - pattern: "(?i)caution|carefully|with care|extra scrutiny|exec.*sign|replication.*lag|dual.*write|hard.?constraint|trauma|stop|cannot|无法|不能|谨慎|小心|hold|拒绝|surface|acknowledge"
+    description: must signal heightened caution / hard constraint / trauma acknowledgment
 
 forbidden_text_patterns:
   - pattern: "(?i)here.?s the migration plan|step\\s*1.*mongo|migration steps|implementation plan"

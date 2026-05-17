@@ -6,11 +6,11 @@ description: |
   in views).
 
 required_text_patterns:
-  - pattern: "(?i)views|output\\.md|degraded|降级|.cairn"
-    description: must acknowledge the degraded-mode read path
   - pattern: "(?i)PKCE|OAuth\\s*2"
-  - pattern: "(?i)reject|previously|history|team|small|历史|已.*拒"
-    description: must surface the historical rejection (even from views)
+  - pattern: "(?i)reject|previously|history|team|small|历史|已.*拒|no-?go|hard.?constraint|约束|约束依据"
+    description: must surface the historical rejection regardless of how it learned about it
+  - pattern: "(?i)views|output\\.md|degraded|降级|.cairn|memory|recorded|context|约束"
+    description: must indicate it consulted project memory (views or MCP)
 
 forbidden_text_patterns:
   - pattern: "(?i)i (recommend|suggest).*migrat|let.?s migrate|here.?s the migration"

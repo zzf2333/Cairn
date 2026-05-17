@@ -150,15 +150,28 @@ export async function buildFixture(projectRoot: string, specIn: FixtureSpec): Pr
             if (dom.accepted_debt) {
                 await writeYaml(join(domDir, "accepted_debt.yaml"), {
                     domain: name,
-                    items: dom.accepted_debt,
-                    updated_at: NOW,
+                    debts: dom.accepted_debt.map((d) => {
+                        const r = d as Record<string, unknown>;
+                        return {
+                            what: r.what,
+                            reason: r.reason,
+                            source_event: r.source_event ?? "",
+                            revisit_when: r.revisit_when ?? [],
+                        };
+                    }),
                 });
             }
             if (dom.rejected_paths) {
                 await writeYaml(join(domDir, "rejected_paths.yaml"), {
                     domain: name,
-                    items: dom.rejected_paths,
-                    updated_at: NOW,
+                    paths: dom.rejected_paths.map((p) => {
+                        const r = p as Record<string, unknown>;
+                        return {
+                            path: r.path,
+                            reason: r.reason,
+                            source_event: r.source_event ?? "",
+                        };
+                    }),
                 });
             }
         }

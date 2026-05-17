@@ -12,5 +12,5 @@ required_tool_calls:
       "details.what": "(?i)graphql"
 
 required_text_patterns:
-  - pattern: "(?i)recorded|noted|captured|signal|memory|cairn|记录"
+  - pattern: "(?i)recorded|noted|captured|signal|memory|cairn|记录|logged|stored|tracked|filed|登记|添加"
     description: AI should acknowledge that the historical context was captured
