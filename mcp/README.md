@@ -19,7 +19,7 @@ For tools that don't support MCP, `views/` provides a read-only fallback (see
 
 ## Tools
 
-Eleven MCP tools:
+Fourteen MCP tools across five phases:
 
 ### Initialization
 
@@ -40,17 +40,31 @@ Eleven MCP tools:
 
 ### Staged Review
 
+EvolutionEvent candidates pending human ratification (including `stage_transition` entries):
+
 | Tool | Description | Writes Data? |
 |------|-------------|-------------|
 | `cairn_stage_list` | List pending staged entries for review. | No (read-only) |
-| `cairn_stage_accept` | Accept a staged entry into blood. | Yes (writes blood) |
+| `cairn_stage_accept` | Accept a staged entry into blood. If the entry is a `stage_transition`, also updates `state.stage`. | Yes (writes blood / state) |
 | `cairn_stage_reject` | Reject a staged entry with reason. | Yes (updates staged) |
+
+### DNA Emergence
+
+DNA trait candidates produced by `CompressionEngine` during `cairn_session_end`. Always require human ratification — a wrong trait silently distorts every future decision until removed.
+
+| Tool | Description | Writes Data? |
+|------|-------------|-------------|
+| `cairn_dna_list` | List pending DNA trait candidates from `.cairn/dna/staged/`. | No (read-only) |
+| `cairn_dna_accept` | Confirm a DNA trait candidate; writes to `dna/identity.yaml` and starts modulating routing. | Yes (writes DNA identity + audit) |
+| `cairn_dna_reject` | Reject a DNA trait candidate with reason. | Yes (updates DNA staged + audit) |
 
 ### Diagnostics
 
 | Tool | Description | Writes Data? |
 |------|-------------|-------------|
-| `cairn_doctor` | Run cognitive consistency validation: skeleton drift, blood conflicts, orphan domains, DNA coherence. | No (read-only) |
+| `cairn_doctor` | Run 5 cross-system consistency checks (skeleton drift, blood conflicts, orphan domains, DNA coherence, archived-overactivation). **Side effect**: auto-resurrects archived G0/G1 events with ≥5 hits in 30 days; G2+ surface as `resurrection_candidates`. | Yes (resurrection writes) |
+
+> `cairn_status` is also a diagnostic surface — it's listed under Core Workflow above because it's read frequently by every session.
 
 ### Input Schemas
 
@@ -154,6 +168,23 @@ Eleven MCP tools:
 
 **`cairn_doctor`** — no input
 
+**`cairn_dna_list`** — no input
+
+**`cairn_dna_accept`**
+```json
+{
+    "id": "string — DNA staged candidate ID"
+}
+```
+
+**`cairn_dna_reject`**
+```json
+{
+    "id": "string — DNA staged candidate ID",
+    "reason": "string — rejection reason"
+}
+```
+
 ## Recommended Workflow
 
 ```
@@ -183,17 +214,25 @@ Session end:
   cairn_session_end({ summary: "Refactored auth, rejected OAuth2 PKCE", changed_domains: ["auth"] })
   → Batch processes signals, regenerates views, creates session record
 
-Reviewing staged entries:
+Reviewing staged entries (EvolutionEvent candidates, including stage_transition):
   cairn_stage_list()
   → Returns pending entries with draft event details
   cairn_stage_accept({ id: "staged_..." })
-  → Accepts entry into blood
+  → Accepts entry into blood (and updates state.stage if it's a stage_transition)
   cairn_stage_reject({ id: "staged_...", reason: "not relevant" })
   → Rejects entry
 
+Reviewing DNA trait candidates (emerge from cairn_session_end → CompressionEngine):
+  cairn_dna_list()
+  → Returns pending candidates with trait_name, level, confidence, evidence_events, reasoning
+  cairn_dna_accept({ id: "dna_..." })
+  → Confirms trait; starts modulating routing, challenges, and gravity
+  cairn_dna_reject({ id: "dna_...", reason: "premature pattern" })
+  → Discards candidate (always require human ratification — never auto-accept)
+
 Diagnostics (any time):
   cairn_status()
-  cairn_doctor()
+  cairn_doctor()   # has side effect: auto-resurrects archived G0/G1 events
 ```
 
 ## Installation

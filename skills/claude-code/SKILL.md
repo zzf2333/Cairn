@@ -35,7 +35,13 @@ cairn_init_status()
 → { status, has_cairn_dir, next_action }
 ```
 
-If `status` is `"not_initialized"`, perform **AI-native initialization**:
+> **Optional pre-step** — the user may have run `cairn init` (CLI) ahead of time to
+> commit an empty `.cairn/` scaffold (useful in CI or team setups). That changes
+> `has_cairn_dir` to `true` but leaves `status: "empty_scaffold"`. Treat
+> `"empty_scaffold"` exactly like `"not_initialized"` — proceed with AI-native
+> initialization below; `cairn_init_commit` will populate the existing scaffold.
+
+If `status` is `"not_initialized"` or `"empty_scaffold"`, perform **AI-native initialization**:
 
 1. Analyze the project using your own capabilities:
    - Read `README.md`, docs, `CLAUDE.md` / `.cursorrules` for constraints
@@ -111,8 +117,13 @@ blood_candidates: [{
 
 ## 1. SESSION START — cairn_context
 
-**Call before responding to any request.** Pass the current task and/or
-files if known:
+**Call once at the start of every new session**, before responding to the
+user's first substantive message. Within the same session, skip the call
+if hot context from a recent `cairn_context` invocation is still valid for
+the current task (no new task topic, no new files). When in doubt, call
+again — it is read-only and cheap.
+
+Pass the current task and/or files if known:
 
 ```
 cairn_context({ task?: string, files?: string[] })
@@ -266,6 +277,18 @@ way as staged entries:
 
 DNA candidates always require human ratification — never auto-accept. A
 wrong DNA trait will silently distort every future decision until removed.
+
+#### DNA reevaluation mode
+
+When `cairn_status()` returns `dna.reevaluation_mode: true` (set
+automatically by the safety valve when ≥2 traits accumulate drift
+warnings with confidence <0.7, or manually via `cairn dna reevaluate`),
+**all accepted DNA traits temporarily stop modulating** routing,
+challenges, and gravity. Cairn behaves as if DNA were empty until the
+user reviews drift warnings and runs `cairn dna reevaluate` to disable
+the mode. If the user asks why a previously trait-driven challenge no
+longer fires, point them at `cairn dna show` (drift warnings) and
+`cairn doctor` (drift signals).
 
 ---
 
@@ -422,6 +445,26 @@ If MCP tools are unavailable, fall back to reading `.cairn/views/` directly:
 
 `views/` is auto-generated and read-only. **Do not write to views/.**
 Signal capture is unavailable in degraded mode.
+
+### Diagnosing MCP transport issues
+
+When `cairn_*` tools fail or return "unknown tool", walk this 3-step
+ladder before falling back to degraded mode:
+
+1. **Is the CLI working?** Ask the user to run `cairn doctor`. If the
+   CLI errors out, the install itself is broken — point them at
+   `npm install -g cairn-mcp-server` and Node 18+.
+2. **Is the MCP config correct?** If CLI works but MCP tools don't,
+   the issue is the Claude Code ↔ MCP server connection. Check
+   `~/.claude/mcp.json` or `.claude/mcp.json` has `"cairn": { "command": "cairn-mcp-server" }`.
+   Restart Claude Code after editing.
+3. **Is `.cairn/` reachable?** If MCP server runs but tools return
+   path errors, the server may not have located `.cairn/`. Either run
+   the command from the project root, or set
+   `"env": { "CAIRN_ROOT": "/absolute/path" }` in the MCP config.
+
+While diagnosing, the user can still read `.cairn/views/output.md`
+directly — that bypasses MCP entirely.
 
 ---
 
