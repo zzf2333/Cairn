@@ -25,6 +25,7 @@ export interface CairnPaths {
     viewsStage: string;
     viewsDomains: string;
     sessions: string;
+    logs: string;
 }
 
 export function buildPaths(projectRoot: string): CairnPaths {
@@ -60,6 +61,7 @@ export function buildPaths(projectRoot: string): CairnPaths {
         viewsStage: join(views, "stage.md"),
         viewsDomains: join(views, "domains"),
         sessions: join(cairn, "sessions"),
+        logs: join(cairn, "logs"),
     };
 }
 

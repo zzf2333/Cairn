@@ -414,7 +414,18 @@ Adjust suggestion aggressiveness to the project phase:
 | `maturity` | Stability first, new deps need strong justification |
 | `maintenance` | Conservative changes only, necessary fixes and security |
 
+**Maintenance phase has `reflective_challenge` strength.** Any new feature plan, refactor, or migration must be surfaced to the user as a conflict before drafting — do not silently produce the implementation. Continue only on explicit override.
+
 If `confidence < 0.5`, treat stage guidance as informational only.
+
+### Empty workspace handling
+
+If `cairn_context` returns `interaction_hint`, the workspace is unusual. Respond per hint:
+
+| Hint | Behavior |
+|---|---|
+| `review_staged_first` | The cwd has no relevant source files but `.cairn/staged/` has pending entries. Do not reply "no source files." Enumerate the staged entries and ask the user to accept/reject. |
+| `needs_init` | Project lacks `.cairn/`. Do not reply "wrong project." Analyze the repo and propose `cairn_init_commit({ dry_run: true })`. |
 
 ### challenges — Three-Level Intervention
 

@@ -9,6 +9,7 @@ import { runDna } from "./dna.js";
 import { runSkeleton } from "./skeleton.js";
 import { runBlood } from "./blood.js";
 import { runStage } from "./stage.js";
+import { runMigrate } from "./migrate.js";
 
 const USAGE = `cairn v${VERSION}
 
@@ -19,6 +20,9 @@ Commands:
   init --empty                  Initialize .cairn/ scaffold (silent, for scripts)
   status                        Show project cognitive status (DNA mode, drift, stage transitions)
   doctor                        Run consistency checks + auto-resurrect low-gravity archived events
+  doctor --fix                  Scan for corrupted yaml files + orphan refs; quarantine broken files
+  doctor --recover              Clear an incomplete session_in_progress checkpoint
+  doctor --metrics              Print .cairn/ health snapshot (blood/DNA/staged/last session)
   review                        List pending staged entries
   audit                         Show governance audit log
   dna show                      List current DNA traits
@@ -32,6 +36,7 @@ Commands:
   stage list                    List pending stage_transition entries
   stage accept <id>             Accept a stage transition (applies new phase)
   stage reject <id> <reason>    Reject a stage transition
+  migrate                       Stamp .cairn/state.yaml with current cairn_version, apply pending migrations
 
 Options:
   --version                     Show version
@@ -60,7 +65,7 @@ async function main() {
                 await runStatus();
                 break;
             case "doctor":
-                await runDoctor();
+                await runDoctor(args.slice(1));
                 break;
             case "review":
                 await runReview();
@@ -79,6 +84,9 @@ async function main() {
                 break;
             case "stage":
                 await runStage(args.slice(1));
+                break;
+            case "migrate":
+                await runMigrate();
                 break;
             default:
                 console.error(`Unknown command: ${command}`);

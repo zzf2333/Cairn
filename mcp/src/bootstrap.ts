@@ -18,6 +18,7 @@ export async function bootstrapEmpty(projectRoot: string): Promise<void> {
             cognitive_mode: "standard",
             stage: { override: null },
             tech_stack: [],
+            logging: { enabled: true, retention_days: 30 },
         };
         await configStore.save(config);
     }

@@ -60,7 +60,9 @@ export async function runCodexCli({
             }
             args.push("--json");
             args.push("--skip-git-repo-check");
-            args.push("--ephemeral");
+            // NOTE: do NOT pass --ephemeral here — it disables session persistence,
+            // which makes `exec resume <thread_id>` lose all prior context. The B3
+            // multi-turn scenario depends on resume preserving turn-1 history.
             args.push("-C", projectRoot);
             args.push("-s", "read-only");
             args.push("--dangerously-bypass-approvals-and-sandbox");
@@ -72,6 +74,7 @@ export async function runCodexCli({
             args.push("-c", `mcp_servers.cairn.args=["${mcpServerPath.replace(/\\/g, "\\\\")}"]`);
             args.push("-c", `mcp_servers.cairn.env={ CAIRN_ROOT = "${projectRoot.replace(/\\/g, "\\\\")}" }`);
             // Inject the Cairn protocol as additional instructions only on the first turn.
+            // On resume, Codex carries forward the system prompt from the original exec.
             if (!isResume) {
                 const escaped = JSON.stringify(skillText);
                 args.push("-c", `instructions=${escaped}`);

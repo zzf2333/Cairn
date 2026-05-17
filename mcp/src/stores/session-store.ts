@@ -1,7 +1,8 @@
-import { readFile, writeFile, readdir, mkdir } from "node:fs/promises";
+import { readFile, readdir, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import { SessionRecordSchema, type SessionRecord } from "../schemas/index.js";
+import { atomicWriteFile } from "../utils/atomic-write.js";
 
 export class SessionStore {
     constructor(private readonly dir: string) {}
@@ -12,7 +13,7 @@ export class SessionStore {
 
     async save(record: SessionRecord): Promise<void> {
         await this.ensureDir();
-        await writeFile(join(this.dir, `${record.id}.yaml`), yamlStringify(record), "utf-8");
+        await atomicWriteFile(join(this.dir, `${record.id}.yaml`), yamlStringify(record));
     }
 
     async load(id: string): Promise<SessionRecord | null> {

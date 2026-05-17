@@ -1,7 +1,8 @@
-import { readdir, readFile, writeFile, mkdir, unlink } from "node:fs/promises";
+import { readdir, readFile, mkdir, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import { EvolutionEventSchema, type EvolutionEvent } from "../schemas/index.js";
+import { atomicWriteFile } from "../utils/atomic-write.js";
 
 function safePath(dir: string, filename: string): string {
     const resolved = resolve(dir, filename);
@@ -22,7 +23,7 @@ async function loadYamlFile(path: string): Promise<unknown | null> {
 }
 
 async function saveYamlFile(path: string, data: unknown): Promise<void> {
-    await writeFile(path, yamlStringify(data), "utf-8");
+    await atomicWriteFile(path, yamlStringify(data));
 }
 
 async function loadAllYaml<T>(dir: string, schema: { parse: (data: unknown) => T }): Promise<T[]> {
@@ -45,17 +46,30 @@ async function loadAllYaml<T>(dir: string, schema: { parse: (data: unknown) => T
 }
 
 export class BloodStore {
+    private cache: EvolutionEvent[] | null = null;
+
     constructor(private readonly dir: string) {}
 
     async ensureDir(): Promise<void> {
         await mkdir(this.dir, { recursive: true });
     }
 
+    private invalidate(): void {
+        this.cache = null;
+    }
+
     async loadAll(): Promise<EvolutionEvent[]> {
-        return loadAllYaml(this.dir, EvolutionEventSchema);
+        if (this.cache !== null) return this.cache;
+        const all = await loadAllYaml(this.dir, EvolutionEventSchema);
+        this.cache = all;
+        return all;
     }
 
     async load(id: string): Promise<EvolutionEvent | null> {
+        if (this.cache !== null) {
+            const hit = this.cache.find(e => e.id === id);
+            if (hit !== undefined) return hit;
+        }
         const raw = await loadYamlFile(safePath(this.dir, `${id}.yaml`));
         if (raw === null) return null;
         return EvolutionEventSchema.parse(raw);
@@ -64,6 +78,7 @@ export class BloodStore {
     async save(event: EvolutionEvent): Promise<void> {
         await this.ensureDir();
         await saveYamlFile(safePath(this.dir, `${event.id}.yaml`), event);
+        this.invalidate();
     }
 
     async remove(id: string): Promise<void> {
@@ -73,6 +88,7 @@ export class BloodStore {
             if (err.code === "ENOENT") return;
             throw err;
         }
+        this.invalidate();
     }
 
     async findByDomain(domain: string): Promise<EvolutionEvent[]> {

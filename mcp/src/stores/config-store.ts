@@ -1,8 +1,9 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import { ConfigSchema, type Config } from "../schemas/index.js";
+import { atomicWriteFile } from "../utils/atomic-write.js";
 
 export class ConfigStore {
     constructor(private readonly filePath: string) {}
@@ -19,7 +20,7 @@ export class ConfigStore {
 
     async save(config: Config): Promise<void> {
         await mkdir(dirname(this.filePath), { recursive: true });
-        await writeFile(this.filePath, yamlStringify(config), "utf-8");
+        await atomicWriteFile(this.filePath, yamlStringify(config));
     }
 
     async exists(): Promise<boolean> {

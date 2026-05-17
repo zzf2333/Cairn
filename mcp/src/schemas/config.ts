@@ -18,6 +18,10 @@ export const ConfigSchema = z.object({
         domain: z.string(),
         summary: z.string(),
     })).default([]),
+    logging: z.object({
+        enabled: z.boolean().default(true),
+        retention_days: z.number().int().min(0).default(30),
+    }).default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

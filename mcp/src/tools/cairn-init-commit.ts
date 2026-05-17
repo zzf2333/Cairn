@@ -1,7 +1,7 @@
 import type { CairnContext } from "../context.js";
 import { toolResult, formatToolError } from "../errors.js";
 import type { EvolutionEvent } from "../schemas/index.js";
-import { KNOWN_DNA_TRAITS, type GravityLevel } from "../constants.js";
+import { KNOWN_DNA_TRAITS, VERSION, type GravityLevel } from "../constants.js";
 
 interface BloodCandidate {
     type: string;
@@ -133,6 +133,7 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
             cognitive_mode: config.cognitive_mode as "lightweight" | "standard" | "institutional",
             stage: { override: null },
             tech_stack: [],
+            logging: { enabled: true, retention_days: 30 },
         });
 
         for (const node of skeleton) {
@@ -222,6 +223,7 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
 
         const state = await ctx.stateStore.load();
         state.initialization_status = "complete";
+        state.cairn_version = VERSION;
         await ctx.stateStore.save(state);
 
         await ctx.viewsEngine.regenerate();

@@ -239,6 +239,8 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const nowIso = now.toISOString();
         const sessionId = formatSessionId(now);
 
+        await ctx.stateStore.startSessionCheckpoint("init");
+
         const headCommit = await ctx.gitEar.getHeadCommit();
 
         const state = await ctx.stateStore.load();
@@ -310,6 +312,8 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         state.last_session.ended_at = nowIso;
         await ctx.stateStore.save(state);
 
+        await ctx.stateStore.updateSessionCheckpoint("git_scan_done");
+
         const config = await ctx.configStore.load();
         const cognitiveMode = config?.cognitive_mode ?? "standard";
         const decayActions = await ctx.decayEngine.checkDecay(cognitiveMode);
@@ -338,6 +342,8 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
             }
         }
 
+        await ctx.stateStore.updateSessionCheckpoint("decay_done");
+
         const calibration = await ctx.calibrationEar.calibrate();
         const safetyValve = await ctx.calibrationEar.applySafetyValve(calibration.signals);
 
@@ -346,12 +352,18 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
             calibrationByType[sig.signal_type] = (calibrationByType[sig.signal_type] ?? 0) + 1;
         }
 
+        await ctx.stateStore.updateSessionCheckpoint("calibration_done");
+
         const stageResult = await runStageInference(ctx, state, nowIso);
         if (stageResult.transitionStagedId) {
             gitNewStaged.push(stageResult.transitionStagedId);
         }
 
+        await ctx.stateStore.updateSessionCheckpoint("stage_done");
+
         const dnaResult = await runCompressionInference(ctx, nowIso);
+
+        await ctx.stateStore.updateSessionCheckpoint("compression_done");
 
         await ctx.viewsEngine.regenerate();
 
@@ -368,6 +380,8 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         };
 
         await ctx.sessionStore.save(record);
+
+        await ctx.stateStore.clearSessionCheckpoint();
 
         const stagedCount = await ctx.stagedStore.count();
 

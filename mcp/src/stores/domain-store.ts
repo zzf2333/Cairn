@@ -1,6 +1,7 @@
-import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
+import { readdir, readFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
+import { atomicWriteFile } from "../utils/atomic-write.js";
 import {
     DomainConstraintsSchema,
     DomainAcceptedDebtSchema,
@@ -31,10 +32,9 @@ export class DomainStore {
 
     async saveConstraints(data: DomainConstraints): Promise<void> {
         await this.ensureDir(data.domain);
-        await writeFile(
+        await atomicWriteFile(
             join(this.dir, data.domain, "constraints.yaml"),
             yamlStringify(data),
-            "utf-8",
         );
     }
 
@@ -52,10 +52,9 @@ export class DomainStore {
 
     async saveAcceptedDebt(data: DomainAcceptedDebt): Promise<void> {
         await this.ensureDir(data.domain);
-        await writeFile(
+        await atomicWriteFile(
             join(this.dir, data.domain, "accepted_debt.yaml"),
             yamlStringify(data),
-            "utf-8",
         );
     }
 
@@ -73,10 +72,9 @@ export class DomainStore {
 
     async saveRejectedPaths(data: DomainRejectedPaths): Promise<void> {
         await this.ensureDir(data.domain);
-        await writeFile(
+        await atomicWriteFile(
             join(this.dir, data.domain, "rejected_paths.yaml"),
             yamlStringify(data),
-            "utf-8",
         );
     }
 

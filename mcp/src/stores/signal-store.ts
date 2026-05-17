@@ -1,6 +1,7 @@
-import { readdir, readFile, writeFile, mkdir, unlink } from "node:fs/promises";
+import { readdir, readFile, mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
+import { atomicWriteFile } from "../utils/atomic-write.js";
 import {
     GitSignalSchema,
     CalibrationSignalSchema,
@@ -27,28 +28,25 @@ export class SignalStore {
 
     async saveGitSignal(signal: GitSignal): Promise<void> {
         await mkdir(this.gitDir, { recursive: true });
-        await writeFile(
+        await atomicWriteFile(
             join(this.gitDir, `${signal.id}.yaml`),
             yamlStringify(signal),
-            "utf-8",
         );
     }
 
     async saveCalibrationSignal(signal: CalibrationSignal): Promise<void> {
         await mkdir(this.calibrationDir, { recursive: true });
-        await writeFile(
+        await atomicWriteFile(
             join(this.calibrationDir, `${signal.id}.yaml`),
             yamlStringify(signal),
-            "utf-8",
         );
     }
 
     async saveConversationSignal(signal: ConversationSignal): Promise<void> {
         await mkdir(this.conversationDir, { recursive: true });
-        await writeFile(
+        await atomicWriteFile(
             join(this.conversationDir, `${signal.id}.yaml`),
             yamlStringify(signal),
-            "utf-8",
         );
     }
 

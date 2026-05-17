@@ -5,11 +5,13 @@ import {
     SignalStore, StagedStore, DnaStagedStore, StateStore, ConfigStore,
     GovernanceStore, SessionStore,
 } from "./stores/index.js";
+import { ToolLogger } from "./observability/logger.js";
 import {
     ActivationEngine, ChallengeEngine, StageEngine,
     DecayEngine, CompressionEngine, ResurrectionEngine,
     ConsistencyEngine, BloodEngine, ViewsEngine,
     GovernanceEngine, TrustRouter, GitEar, CalibrationEar,
+    RecoveryEngine,
 } from "./engines/index.js";
 
 export interface CairnContext {
@@ -38,6 +40,8 @@ export interface CairnContext {
     trustRouter: TrustRouter;
     gitEar: GitEar;
     calibrationEar: CalibrationEar;
+    recoveryEngine: RecoveryEngine;
+    logger: ToolLogger;
 }
 
 export async function createContext(projectRoot: string): Promise<CairnContext> {
@@ -72,6 +76,11 @@ export async function createContext(projectRoot: string): Promise<CairnContext> 
     const bloodEngine = new BloodEngine(bloodStore, domainStore, viewsEngine);
     const gitEar = new GitEar(paths.root, skeletonStore);
     const calibrationEar = new CalibrationEar(paths.root, bloodStore, skeletonStore, domainStore, dnaStore);
+    const recoveryEngine = new RecoveryEngine(paths, bloodStore, skeletonStore, stateStore);
+
+    const cfg = await configStore.load();
+    const loggerConfig = cfg?.logging ?? { enabled: true, retention_days: 30 };
+    const logger = new ToolLogger(paths.logs, loggerConfig);
 
     return {
         paths,
@@ -82,6 +91,7 @@ export async function createContext(projectRoot: string): Promise<CairnContext> 
         decayEngine, compressionEngine, resurrectionEngine,
         consistencyEngine, bloodEngine, viewsEngine,
         governanceEngine, trustRouter, gitEar, calibrationEar,
+        recoveryEngine, logger,
     };
 }
 

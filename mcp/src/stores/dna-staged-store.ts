@@ -1,7 +1,8 @@
-import { readdir, readFile, writeFile, mkdir, unlink } from "node:fs/promises";
+import { readdir, readFile, mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import { DNAStagedEntrySchema, type DNAStagedEntry } from "../schemas/index.js";
+import { atomicWriteFile } from "../utils/atomic-write.js";
 
 export class DnaStagedStore {
     constructor(private readonly dir: string) {}
@@ -38,10 +39,9 @@ export class DnaStagedStore {
 
     async save(entry: DNAStagedEntry): Promise<void> {
         await mkdir(this.dir, { recursive: true });
-        await writeFile(
+        await atomicWriteFile(
             join(this.dir, `${entry.id}.yaml`),
             yamlStringify(entry),
-            "utf-8",
         );
     }
 

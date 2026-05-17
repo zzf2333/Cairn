@@ -1,8 +1,9 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import { StateSchema, StageSnapshotSchema, type State, type StageSnapshot } from "../schemas/index.js";
+import { atomicWriteFile } from "../utils/atomic-write.js";
 
 export class StateStore {
     constructor(private readonly filePath: string) {}
@@ -19,7 +20,36 @@ export class StateStore {
 
     async save(state: State): Promise<void> {
         await mkdir(dirname(this.filePath), { recursive: true });
-        await writeFile(this.filePath, yamlStringify(state), "utf-8");
+        await atomicWriteFile(this.filePath, yamlStringify(state));
+    }
+
+    async setCairnVersion(version: string): Promise<void> {
+        const state = await this.load();
+        state.cairn_version = version;
+        await this.save(state);
+    }
+
+    async startSessionCheckpoint(step: string): Promise<void> {
+        const state = await this.load();
+        state.session_in_progress = {
+            started_at: new Date().toISOString(),
+            step,
+        };
+        await this.save(state);
+    }
+
+    async updateSessionCheckpoint(step: string): Promise<void> {
+        const state = await this.load();
+        if (state.session_in_progress) {
+            state.session_in_progress.step = step;
+            await this.save(state);
+        }
+    }
+
+    async clearSessionCheckpoint(): Promise<void> {
+        const state = await this.load();
+        delete state.session_in_progress;
+        await this.save(state);
     }
 
     async updateLastSession(commit: string | null, endedAt: string): Promise<void> {
@@ -39,6 +69,16 @@ export class StateStore {
         const state = await this.load();
         const hits = state.activation_log.recent_hits;
         hits[eventId] = (hits[eventId] ?? 0) + 1;
+        await this.save(state);
+    }
+
+    async recordActivationBatch(eventIds: string[]): Promise<void> {
+        if (eventIds.length === 0) return;
+        const state = await this.load();
+        const hits = state.activation_log.recent_hits;
+        for (const id of eventIds) {
+            hits[id] = (hits[id] ?? 0) + 1;
+        }
         await this.save(state);
     }
 

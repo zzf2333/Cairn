@@ -2,7 +2,33 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "./constants.js";
 import { type CairnContext } from "./context.js";
 import { formatToolError } from "./errors.js";
+import { summarizeArgs } from "./observability/logger.js";
 import { z } from "zod";
+
+async function wrap<A>(
+    ctx: CairnContext,
+    name: string,
+    args: A,
+    handler: () => Promise<any>,
+): Promise<any> {
+    const start = performance.now();
+    const ts = new Date().toISOString();
+    try {
+        const res = await handler();
+        await ctx.logger.log({
+            ts, tool: name, duration_ms: performance.now() - start,
+            ok: true, args_summary: summarizeArgs(args),
+        });
+        return res;
+    } catch (e) {
+        await ctx.logger.log({
+            ts, tool: name, duration_ms: performance.now() - start,
+            ok: false, args_summary: summarizeArgs(args),
+            error: e instanceof Error ? e.message : String(e),
+        });
+        return formatToolError(e);
+    }
+}
 import { handleInitStatus } from "./tools/cairn-init-status.js";
 import { handleInitCommit } from "./tools/cairn-init-commit.js";
 import { handleContext } from "./tools/cairn-context.js";
@@ -68,13 +94,7 @@ export function createServer(ctx: CairnContext): McpServer {
         "cairn_init_status",
         "Check Cairn initialization status",
         {},
-        async () => {
-            try {
-                return await handleInitStatus(ctx);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async () => wrap(ctx, "cairn_init_status", {}, () => handleInitStatus(ctx)),
     );
 
     server.tool(
@@ -118,13 +138,7 @@ export function createServer(ctx: CairnContext): McpServer {
                 })),
             }).optional(),
         },
-        async (args) => {
-            try {
-                return await handleInitCommit(ctx, args);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async (args) => wrap(ctx, "cairn_init_commit", args, () => handleInitCommit(ctx, args)),
     );
 
     server.tool(
@@ -134,13 +148,7 @@ export function createServer(ctx: CairnContext): McpServer {
             task: z.string().optional(),
             files: z.array(z.string()).optional(),
         },
-        async (args) => {
-            try {
-                return await handleContext(ctx, args);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async (args) => wrap(ctx, "cairn_context", args, () => handleContext(ctx, args)),
     );
 
     server.tool(
@@ -165,13 +173,7 @@ export function createServer(ctx: CairnContext): McpServer {
                 commit_ref: z.string().optional(),
             }).default({}),
         },
-        async (args) => {
-            try {
-                return await handleSignal(ctx, args);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async (args) => wrap(ctx, "cairn_signal", args, () => handleSignal(ctx, args)),
     );
 
     server.tool(
@@ -183,26 +185,14 @@ export function createServer(ctx: CairnContext): McpServer {
             decisions_made: z.array(z.string()).optional(),
             unresolved: z.array(z.string()).optional(),
         },
-        async (args) => {
-            try {
-                return await handleSessionEnd(ctx, args);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async (args) => wrap(ctx, "cairn_session_end", args, () => handleSessionEnd(ctx, args)),
     );
 
     server.tool(
         "cairn_status",
         "Get Cairn system status",
         {},
-        async () => {
-            try {
-                return await handleStatus(ctx);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async () => wrap(ctx, "cairn_status", {}, () => handleStatus(ctx)),
     );
 
     server.tool(
@@ -211,26 +201,14 @@ export function createServer(ctx: CairnContext): McpServer {
         {
             task: z.string(),
         },
-        async (args) => {
-            try {
-                return await handlePlan(ctx, args);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async (args) => wrap(ctx, "cairn_plan", args, () => handlePlan(ctx, args)),
     );
 
     server.tool(
         "cairn_stage_list",
         "List pending staged entries for review",
         {},
-        async () => {
-            try {
-                return await handleStageList(ctx);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async () => wrap(ctx, "cairn_stage_list", {}, () => handleStageList(ctx)),
     );
 
     server.tool(
@@ -239,13 +217,7 @@ export function createServer(ctx: CairnContext): McpServer {
         {
             id: z.string(),
         },
-        async (args) => {
-            try {
-                return await handleStageAccept(ctx, args);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async (args) => wrap(ctx, "cairn_stage_accept", args, () => handleStageAccept(ctx, args)),
     );
 
     server.tool(
@@ -255,39 +227,21 @@ export function createServer(ctx: CairnContext): McpServer {
             id: z.string(),
             reason: z.string(),
         },
-        async (args) => {
-            try {
-                return await handleStageReject(ctx, args);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async (args) => wrap(ctx, "cairn_stage_reject", args, () => handleStageReject(ctx, args)),
     );
 
     server.tool(
         "cairn_doctor",
         "Run cognitive consistency validation",
         {},
-        async () => {
-            try {
-                return await handleDoctor(ctx);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async () => wrap(ctx, "cairn_doctor", {}, () => handleDoctor(ctx)),
     );
 
     server.tool(
         "cairn_dna_list",
         "List pending DNA trait candidates awaiting human ratification",
         {},
-        async () => {
-            try {
-                return await handleDnaList(ctx);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async () => wrap(ctx, "cairn_dna_list", {}, () => handleDnaList(ctx)),
     );
 
     server.tool(
@@ -296,13 +250,7 @@ export function createServer(ctx: CairnContext): McpServer {
         {
             id: z.string(),
         },
-        async (args) => {
-            try {
-                return await handleDnaAccept(ctx, args);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async (args) => wrap(ctx, "cairn_dna_accept", args, () => handleDnaAccept(ctx, args)),
     );
 
     server.tool(
@@ -312,13 +260,7 @@ export function createServer(ctx: CairnContext): McpServer {
             id: z.string(),
             reason: z.string(),
         },
-        async (args) => {
-            try {
-                return await handleDnaReject(ctx, args);
-            } catch (e) {
-                return formatToolError(e);
-            }
-        },
+        async (args) => wrap(ctx, "cairn_dna_reject", args, () => handleDnaReject(ctx, args)),
     );
 
     return server;

@@ -1,6 +1,6 @@
 {
     "name": "cairn-mcp-server",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "Cairn — AI-native engineering cognition engine via MCP",
     "type": "module",
     "license": "MIT",
@@ -41,6 +41,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
+        "bench": "vitest run tests/performance --reporter=verbose",
         "scenarios": "npm run build && tsx tests/scenarios/runner/index.ts",
         "scenarios:cc": "npm run build && tsx tests/scenarios/runner/index.ts --platform claude-code",
         "scenarios:codex": "npm run build && tsx tests/scenarios/runner/index.ts --platform codex"

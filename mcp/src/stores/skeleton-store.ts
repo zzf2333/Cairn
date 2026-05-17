@@ -1,7 +1,8 @@
-import { readdir, readFile, writeFile, mkdir, unlink } from "node:fs/promises";
+import { readdir, readFile, mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import { SkeletonNodeSchema, type SkeletonNode } from "../schemas/index.js";
+import { atomicWriteFile } from "../utils/atomic-write.js";
 
 async function loadYamlFile(path: string): Promise<unknown | null> {
     try {
@@ -14,7 +15,7 @@ async function loadYamlFile(path: string): Promise<unknown | null> {
 }
 
 async function saveYamlFile(path: string, data: unknown): Promise<void> {
-    await writeFile(path, yamlStringify(data), "utf-8");
+    await atomicWriteFile(path, yamlStringify(data));
 }
 
 async function loadAllYaml<T>(dir: string, schema: { parse: (data: unknown) => T }): Promise<T[]> {

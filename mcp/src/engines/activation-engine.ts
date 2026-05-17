@@ -179,12 +179,10 @@ export class ActivationEngine {
         relevant.sort(sortByPriority);
         archivedReactivating.sort(sortByPriority);
 
-        for (const event of relevant) {
-            await this.stateStore.recordActivation(event.id);
-        }
-        for (const event of archivedReactivating) {
-            await this.stateStore.recordActivation(event.id);
-        }
+        await this.stateStore.recordActivationBatch([
+            ...relevant.map(e => e.id),
+            ...archivedReactivating.map(e => e.id),
+        ]);
 
         return { events: relevant, archivedReactivating, scannedCount };
     }

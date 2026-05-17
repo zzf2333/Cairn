@@ -22,3 +22,5 @@ export { GitEar } from "./git-ear.js";
 export type { GitEarResult } from "./git-ear.js";
 export { CalibrationEar } from "./calibration-ear.js";
 export type { CalibrationResult } from "./calibration-ear.js";
+export { RecoveryEngine } from "./recovery-engine.js";
+export type { CorruptionReport, RecoveryResult } from "./recovery-engine.js";

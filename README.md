@@ -125,6 +125,15 @@ Every evolution event declares a `behavior_effect`:
 | `warn_before` | AI should warn before touching this area |
 | `require_review` | Changes need human sign-off |
 
+### Defense Mechanisms
+
+Two mechanisms protect the project from blind AI suggestions:
+
+- **Trauma**: Certain rejections carry a `trauma: true` flag (e.g. "MongoDB caused data loss"). On any future signal that triggers similar territory, Cairn raises the challenge level by one step and adds a `trauma_history` warning to the AI's context — so the model knows this isn't just an old preference, it's scar tissue.
+- **Reevaluation mode**: When calibration detects that DNA traits no longer match recent signals (e.g. project added 5 new dependencies but trait says `simplicity_bias: high`), the safety valve flips the DNA to `reevaluation_mode: true`. Traits stop influencing routing until a human reviews them. `cairn_context` exposes `dna.reevaluation_mode` so the AI knows to give a balanced recommendation instead of biased advice.
+
+Both surface to the AI through `cairn_context` output and are documented in [`docs/TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md).
+
 ---
 
 ## Quick Start

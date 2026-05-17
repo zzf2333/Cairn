@@ -18,6 +18,7 @@ export type StageSnapshot = z.infer<typeof StageSnapshotSchema>;
 export const INIT_STATUSES = ["not_initialized", "partial", "complete"] as const;
 
 export const StateSchema = z.object({
+    cairn_version: z.string().optional(),
     initialization_status: z.enum(INIT_STATUSES).default("not_initialized"),
     last_session: z.object({
         commit: z.string().nullable().default(null),
@@ -27,6 +28,10 @@ export const StateSchema = z.object({
     activation_log: z.object({
         recent_hits: z.record(z.string(), z.number()).default({}),
     }).default({}),
+    session_in_progress: z.object({
+        started_at: z.string(),
+        step: z.string(),
+    }).optional(),
 });
 
 export type State = z.infer<typeof StateSchema>;

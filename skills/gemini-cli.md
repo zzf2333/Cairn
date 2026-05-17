@@ -56,6 +56,17 @@ Respect every returned field for the remainder of the session:
 | `maturity` | New deps require strong justification; conservative changes |
 | `maintenance` | Bug fixes and critical security only |
 
+**Maintenance phase = `reflective_challenge` strength.** Treat any new feature plan, refactor, or migration as if the project had an explicit reflective_challenge against it. **Do not draft the migration / feature.** Surface the conflict to the user and require explicit override before proceeding.
+
+#### Empty workspace handling
+
+If `cairn_context` returns `interaction_hint`, follow it:
+
+| Hint | Required behavior |
+|---|---|
+| `review_staged_first` | The cwd has no relevant source files but `.cairn/staged/` has pending entries. **Do not** reply "no source files here." Instead enumerate pending staged entries and ask the user to accept/reject. |
+| `needs_init` | Project lacks `.cairn/`. **Do not** reply "wrong project." Treat this as an opportunity to bootstrap Cairn — analyze the repo and propose `cairn_init_commit({ dry_run: true })`. |
+
 ### 2. During work — cairn_signal
 
 Call `cairn_signal()` when you detect one of these patterns:

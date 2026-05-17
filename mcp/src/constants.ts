@@ -1,4 +1,6 @@
-export const VERSION = "0.3.0";
+export const VERSION = "0.4.0";
+
+export const STATE_FILE_FORMAT_VERSION = "1";
 
 export type CognitiveMode = "lightweight" | "standard" | "institutional";
 export type GravityLevel = "G0" | "G1" | "G2" | "G3";

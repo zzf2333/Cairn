@@ -1,6 +1,7 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
+import { atomicWriteFile } from "../utils/atomic-write.js";
 import {
     GovernancePolicySchema,
     AuditEntrySchema,
@@ -31,7 +32,7 @@ export class GovernanceStore {
 
     async savePolicy(policy: GovernancePolicy): Promise<void> {
         await this.ensureDir();
-        await writeFile(this.policyPath, yamlStringify(policy), "utf-8");
+        await atomicWriteFile(this.policyPath, yamlStringify(policy));
     }
 
     async loadAuditLog(): Promise<AuditEntry[]> {
@@ -48,6 +49,6 @@ export class GovernanceStore {
         const log = await this.loadAuditLog();
         log.push(AuditEntrySchema.parse(entry));
         await this.ensureDir();
-        await writeFile(this.auditPath, yamlStringify(log), "utf-8");
+        await atomicWriteFile(this.auditPath, yamlStringify(log));
     }
 }
