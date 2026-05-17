@@ -1,0 +1,31 @@
+config:
+  project_name: scenario-d2
+  domains: [auth]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: auth
+    role: authentication
+    owns: [login, sessions]
+    causal_keywords: [auth, oauth]
+
+blood:
+  - id: blood_oauth2_pkce_again
+    time: "2026-02-10"
+    domain: auth
+    type: rejection
+    gravity: { level: G3, architectural: high }
+    source: { type: conversation, confidence: 0.95, verified: true, refs: [] }
+    subject: { name: OAuth2 PKCE, aliases: [PKCE] }
+    trigger: Team rejected migration.
+    decision_or_change: Stay with session tokens; PKCE out of scope.
+    rejected_paths:
+      - path: OAuth2 PKCE
+        reason: Team too small.
+    behavior_effect: { type: avoid_suggestion, instruction: "No PKCE." }
+    affects: { skeleton: false, dna: false, domains: [auth] }
+    lifecycle: { validity: strategic, decay_policy: permanent, resurrection_count: 0 }
+    governance_status: ratified

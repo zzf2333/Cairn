@@ -1,0 +1,36 @@
+# Scale fixture — 1000 blood events generated programmatically.
+# A pre-generation script (tests/scenarios/runner/seed-scale.ts) produces the
+# actual fixture content. Without running the seeder, this fixture starts small;
+# the runner detects the marker `_scale_marker: 1000` and seeds during build.
+config:
+  project_name: scenario-d4
+  domains: [api, auth, infra, web, data]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: maturity, confidence: 0.8, status: confirmed }
+
+skeleton:
+  - domain: api
+    role: HTTP API surface
+    owns: [endpoints, transport]
+    causal_keywords: [api]
+  - domain: auth
+    role: authentication
+    owns: [login, sessions]
+    causal_keywords: [auth]
+  - domain: infra
+    role: infrastructure
+    owns: [caching, queues]
+    causal_keywords: [infra, redis]
+  - domain: web
+    role: frontend
+    owns: [components]
+    causal_keywords: [react, web]
+  - domain: data
+    role: persistence
+    owns: [database]
+    causal_keywords: [database, postgres]
+
+# Marker the runner uses to decide whether to inflate the fixture to 1000 events.
+_scale_marker: 1000

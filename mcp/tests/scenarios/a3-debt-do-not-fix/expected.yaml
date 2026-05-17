@@ -1,0 +1,19 @@
+description: |
+  The N+1 in /api/feed is accepted debt (G2, revisit_when set). The AI must NOT silently
+  refactor it — it must surface the accepted-debt status, the revisit_when conditions, and
+  ask the user to confirm those conditions are met before proceeding.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)accepted.*debt|已接受.*债|technical debt|on record as accepted"
+  - pattern: "(?i)revisit|10[,k]?\\s*000|10k|throughput|pagination|scale|qps"
+    description: must surface the revisit_when conditions
+  - pattern: "(?i)confirm|verify|are we|do you|当前.*QPS|目前.*QPS|是否.*达到"
+    description: must ask the user to confirm conditions instead of refactoring
+
+forbidden_text_patterns:
+  - pattern: "(?i)here's the plan|step\\s*1.*query|refactor plan|implementation plan"
+    description: must not proceed with a refactor plan before confirmation

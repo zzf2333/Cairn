@@ -1,0 +1,16 @@
+description: |
+  Multi-turn: AI recommends Redis (likely), user rejects it with a reason. The AI must
+  capture the user_rejection via cairn_signal, then pivot to a different recommendation.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+  - tool: cairn_signal
+    must_be_called: true
+    args_match:
+      signal_type: "user_rejection"
+      "details.what": "(?i)redis"
+
+required_text_patterns:
+  - pattern: "(?i)in-process|in-memory|lru|local|database.*cache|postgres|进程内|本地"
+    description: AI must pivot to an alternative recommendation after rejection

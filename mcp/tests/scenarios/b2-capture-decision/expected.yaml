@@ -1,0 +1,19 @@
+description: |
+  User makes an explicit technical decision (PostgreSQL over MySQL with reasoning). The AI
+  must capture this as a decision signal with rejected_alternatives, then proceed to the
+  schema task.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+  - tool: cairn_signal
+    must_be_called: true
+    args_match:
+      signal_type: "decision"
+      "details.what": "(?i)postgres|postgresql"
+
+required_text_patterns:
+  - pattern: "(?i)recorded|noted|captured|signal|memory|cairn|记录"
+    description: AI should acknowledge the decision was captured
+  - pattern: "(?i)orders|schema|create table|column|primary key"
+    description: AI should still proceed to the schema work

@@ -40,7 +40,10 @@
         "dev": "tsx src/index.ts",
         "test": "vitest run",
         "test:watch": "vitest",
-        "test:coverage": "vitest run --coverage"
+        "test:coverage": "vitest run --coverage",
+        "scenarios": "npm run build && tsx tests/scenarios/runner/index.ts",
+        "scenarios:cc": "npm run build && tsx tests/scenarios/runner/index.ts --platform claude-code",
+        "scenarios:codex": "npm run build && tsx tests/scenarios/runner/index.ts --platform codex"
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.10.0",
@@ -49,8 +52,10 @@
         "zod": "^3.25.0"
     },
     "devDependencies": {
+        "@anthropic-ai/sdk": "^0.96.0",
         "@types/node": "^22.0.0",
         "@vitest/coverage-v8": "^3.2.4",
+        "openai": "^6.38.0",
         "tsx": "^4.19.0",
         "typescript": "^5.8.0",
         "vitest": "^3.1.0"

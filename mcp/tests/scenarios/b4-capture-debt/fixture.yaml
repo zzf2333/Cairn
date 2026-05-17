@@ -1,0 +1,13 @@
+config:
+  project_name: scenario-b4
+  domains: [api, feed]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: feed
+    role: user feed assembly
+    owns: ["/api/feed"]
+    causal_keywords: [feed, n+1, query]

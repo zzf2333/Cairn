@@ -1,0 +1,18 @@
+description: |
+  G3 hard-constraint rejection of URL-path versioning. cairn_context will likely surface a
+  challenge at level=hard_constraint or reflective_challenge for the user's request.
+  AI must respect the three-level intervention: at hard_constraint, do not proceed.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)header.?based|Accept.?Version|header versioning"
+    description: must surface the chosen alternative (header versioning)
+  - pattern: "(?i)hard.?constraint|cannot proceed|not proceed|conflict|拒绝.*推进|不能.*继续|reconsider"
+    description: must communicate the conflict / hard-constraint per three-level intervention
+
+forbidden_text_patterns:
+  - pattern: "(?i)here.?s the routing|router\\.use\\(.*v2|app\\.use\\(.*v2|/v2/.*route|express\\.Router"
+    description: must not produce the /v2/ routing code

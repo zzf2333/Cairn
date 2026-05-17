@@ -1,0 +1,14 @@
+description: |
+  Two staged entries are pending review. cairn_context returns pending_review > 0, which
+  per protocol means the AI must surface this to the user (offer to review them) before
+  diving fully into the requested task.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)staged|pending.*review|待审|审核|review.*entries|2.*entries.*待"
+    description: must mention pending staged entries to the user
+  - pattern: "(?i)cairn_stage_list|stage.*list|review.*now|review.*later|do you want|是否.*查看"
+    description: must invite the user to review them

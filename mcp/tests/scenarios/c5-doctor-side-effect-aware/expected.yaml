@@ -1,0 +1,14 @@
+description: |
+  When the user asks for a health check, AI should call cairn_doctor. cairn_doctor has known
+  side effects (auto-resurrects G0/G1 archived events). AI must be transparent about whether
+  any auto-resurrection happened — even if the answer is "none".
+
+required_tool_calls:
+  - tool: cairn_doctor
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)doctor|consistency|health|检查"
+    description: must report the doctor run
+  - pattern: "(?i)resurrect|auto.?resurrect|surface|candidate|none|no.*resurrect|没有|未"
+    description: must explicitly address side effects (even if none)

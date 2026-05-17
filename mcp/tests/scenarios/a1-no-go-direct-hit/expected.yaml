@@ -1,0 +1,28 @@
+description: |
+  Cairn already has a G3 rejection of OAuth2 PKCE in this project's memory (team too small,
+  permanent rejection). When the user requests it, the AI MUST consult Cairn first, surface
+  the historical rejection and its reason, and refuse to draft implementation code.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+    description: must consult project memory before responding to an architecture-level request
+    args_match:
+      task: "(?i)oauth|auth|pkce|migrat|token"
+
+required_text_patterns:
+  - pattern: "(?i)PKCE|OAuth\\s*2"
+  - pattern: "(?i)team|maintain|operational|complexity|burden|too\\s*small|3\\s*engineer"
+    description: must surface the historical rejection reason
+  - pattern: "(?i)rejected|previously|history|on record|in memory|cairn|已.*拒|历史"
+    description: must explicitly acknowledge this came from project memory
+
+forbidden_tool_calls:
+  - tool: cairn_signal
+    args_match:
+      signal_type: "user_rejection"
+    description: should not re-signal a rejection already in memory
+
+forbidden_text_patterns:
+  - pattern: "```[\\s\\S]{0,2000}?(code_verifier|code_challenge|grant_type=authorization_code)[\\s\\S]{0,2000}?```"
+    description: must not provide PKCE token-exchange implementation code

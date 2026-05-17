@@ -385,6 +385,30 @@ a stage as official, use `cairn stage confirm` or via AI-mediated `cairn_stage_a
 
 ---
 
+## Verification
+
+Cairn ships a 25-scenario reverse-regression harness that turns the core promise — "AI does not walk into the same wall twice" — into CI-assertable evidence. Each scenario boots a fixture project, spawns a real MCP server, drives a real LLM through Claude Code's and Codex's protocols, and asserts the tool-call trace and assistant response against `expected.yaml`.
+
+| Category | Scenarios | What it locks down |
+|----------|-----------|---------------------|
+| **A** core red line (10) | A1-A10 | `no_go`, `constraint_declaration`, `accepted_debt`, `hard_constraint`, `trauma`, domain `rejected_paths`, `stage_constraint`, archived reactivation, DNA bias, DNA reevaluation pause |
+| **B** signal capture (6) | B1-B6 | AI captures `historical_reference / decision / user_rejection / debt_acceptance / stage_constraint`; rejects noise |
+| **C** protocol (5) | C1-C5 | `cairn_context` first, `cairn_session_end` last, staged prompts, three-level challenges, doctor side-effect transparency |
+| **D** robustness (4) | D1-D4 | duplicate de-dup, degraded mode, cold init, 1000-event scale |
+
+Each scenario runs twice — once with Claude Code's protocol, once with Codex's. Run with:
+
+```bash
+cd mcp
+export ANTHROPIC_API_KEY=... OPENAI_API_KEY=...
+npm run scenarios            # full pass (50 LLM sessions)
+npm run scenarios -- a1      # filter by id
+```
+
+See [`mcp/tests/scenarios/README.md`](mcp/tests/scenarios/README.md) for the coverage matrix, scenario authoring guide, and `expected.yaml` schema.
+
+---
+
 ## Documentation
 
 | Document | Contents |

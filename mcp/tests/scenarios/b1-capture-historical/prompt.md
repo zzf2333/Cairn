@@ -1,0 +1,1 @@
+By the way, in case you wonder why we're on REST and not GraphQL — we actually tried GraphQL back in early 2025 but the tooling story (debugging, IDE support) was too immature for our team and we rolled it back. Just for context. Now, can you sketch a new /v2/orders REST endpoint for me?

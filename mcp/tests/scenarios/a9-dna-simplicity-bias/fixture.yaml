@@ -1,0 +1,29 @@
+config:
+  project_name: scenario-a9
+  domains: [web]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: web
+    role: frontend web application
+    owns: [components, state-mgmt, routing]
+    causal_keywords: [react, state, frontend]
+
+dna:
+  identity:
+    status: emerged
+    reevaluation_mode: false
+    traits:
+      simplicity_bias:
+        level: high
+        confidence: 0.85
+        evidence_count: 7
+        last_updated: "2026-04-15"
+        reasoning: |
+          Over 7 decisions in the past 5 months the team has consistently chosen the simpler option
+          (useState/Context over Redux, fetch over apollo, plain CSS over CSS-in-JS).
+        drift_warning_count: 0
+        last_safety_valve_at: null

@@ -396,6 +396,26 @@ npm run build         # Compile TypeScript
 npm run dev           # Run server directly (tsx, no build needed)
 ```
 
+### Reverse-regression scenarios
+
+25 end-to-end scenarios verify Cairn's core promise — "AI does not walk into the same wall twice" — against real Claude Code and Codex sessions. Each scenario boots a fixture `.cairn/`, spawns the real MCP server, and asserts the model's tool-call trace and text response.
+
+```bash
+export ANTHROPIC_API_KEY=...
+export OPENAI_API_KEY=...
+npm run scenarios            # both platforms × 25 scenarios
+npm run scenarios -- a1      # filter
+npm run scenarios:cc         # Claude Code only
+npm run scenarios:codex      # Codex only
+```
+
+Framework smoke test (no LLM, validates fixtures + MCP wiring):
+```bash
+npx tsx tests/scenarios/runner/smoke-all.ts
+```
+
+See `tests/scenarios/README.md` for the full coverage matrix and authoring guide.
+
 ## Architecture
 
 ```

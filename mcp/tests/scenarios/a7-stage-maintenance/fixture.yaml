@@ -1,0 +1,17 @@
+config:
+  project_name: scenario-a7
+  domains: [web]
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: maintenance
+    confidence: 0.85
+    status: confirmed
+    last_updated: "2026-04-01"
+
+skeleton:
+  - domain: web
+    role: frontend web application
+    owns: [components, routes, state-mgmt]
+    causal_keywords: [react, frontend, state, zustand, redux]

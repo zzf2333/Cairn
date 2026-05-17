@@ -1,0 +1,45 @@
+config:
+  project_name: scenario-a6
+  domains: [auth, web]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.8, status: advisory }
+
+skeleton:
+  - domain: auth
+    role: client-side auth handling and token storage
+    owns: [token-storage, session-handling, csrf]
+    causal_keywords: [auth, token, localstorage, cookie, xss, csrf]
+
+blood:
+  - id: blood_jwt_localstorage_rejected
+    time: "2026-01-10"
+    domain: auth
+    type: rejection
+    gravity: { level: G2, architectural: medium }
+    source: { type: conversation, confidence: 0.9, verified: true, refs: [] }
+    subject:
+      name: JWT in localStorage
+      aliases: [token in localStorage, client-side token storage]
+    trigger: Security review flagged XSS risk of localStorage-based JWT storage.
+    decision_or_change: All auth tokens use httpOnly + Secure + SameSite cookies, never localStorage.
+    rejected_paths:
+      - path: JWT in localStorage
+        reason: Vulnerable to XSS exfiltration; cookies with httpOnly are the team standard.
+    behavior_effect:
+      type: avoid_suggestion
+      instruction: Never recommend localStorage for auth token storage. Use httpOnly cookies.
+    affects: { skeleton: false, dna: false, domains: [auth] }
+    lifecycle: { validity: strategic, decay_policy: permanent, resurrection_count: 0 }
+    governance_status: ratified
+
+domains:
+  auth:
+    rejected_paths:
+      - path: JWT in localStorage
+        reason: XSS exfiltration risk
+        source_event: blood_jwt_localstorage_rejected
+      - path: token in sessionStorage
+        reason: same XSS exposure as localStorage
+        source_event: blood_jwt_localstorage_rejected

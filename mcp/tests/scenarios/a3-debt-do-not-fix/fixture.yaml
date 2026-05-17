@@ -1,0 +1,50 @@
+config:
+  project_name: scenario-a3
+  domains: [api, feed]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: api
+    role: HTTP API surface
+    owns: [endpoints, middleware, query-layer]
+    causal_keywords: [api, endpoint, query, n+1]
+  - domain: feed
+    role: user feed assembly and pagination
+    owns: ["/api/feed", "pagination"]
+    causal_keywords: [feed, pagination, posts]
+
+blood:
+  - id: blood_feed_nplus1_accepted
+    time: "2026-03-15"
+    domain: feed
+    type: debt_acceptance
+    gravity: { level: G2, architectural: medium }
+    source: { type: conversation, confidence: 0.9, verified: true, refs: [] }
+    subject:
+      name: N+1 query in /api/feed
+      aliases: [feed N+1, feed eager-loading]
+    trigger: Profiling showed N+1 on /api/feed but throughput target was already met.
+    decision_or_change: Accept the N+1 in /api/feed; revisit when throughput requirements change.
+    accepted_debt:
+      - "feed: /api/feed N+1 query — accepted at current scale"
+    reasoning: |
+      Current QPS for /api/feed is ~200. Eager-loading would require a query rewrite that
+      conflicts with the in-progress pagination redesign. Cost of fix > cost of debt at this scale.
+    behavior_effect:
+      type: warn_before
+      instruction: Warn before any refactor of /api/feed query layer to remove the N+1 — it is accepted debt unless throughput exceeds 10k QPS sustained.
+    affects: { skeleton: false, dna: false, domains: [feed, api] }
+    lifecycle: { validity: tactical, decay_policy: downgrade, resurrection_count: 0 }
+    revisit: { when: ["throughput > 10000 sustained QPS", "pagination redesign lands"] }
+    governance_status: ratified
+
+domains:
+  feed:
+    accepted_debt:
+      - what: N+1 query in /api/feed
+        reason: cost of fix > cost of debt at current scale (~200 QPS)
+        revisit_when: ["throughput > 10000 QPS sustained", "pagination redesign lands"]
+        source_event: blood_feed_nplus1_accepted

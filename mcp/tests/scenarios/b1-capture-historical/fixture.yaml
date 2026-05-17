@@ -1,0 +1,13 @@
+config:
+  project_name: scenario-b1
+  domains: [api]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: api
+    role: HTTP API surface
+    owns: [endpoints, schema]
+    causal_keywords: [api, graphql, rest, tooling]

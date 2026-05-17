@@ -1,0 +1,13 @@
+config:
+  project_name: scenario-b5
+  domains: [web]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: web
+    role: frontend
+    owns: [components]
+    causal_keywords: [react, component, style]

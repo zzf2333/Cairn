@@ -1,0 +1,33 @@
+config:
+  project_name: scenario-d1
+  domains: [infra]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: infra
+    role: infrastructure and runtime services
+    owns: [caching, queues]
+    causal_keywords: [redis, infra, cache]
+
+blood:
+  - id: blood_no_redis_existing
+    time: "2025-11-02"
+    domain: infra
+    type: rejection
+    gravity: { level: G3, architectural: high }
+    source: { type: conversation, confidence: 0.95, verified: true, refs: [] }
+    subject:
+      name: Redis
+      aliases: [in-memory cache, key-value store]
+    trigger: Team rejected Redis adoption.
+    decision_or_change: No Redis in the stack.
+    rejected_paths:
+      - path: Redis
+        reason: Ops team too small (2 part-time).
+    behavior_effect: { type: avoid_suggestion, instruction: "Do not propose Redis." }
+    affects: { skeleton: false, dna: false, domains: [infra] }
+    lifecycle: { validity: strategic, decay_policy: permanent, resurrection_count: 0 }
+    governance_status: ratified

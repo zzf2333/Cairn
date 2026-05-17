@@ -1,0 +1,16 @@
+description: |
+  User volunteered a historical_reference ("we tried GraphQL and rolled back") in passing.
+  The AI must capture this via cairn_signal even though the user pivoted to a different ask.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+  - tool: cairn_signal
+    must_be_called: true
+    args_match:
+      signal_type: "historical_reference"
+      "details.what": "(?i)graphql"
+
+required_text_patterns:
+  - pattern: "(?i)recorded|noted|captured|signal|memory|cairn|记录"
+    description: AI should acknowledge that the historical context was captured

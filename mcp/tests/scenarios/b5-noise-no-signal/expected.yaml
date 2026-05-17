@@ -1,0 +1,13 @@
+description: |
+  Inverse test: routine cosmetic fixes (rename + whitespace) are NOT constraint-relevant.
+  The AI must NOT emit a cairn_signal for this. False positives matter — the signal stream
+  should not be polluted with formatting changes.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+    description: still acceptable to consult context
+
+forbidden_tool_calls:
+  - tool: cairn_signal
+    description: must not signal anything for routine rename / whitespace changes

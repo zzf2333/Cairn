@@ -1,0 +1,55 @@
+config:
+  project_name: scenario-c3
+  domains: [api, infra]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: api
+    role: HTTP API surface
+    owns: [endpoints]
+    causal_keywords: [api]
+
+staged:
+  - id: staged_1
+    review_status: pending
+    routing_reason: "G2 signal from git scan — needs human ratification"
+    gravity: G2
+    governance_required: human_ratified
+    draft_event:
+      id: draft_1
+      time: "2026-05-12"
+      domain: api
+      type: architecture_decision
+      gravity: { level: G2 }
+      source: { type: git_revert, confidence: 0.8, verified: false, refs: [{ type: commit, id: "abc123" }] }
+      subject: { name: "circuit breaker added to /api/external", aliases: [] }
+      trigger: "git revert of bbb456 then add of circuit-breaker logic"
+      decision_or_change: "Add circuit breaker for upstream calls"
+      reasoning: "auto-detected from git history"
+      behavior_effect: { type: prefer_approach, instruction: "Wrap upstream calls in a circuit breaker." }
+      affects: { skeleton: false, dna: false, domains: [api] }
+      lifecycle: { validity: tactical, decay_policy: downgrade, resurrection_count: 0 }
+      governance_status: pending
+  - id: staged_2
+    review_status: pending
+    routing_reason: "G2 signal from conversation"
+    gravity: G2
+    governance_required: human_ratified
+    draft_event:
+      id: draft_2
+      time: "2026-05-13"
+      domain: api
+      type: constraint_added
+      gravity: { level: G2 }
+      source: { type: conversation, confidence: 0.8, verified: false, refs: [] }
+      subject: { name: "no synchronous external calls in API path", aliases: [] }
+      trigger: "user discussion about latency budget"
+      decision_or_change: "All external calls must be async / queued"
+      reasoning: "latency budget conversation"
+      behavior_effect: { type: avoid_suggestion, instruction: "no sync external calls" }
+      affects: { skeleton: false, dna: false, domains: [api] }
+      lifecycle: { validity: tactical, decay_policy: downgrade, resurrection_count: 0 }
+      governance_status: pending

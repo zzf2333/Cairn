@@ -1,0 +1,19 @@
+description: |
+  GraphQL was rejected in 2025 (G2) but the event is now archived with high recent reactivation
+  (7 hits / 30 days). Per protocol: archived constraints are downgraded one level — the AI
+  should NOT hard-refuse, but it MUST surface the historical context as a reflective challenge.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)graphql"
+  - pattern: "(?i)previously|before|2025|history|archived|past|historical|历史|曾.*否决"
+    description: must surface that this was previously set aside
+  - pattern: "(?i)tooling|immatur|familiar|reconsider|may have changed|可能.*改变|现在.*成熟"
+    description: must note conditions may have changed (reflective challenge)
+
+forbidden_text_patterns:
+  - pattern: "(?i)hard.?constraint|cannot proceed|must not|拒绝.*建议"
+    description: archived events should NOT be presented as hard refusals

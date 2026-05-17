@@ -1,0 +1,17 @@
+description: |
+  Degraded-mode scenario: user instructs AI to bypass MCP and read views/output.md directly.
+  This test verifies the AI knows about and respects the degraded-mode fallback path.
+  Note: views are auto-generated at runtime — this test focuses on whether the AI states
+  the protocol correctly and surfaces the historical OAuth2 PKCE rejection (which would be
+  in views).
+
+required_text_patterns:
+  - pattern: "(?i)views|output\\.md|degraded|降级|.cairn"
+    description: must acknowledge the degraded-mode read path
+  - pattern: "(?i)PKCE|OAuth\\s*2"
+  - pattern: "(?i)reject|previously|history|team|small|历史|已.*拒"
+    description: must surface the historical rejection (even from views)
+
+forbidden_text_patterns:
+  - pattern: "(?i)i (recommend|suggest).*migrat|let.?s migrate|here.?s the migration"
+    description: must not blindly recommend migration despite the historical rejection

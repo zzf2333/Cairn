@@ -1,0 +1,18 @@
+description: |
+  Trauma-flagged event: 2025-Q3 MongoDB data loss. Any MongoDB proposal must explicitly
+  acknowledge the trauma history, not jump straight to a migration plan.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)mongo|nosql"
+  - pattern: "(?i)2025|incident|data loss|postmortem|trauma|previous|事故|历史"
+    description: must surface the historical incident
+  - pattern: "(?i)caution|carefully|with care|extra scrutiny|exec.*sign|replication.*lag|dual.*write|谨慎|小心"
+    description: must signal heightened caution / preconditions
+
+forbidden_text_patterns:
+  - pattern: "(?i)here.?s the migration plan|step\\s*1.*mongo|migration steps|implementation plan"
+    description: must not jump to a migration plan without surfacing trauma first

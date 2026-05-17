@@ -1,0 +1,13 @@
+config:
+  project_name: scenario-c2
+  domains: [auth]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: auth
+    role: authentication
+    owns: [login, sessions]
+    causal_keywords: [auth, login, session]

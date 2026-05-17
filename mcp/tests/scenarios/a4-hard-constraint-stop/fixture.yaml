@@ -1,0 +1,47 @@
+config:
+  project_name: scenario-a4
+  domains: [auth, infra]
+  cognitive_mode: institutional
+
+state:
+  stage: { phase: maturity, confidence: 0.85, status: confirmed }
+
+skeleton:
+  - domain: auth
+    role: authentication and session management
+    owns: [login, sessions]
+    causal_keywords: [auth, login, rust, rewrite]
+
+blood:
+  - id: blood_no_rust_rewrite
+    time: "2025-08-20"
+    domain: auth
+    type: rejection
+    gravity: { level: G3, architectural: high, psychological: high }
+    source: { type: human_explicit, confidence: 1.0, verified: true, refs: [{ type: incident, id: "2025-Q2-rust-stall" }] }
+    subject:
+      name: Rewriting auth in Rust
+      aliases: [rust auth rewrite, language migration]
+    trigger: Past incident — half-finished Rust port stalled for 6 months, blocked roadmap.
+    decision_or_change: Hard constraint — auth stays in TypeScript. No language rewrites.
+    rejected_paths:
+      - path: Auth rewrite in Rust
+        reason: Previous rewrite attempt stalled 6 months and blocked the roadmap; no business case justified the cost.
+    reasoning: |
+      The 2025-Q2 Rust port consumed 4 engineer-months, never shipped, and blocked the SSO
+      integration we needed. This is now a hard constraint requiring an executive-level
+      reevaluation to lift.
+    constraints_added:
+      - "auth: no language rewrites without exec reevaluation"
+    behavior_effect:
+      type: avoid_suggestion
+      instruction: Hard constraint. Do not assist with any language-rewrite request for auth.
+    affects: { skeleton: false, dna: false, domains: [auth] }
+    lifecycle: { validity: identity, decay_policy: permanent, resurrection_count: 0 }
+    trauma:
+      is_trauma: true
+      sensitivity_multiplier: 3.0
+      decay_override: permanent
+      affects_dna: true
+      requires_human_ratification: true
+    governance_status: ratified

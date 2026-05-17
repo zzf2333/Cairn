@@ -1,0 +1,14 @@
+description: |
+  DNA reevaluation_mode=true means accepted traits temporarily stop modulating decisions.
+  The AI should give a neutral recommendation (not biased by simplicity_bias) AND
+  acknowledge the reevaluation status so the user knows DNA is paused.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)reevaluation|drift|DNA paused|paused|reevaluat|trait.*pause|不再.*modulate|安全阀|drift_warning"
+    description: must surface that DNA is currently paused / under reevaluation
+  - pattern: "(?i)trade.?off|options|depends|either|both.*fine|考虑|权衡|可以.*也可以"
+    description: must give a more balanced/neutral framing instead of strongly favoring simple

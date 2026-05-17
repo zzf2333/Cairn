@@ -1,0 +1,17 @@
+description: |
+  When the user explicitly closes the session, AI must call cairn_session_end with a
+  meaningful summary (not generic "made some changes").
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+  - tool: cairn_session_end
+    must_be_called: true
+    args_match:
+      summary: "(?i)log|login|90.?day|retention|s3|pipeline"
+
+forbidden_tool_calls:
+  - tool: cairn_session_end
+    args_match:
+      summary: "(?i)^(made some changes|did stuff|various edits)\\.?$"
+    description: must not use a generic empty summary

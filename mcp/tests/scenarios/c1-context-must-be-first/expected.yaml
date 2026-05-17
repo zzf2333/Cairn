@@ -1,0 +1,9 @@
+description: |
+  Protocol: cairn_context MUST be the AI's first tool call in a new session — even for a
+  simple-looking task. Tests "session start" discipline.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+    order: 1
+    description: must be the first tool call of the session

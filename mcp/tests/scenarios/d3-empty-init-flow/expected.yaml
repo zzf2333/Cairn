@@ -1,0 +1,19 @@
+description: |
+  Cold-start: project has no Cairn cognition yet. AI must call cairn_init_status, detect
+  the empty state, and follow the AI-native initialization path (analyze project, then call
+  cairn_init_commit with dry_run before any final write).
+
+required_tool_calls:
+  - tool: cairn_init_status
+    must_be_called: true
+    description: must check init state before pretending to know the project
+
+required_text_patterns:
+  - pattern: "(?i)not.*initial|empty|scaffold|init|initial.*cognition|首次|未.*初始化"
+    description: must communicate the uninitialized state to the user
+  - pattern: "(?i)analyz|read.*readme|read.*docs|git log|propose|skeleton|分析"
+    description: must describe (or do) the analysis step
+
+forbidden_text_patterns:
+  - pattern: "(?i)the team strongly prefers|the codebase is known to|historically the team has"
+    description: must not fabricate project history when none exists yet

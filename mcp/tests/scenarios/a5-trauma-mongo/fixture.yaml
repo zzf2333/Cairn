@@ -1,0 +1,45 @@
+config:
+  project_name: scenario-a5
+  domains: [data, infra]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.75, status: advisory }
+
+skeleton:
+  - domain: data
+    role: primary persistence layer
+    owns: [database, schema, migrations]
+    causal_keywords: [database, db, mongo, postgres, nosql]
+
+blood:
+  - id: blood_mongo_data_loss
+    time: "2025-09-05"
+    domain: data
+    type: incident
+    gravity: { level: G3, architectural: high, psychological: high }
+    source: { type: human_explicit, confidence: 1.0, verified: true, refs: [{ type: postmortem, id: "2025-Q3-mongo" }] }
+    subject:
+      name: MongoDB
+      aliases: [document store, nosql, mongo]
+    trigger: 2025-Q3 incident — 3 days of order data lost during MongoDB migration.
+    decision_or_change: "Document store / MongoDB usage now requires post-mortem-grade scrutiny."
+    rejected_paths:
+      - path: Re-adopt MongoDB for any persistence
+        reason: 3-day order data loss during 2025-Q3 migration; no replication lag monitoring at the time.
+    reasoning: |
+      During the 2025-Q3 MongoDB migration, replication lag was unmonitored. Primary failover
+      lost 3 days of order data before recovery. Postmortem concluded NoSQL migrations require
+      explicit lag monitoring, dual-write window, and exec sign-off.
+    behavior_effect:
+      type: require_review
+      instruction: Treat any NoSQL/MongoDB proposal as a trauma-sensitive request. Acknowledge history before any further discussion.
+    affects: { skeleton: false, dna: true, domains: [data, infra] }
+    lifecycle: { validity: identity, decay_policy: permanent, resurrection_count: 0 }
+    trauma:
+      is_trauma: true
+      sensitivity_multiplier: 2.5
+      decay_override: permanent
+      affects_dna: true
+      requires_human_ratification: true
+    governance_status: ratified

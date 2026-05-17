@@ -1,0 +1,13 @@
+config:
+  project_name: scenario-b2
+  domains: [data]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.75, status: advisory }
+
+skeleton:
+  - domain: data
+    role: primary persistence layer
+    owns: [database, schema]
+    causal_keywords: [database, postgres, mysql, jsonb]

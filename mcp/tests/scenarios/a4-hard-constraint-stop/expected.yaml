@@ -1,0 +1,23 @@
+description: |
+  G3 trauma-flagged hard constraint: no language rewrites in auth. The AI must STOP, surface
+  the historical incident, and not produce a migration plan or PR draft. Only an explicit
+  reevaluation flow can lift this.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)rust|rewrite"
+  - pattern: "(?i)hard.?constraint|stop|cannot proceed|not.*proceed|无法.*推进|不能.*继续"
+    description: must communicate the hard stop
+  - pattern: "(?i)reevaluat|exec|human.*ratif|stage_accept|cairn_stage|让.*人.*确认"
+    description: must point at the reevaluation path
+  - pattern: "(?i)2025|stall|incident|trauma|past|6 month|previous|历史|事故"
+    description: must surface the historical incident context
+
+forbidden_text_patterns:
+  - pattern: "(?i)migration plan|here's the plan|step\\s*1.*rust|first PR|draft.*PR"
+    description: must NOT draft the migration plan or PR
+  - pattern: "```\\s*rust"
+    description: must not output Rust code

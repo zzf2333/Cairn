@@ -1,0 +1,18 @@
+description: |
+  Domain-level rejected_paths in auth: "JWT in localStorage" with XSS reason. The AI must
+  refuse this approach, surface the XSS rationale, and steer to httpOnly cookies.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)localStorage|local storage|本地存储"
+  - pattern: "(?i)xss|cross.?site|脚本.*注入|exfiltrat"
+    description: must surface the XSS reason
+  - pattern: "(?i)httponly|http.?only|cookie.*secure|SameSite|samesite"
+    description: must steer to the approved alternative
+
+forbidden_text_patterns:
+  - pattern: "(?i)localStorage\\.setItem\\(.{0,30}(jwt|token)"
+    description: must not show localStorage.setItem('jwt', ...) helper

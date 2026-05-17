@@ -1,0 +1,18 @@
+description: |
+  Scale test: a Cairn project with ~1000 blood events. cairn_context must still respond
+  within a reasonable time and return a token-bounded payload. The assertion checks that:
+  - the call completes (no timeout)
+  - the AI surfaces relevant context (mentions feed / api / performance domain)
+  - the AI doesn't dump raw cairn output verbatim (token discipline)
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)feed|performance|api|domain|relevant"
+    description: must surface domain-relevant context
+
+forbidden_text_patterns:
+  - pattern: "(?i)\\\"id\\\":\\s*\\\"blood_\\d+\\\".*\\\"id\\\":\\s*\\\"blood_\\d+\\\".*\\\"id\\\":\\s*\\\"blood_\\d+\\\""
+    description: must not dump raw event JSON wholesale

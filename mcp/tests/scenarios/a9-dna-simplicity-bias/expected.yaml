@@ -1,0 +1,18 @@
+description: |
+  DNA simplicity_bias=high is active and should modulate the AI's recommendations toward
+  the simpler options (useState/Context lifting, prop drilling for 3 components) instead of
+  pulling in a state library.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_text_patterns:
+  - pattern: "(?i)useState|lift.*state|context|prop.*drill|local state|本地状态|简单"
+    description: must recommend the simple options
+  - pattern: "(?i)simplicity|simple|simpler|minimal|轻量|越简单越好|less is more|cairn|trait|dna"
+    description: must reference the simplicity orientation or DNA hint
+
+forbidden_text_patterns:
+  - pattern: "(?i)i (recommend|suggest) redux|go with redux|use redux|let.?s use redux|mobx|recoil|jotai|zustand"
+    description: must not push a state-mgmt library as the primary recommendation

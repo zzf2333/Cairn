@@ -1,0 +1,18 @@
+description: |
+  User explicitly accepts a piece of tech debt with revisit conditions. The AI must capture
+  this as debt_acceptance with revisit_when set.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+  - tool: cairn_signal
+    must_be_called: true
+    args_match:
+      signal_type: "debt_acceptance"
+      "details.what": "(?i)n\\+1|feed|/api/feed"
+
+required_text_patterns:
+  - pattern: "(?i)recorded|noted|captured|accepted|signal|memory|cairn|记录"
+    description: AI should acknowledge the debt was captured
+  - pattern: "(?i)user.*schema|new field|add.*field|column"
+    description: AI should still proceed to the schema task

@@ -1,0 +1,40 @@
+config:
+  project_name: scenario-c4
+  domains: [api]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: api
+    role: HTTP API surface
+    owns: [endpoints, transport, versioning]
+    causal_keywords: [api, versioning, endpoint]
+
+blood:
+  - id: blood_no_url_versioning
+    time: "2025-12-01"
+    domain: api
+    type: rejection
+    gravity: { level: G3, architectural: high }
+    source: { type: conversation, confidence: 0.95, verified: true, refs: [] }
+    subject:
+      name: URL-path API versioning (/v1/, /v2/)
+      aliases: [path versioning, url version]
+    trigger: Decision to use header-based versioning (Accept-Version) instead.
+    decision_or_change: All versioning is via Accept-Version header. URL path stays version-free.
+    rejected_paths:
+      - path: /v1/, /v2/ in URL path
+        reason: Breaks clean URLs and complicates client routing. Header-based versioning was chosen.
+    reasoning: |
+      We deliberated this in late 2025 and chose header-based versioning. URL versioning is
+      a hard constraint going forward.
+    constraints_added:
+      - "api: no URL-path versioning"
+    behavior_effect:
+      type: avoid_suggestion
+      instruction: Reject any URL-path versioning proposal. Only header versioning is allowed.
+    affects: { skeleton: false, dna: false, domains: [api] }
+    lifecycle: { validity: strategic, decay_policy: permanent, resurrection_count: 0 }
+    governance_status: ratified

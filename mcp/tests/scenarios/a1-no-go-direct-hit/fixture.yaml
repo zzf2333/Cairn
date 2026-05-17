@@ -1,0 +1,81 @@
+config:
+  project_name: scenario-a1
+  domains:
+    - auth
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+
+skeleton:
+  - domain: auth
+    role: authentication and session management
+    owns:
+      - login
+      - session_token
+      - password_reset
+    does_not_own:
+      - billing
+    causal_keywords:
+      - auth
+      - login
+      - oauth
+      - session
+      - token
+
+blood:
+  - id: blood_oauth2_pkce_rejected
+    time: "2026-02-10"
+    domain: auth
+    type: rejection
+    gravity:
+      level: G3
+      architectural: high
+      psychological: high
+    source:
+      type: conversation
+      confidence: 0.95
+      verified: true
+      refs: []
+    subject:
+      name: OAuth2 PKCE
+      aliases:
+        - PKCE
+        - oauth2 pkce flow
+    trigger: User explicitly rejected OAuth2 PKCE as an auth strategy
+    decision_or_change: Stay with current session-token auth; OAuth2 PKCE is out of scope.
+    rejected_paths:
+      - path: OAuth2 PKCE
+        reason: Team is too small (3 engineers) to own the operational complexity of an identity-provider migration.
+    reasoning: |
+      We evaluated OAuth2 PKCE in February and concluded the team cannot absorb the operational
+      burden — IdP rotation, key management, debugging across SDKs — at our current size.
+      Re-evaluate only if team grows past 8 engineers OR a customer contractually requires SSO.
+    constraints_added:
+      - "auth: no OAuth2 PKCE until team_size > 8 or customer SSO requirement"
+    behavior_effect:
+      type: avoid_suggestion
+      instruction: Do not propose OAuth2 PKCE or PKCE-based auth flows for this project.
+    affects:
+      skeleton: false
+      dna: false
+      domains:
+        - auth
+    lifecycle:
+      validity: strategic
+      decay_policy: permanent
+      resurrection_count: 0
+    health:
+      state: ok
+      reason: null
+    governance_status: ratified
+
+domains:
+  auth:
+    rejected_paths:
+      - path: OAuth2 PKCE
+        reason: Team too small for IdP operational burden; revisit at team_size>8
+        source_event: blood_oauth2_pkce_rejected

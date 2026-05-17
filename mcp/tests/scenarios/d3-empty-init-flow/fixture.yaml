@@ -1,0 +1,6 @@
+# Intentionally empty .cairn/ — the runner will create the base scaffold but no project content.
+# This tests the "uninitialized project" cold-start path.
+config:
+  project_name: scenario-d3
+  domains: []
+  cognitive_mode: standard

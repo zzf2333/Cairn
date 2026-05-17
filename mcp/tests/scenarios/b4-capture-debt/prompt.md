@@ -1,0 +1,1 @@
+I see /api/feed has an N+1 problem. We could fix it with eager loading but that's a 2-week rewrite and we're not throughput-bound yet (we're around 200 QPS). Let's just accept this debt for now and revisit if we cross 10k QPS or when the pagination redesign lands. OK with that? Then on to the next task: help me add a new field to the User schema.

@@ -1,0 +1,1 @@
+After looking at our query patterns I've decided: we'll go with PostgreSQL, not MySQL, because JSONB support gives us flexibility for the audit logs and lateral joins make our analytical queries easier. That's settled. Now help me draft the initial schema for the orders table.

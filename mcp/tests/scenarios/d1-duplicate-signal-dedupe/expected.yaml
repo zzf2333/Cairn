@@ -1,0 +1,16 @@
+description: |
+  AI tries to record a Redis rejection twice (user asked for it). Cairn's Trust Router should
+  detect the second signal as a duplicate (or no-op). AI should communicate that to the user
+  rather than pretending it was a new record.
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+  - tool: cairn_signal
+    must_be_called: true
+    args_match:
+      "details.what": "(?i)redis"
+
+required_text_patterns:
+  - pattern: "(?i)duplicate|already.*recorded|already.*in.*memory|already.*exists|no.?op|dropped|already.*captured|重复|已经.*记录"
+    description: AI must communicate that the second signal is a duplicate / no-op
