@@ -1,165 +1,99 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 340" width="960" height="340">
-  <style>
-    text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
-  </style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 680" width="960" height="680" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif">
   <defs>
-    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
-    </marker>
-    <marker id="arrow-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#d97706"/>
-    </marker>
-    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
-    </marker>
-    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
-    </marker>
-    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#5a5a5a"/>
     </marker>
   </defs>
+  <rect width="960" height="680" fill="#f8f6f3"/>
 
-  <!-- Background -->
-  <rect width="960" height="340" fill="#ffffff"/>
+  <text x="480" y="44" text-anchor="middle" font-size="22" font-weight="700" fill="#1a1a1a">How signals become cognition</text>
+  <text x="480" y="70" text-anchor="middle" font-size="14" fill="#6a6a6a">Three sources → TrustRouter → three destinations → engine maintenance</text>
 
-  <!-- Title & Subtitle -->
-  <text x="480" y="28" text-anchor="middle" font-size="18" font-weight="600" fill="#111827">How It Works</text>
-  <text x="480" y="46" text-anchor="middle" font-size="12" fill="#6b7280">Dual-ear capture &#x2192; Trust Router &#x2192; Memory &#x2192; Views &#x2192; AI constraints</text>
+  <!-- 3 sources -->
+  <rect x="50" y="110" width="240" height="84" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5"/>
+  <text x="170" y="140" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">Git commits</text>
+  <text x="170" y="162" text-anchor="middle" font-size="12" fill="#1a1a1a">GitEar scans since last session</text>
+  <text x="170" y="180" text-anchor="middle" font-size="12" fill="#6a6a6a">revert, refactor, feat patterns</text>
 
-  <!-- ===== STAGE 1: SIGNAL SOURCES (x: 20-200) ===== -->
-  <text x="110" y="72" text-anchor="middle" font-size="11" font-weight="600" fill="#2563eb">Signal Sources</text>
+  <rect x="360" y="110" width="240" height="84" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5"/>
+  <text x="480" y="140" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">Conversation turns</text>
+  <text x="480" y="162" text-anchor="middle" font-size="12" fill="#1a1a1a">cairn_signal from Host AI</text>
+  <text x="480" y="180" text-anchor="middle" font-size="12" fill="#6a6a6a">decisions, rejections, debt</text>
 
-  <!-- Git Ear -->
-  <rect x="20" y="82" width="180" height="58" rx="8" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1.5"/>
-  <rect x="20" y="82" width="180" height="22" rx="8" fill="#3b82f6"/>
-  <rect x="20" y="94" width="180" height="10" fill="#3b82f6"/>
-  <text x="110" y="97" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">Git Ear</text>
-  <text x="110" y="122" text-anchor="middle" font-size="10" fill="#1e40af">reverts &#xB7; deps &#xB7; refactors</text>
+  <rect x="670" y="110" width="240" height="84" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5"/>
+  <text x="790" y="140" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">Code-vs-cognition drift</text>
+  <text x="790" y="162" text-anchor="middle" font-size="12" fill="#1a1a1a">CalibrationEar.calibrate()</text>
+  <text x="790" y="180" text-anchor="middle" font-size="12" fill="#6a6a6a">no_go_violation, dna_drift...</text>
 
-  <!-- Conversation Ear -->
-  <rect x="20" y="150" width="180" height="58" rx="8" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1.5"/>
-  <rect x="20" y="150" width="180" height="22" rx="8" fill="#3b82f6"/>
-  <rect x="20" y="162" width="180" height="10" fill="#3b82f6"/>
-  <text x="110" y="165" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">Conversation Ear</text>
-  <text x="110" y="190" text-anchor="middle" font-size="10" fill="#1e40af">rejections &#xB7; decisions &#xB7; constraints</text>
+  <!-- arrows to TrustRouter -->
+  <line x1="170" y1="200" x2="380" y2="252" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="480" y1="200" x2="480" y2="252" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="790" y1="200" x2="580" y2="252" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <!-- Merging arrows from Stage 1 -->
-  <path d="M 200,111 L 215,111 L 215,155 L 228,155" stroke="#2563eb" stroke-width="2" fill="none"/>
-  <path d="M 200,179 L 215,179 L 215,155 L 228,155" stroke="#2563eb" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/>
+  <!-- TrustRouter -->
+  <rect x="280" y="262" width="400" height="100" rx="12" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="2.5"/>
+  <text x="480" y="292" text-anchor="middle" font-size="16" font-weight="700" fill="#1a1a1a">TrustRouter</text>
+  <text x="480" y="314" text-anchor="middle" font-size="12" fill="#1a1a1a">dedup  →  governance  →  trauma escalation</text>
+  <text x="480" y="332" text-anchor="middle" font-size="12" fill="#1a1a1a">→  DNA modulation  →  gravity routing</text>
+  <text x="480" y="352" text-anchor="middle" font-size="11" fill="#6a6a6a">All signals pass through here. The central gate.</text>
 
-  <!-- ===== STAGE 2: TRUST ROUTER (x: 230-420) ===== -->
-  <rect x="230" y="82" width="190" height="186" rx="10" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
-  <!-- Header bar -->
-  <rect x="230" y="82" width="190" height="26" rx="10" fill="#d97706"/>
-  <rect x="230" y="96" width="190" height="12" fill="#d97706"/>
-  <text x="325" y="100" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff">Trust Router</text>
+  <!-- arrows to destinations -->
+  <line x1="380" y1="364" x2="200" y2="420" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="480" y1="364" x2="480" y2="420" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="580" y1="364" x2="760" y2="420" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <!-- L0 Drop -->
-  <rect x="244" y="118" width="162" height="24" rx="5" fill="#fef9c3" stroke="#fde68a" stroke-width="1"/>
-  <text x="253" y="134" font-size="10" font-weight="600" fill="#92400e">L0</text>
-  <text x="275" y="134" font-size="10" fill="#78350f">Drop</text>
+  <!-- destinations -->
+  <rect x="80" y="426" width="240" height="78" rx="12" fill="#e8e6e3" stroke="#4a4a4a" stroke-width="2"/>
+  <text x="200" y="454" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">dropped  (G0)</text>
+  <text x="200" y="476" text-anchor="middle" font-size="12" fill="#6a6a6a">noise — not stored</text>
+  <text x="200" y="494" text-anchor="middle" font-size="12" fill="#6a6a6a">audit log records the drop</text>
 
-  <!-- L1 Candidate -->
-  <rect x="244" y="148" width="162" height="24" rx="5" fill="#fef3c7" stroke="#fcd34d" stroke-width="1"/>
-  <text x="253" y="164" font-size="10" font-weight="600" fill="#92400e">L1</text>
-  <text x="275" y="164" font-size="10" fill="#78350f">Candidate &#x2192; signals/</text>
+  <rect x="360" y="426" width="240" height="78" rx="12" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="2"/>
+  <text x="480" y="454" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">staged  (G2+)</text>
+  <text x="480" y="476" text-anchor="middle" font-size="12" fill="#1a1a1a">.cairn/staged/&lt;id&gt;.yaml</text>
+  <text x="480" y="494" text-anchor="middle" font-size="12" fill="#6a6a6a">awaits human ratification</text>
 
-  <!-- L2 Staged -->
-  <rect x="244" y="178" width="162" height="24" rx="5" fill="#fde68a" stroke="#f59e0b" stroke-width="1"/>
-  <text x="253" y="194" font-size="10" font-weight="600" fill="#78350f">L2</text>
-  <text x="275" y="194" font-size="10" fill="#78350f">Staged &#x2192; human review</text>
+  <rect x="640" y="426" width="240" height="78" rx="12" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="2"/>
+  <text x="760" y="454" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">blood  (G1 / auto)</text>
+  <text x="760" y="476" text-anchor="middle" font-size="12" fill="#1a1a1a">.cairn/blood/&lt;id&gt;.yaml</text>
+  <text x="760" y="494" text-anchor="middle" font-size="12" fill="#6a6a6a">confirmed evolution event</text>
 
-  <!-- L3 Auto-write -->
-  <rect x="244" y="208" width="162" height="24" rx="5" fill="#f59e0b" stroke="#d97706" stroke-width="1"/>
-  <text x="253" y="224" font-size="10" font-weight="600" fill="#451a03">L3</text>
-  <text x="275" y="224" font-size="10" fill="#451a03">Auto-write &#x2192; memory/</text>
+  <!-- maintenance arrow -->
+  <line x1="760" y1="506" x2="760" y2="540" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <!-- Output label -->
-  <text x="325" y="254" text-anchor="middle" font-size="9" fill="#92400e">L2 + L3 proceed</text>
+  <!-- maintenance pipeline -->
+  <rect x="80" y="546" width="800" height="106" rx="12" fill="#ffffff" stroke="#4a4a4a" stroke-width="2"/>
+  <text x="480" y="572" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">cairn_session_end  —  maintenance pipeline</text>
 
-  <!-- Arrow: Trust Router → Memory -->
-  <path d="M 420,170 L 448,170" stroke="#d97706" stroke-width="2" fill="none" marker-end="url(#arrow-amber)"/>
+  <g font-size="11" fill="#1a1a1a">
+    <rect x="100" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <text x="159" y="605" text-anchor="middle" font-weight="600">git_scan</text>
+    <text x="159" y="622" text-anchor="middle" fill="#6a6a6a">GitEar</text>
 
-  <!-- ===== STAGE 3: MEMORY (x: 450-590) ===== -->
-  <rect x="450" y="82" width="140" height="186" rx="10" fill="#faf5ff" stroke="#d8b4fe" stroke-width="1.5"/>
-  <!-- Header bar -->
-  <rect x="450" y="82" width="140" height="26" rx="10" fill="#9333ea"/>
-  <rect x="450" y="96" width="140" height="12" fill="#9333ea"/>
-  <text x="520" y="100" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff">memory/</text>
+    <rect x="232" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <text x="291" y="605" text-anchor="middle" font-weight="600">decay</text>
+    <text x="291" y="622" text-anchor="middle" fill="#6a6a6a">archive/downgrade</text>
 
-  <text x="520" y="126" text-anchor="middle" font-size="11" fill="#7e22ce">YAML source of truth</text>
+    <rect x="364" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <text x="423" y="605" text-anchor="middle" font-weight="600">calibration</text>
+    <text x="423" y="622" text-anchor="middle" fill="#6a6a6a">+ safety valve</text>
 
-  <!-- Type tags -->
-  <rect x="462" y="138" width="56" height="18" rx="4" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <text x="490" y="151" text-anchor="middle" font-size="9" fill="#6b21a8">decision</text>
-  <rect x="522" y="138" width="56" height="18" rx="4" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <text x="550" y="151" text-anchor="middle" font-size="9" fill="#6b21a8">rejection</text>
+    <rect x="496" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <text x="555" y="605" text-anchor="middle" font-weight="600">stage</text>
+    <text x="555" y="622" text-anchor="middle" fill="#6a6a6a">phase inference</text>
 
-  <rect x="462" y="162" width="56" height="18" rx="4" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <text x="490" y="175" text-anchor="middle" font-size="9" fill="#6b21a8">transition</text>
-  <rect x="522" y="162" width="56" height="18" rx="4" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <text x="550" y="175" text-anchor="middle" font-size="9" fill="#6b21a8">debt</text>
+    <rect x="628" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <text x="687" y="605" text-anchor="middle" font-weight="600">compression</text>
+    <text x="687" y="622" text-anchor="middle" fill="#6a6a6a">DNA candidates</text>
 
-  <rect x="476" y="186" width="88" height="18" rx="4" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <text x="520" y="199" text-anchor="middle" font-size="9" fill="#6b21a8">experiment</text>
+    <rect x="760" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <text x="819" y="605" text-anchor="middle" font-weight="600">views regen</text>
+    <text x="819" y="622" text-anchor="middle" fill="#6a6a6a">.cairn/views/</text>
 
-  <!-- Arrow: Memory → Views -->
-  <path d="M 590,170 L 618,170" stroke="#9333ea" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
-
-  <!-- ===== STAGE 4: VIEWS ENGINE (x: 620-780) ===== -->
-  <rect x="620" y="82" width="160" height="186" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
-  <!-- Header bar -->
-  <rect x="620" y="82" width="160" height="26" rx="10" fill="#16a34a"/>
-  <rect x="620" y="96" width="160" height="12" fill="#16a34a"/>
-  <text x="700" y="100" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff">Views Engine</text>
-
-  <!-- View items -->
-  <rect x="634" y="120" width="132" height="28" rx="6" fill="#dcfce7" stroke="#86efac" stroke-width="1"/>
-  <text x="700" y="138" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">output.md</text>
-  <text x="700" y="148" text-anchor="middle" font-size="8" fill="#15803d">(global)</text>
-
-  <rect x="634" y="156" width="132" height="28" rx="6" fill="#dcfce7" stroke="#86efac" stroke-width="1"/>
-  <text x="700" y="174" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">domains/*.md</text>
-
-  <rect x="634" y="192" width="132" height="28" rx="6" fill="#dcfce7" stroke="#86efac" stroke-width="1"/>
-  <text x="700" y="210" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">stage.md</text>
-
-  <!-- Arrow: Views → AI -->
-  <path d="M 780,170 L 808,170" stroke="#16a34a" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/>
-
-  <!-- ===== STAGE 5: AI CONSUMPTION (x: 810-940) ===== -->
-  <rect x="810" y="82" width="130" height="186" rx="10" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
-  <!-- Header bar -->
-  <rect x="810" y="82" width="130" height="26" rx="10" fill="#374151"/>
-  <rect x="810" y="96" width="130" height="12" fill="#374151"/>
-  <text x="875" y="100" text-anchor="middle" font-size="12" font-weight="600" fill="#ffffff">AI</text>
-
-  <!-- cairn_context() -->
-  <rect x="822" y="130" width="106" height="40" rx="6" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1"/>
-  <text x="875" y="156" text-anchor="middle" font-size="13" font-weight="600" fill="#111827" font-family="monospace">cairn_context()</text>
-
-  <!-- Subtitle -->
-  <text x="875" y="196" text-anchor="middle" font-size="10" fill="#6b7280">filtered</text>
-  <text x="875" y="210" text-anchor="middle" font-size="10" fill="#6b7280">constraints</text>
-
-  <!-- ===== BOTTOM BAR: behavior_effect types (y: 300-330) ===== -->
-  <rect x="180" y="290" width="600" height="36" rx="8" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
-  <text x="210" y="313" font-size="10" fill="#6b7280">behavior_effect:</text>
-
-  <!-- avoid_suggestion (red) -->
-  <circle cx="318" cy="308" r="5" fill="#dc2626"/>
-  <text x="330" y="312" font-size="10" fill="#4b5563">avoid_suggestion</text>
-
-  <!-- prefer_approach (green) -->
-  <circle cx="438" cy="308" r="5" fill="#16a34a"/>
-  <text x="450" y="312" font-size="10" fill="#4b5563">prefer_approach</text>
-
-  <!-- warn_before (amber) -->
-  <circle cx="558" cy="308" r="5" fill="#f59e0b"/>
-  <text x="570" y="312" font-size="10" fill="#4b5563">warn_before</text>
-
-  <!-- require_review (purple) -->
-  <circle cx="658" cy="308" r="5" fill="#9333ea"/>
-  <text x="670" y="312" font-size="10" fill="#4b5563">require_review</text>
+    <line x1="218" y1="611" x2="232" y2="611" stroke="#5a5a5a" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="350" y1="611" x2="364" y2="611" stroke="#5a5a5a" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="482" y1="611" x2="496" y2="611" stroke="#5a5a5a" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="614" y1="611" x2="628" y2="611" stroke="#5a5a5a" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="746" y1="611" x2="760" y2="611" stroke="#5a5a5a" stroke-width="1.5" marker-end="url(#arrow)"/>
+  </g>
 </svg>

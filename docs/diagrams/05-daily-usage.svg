@@ -1,143 +1,84 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360">
-  <style>
-    text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
-  </style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" width="960" height="640" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif">
   <defs>
-    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
-    </marker>
-    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
-    </marker>
-    <marker id="arrow-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b"/>
-    </marker>
-    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
-    </marker>
-    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#374151"/>
-    </marker>
-    <marker id="arrow-orange-up" markerWidth="7" markerHeight="10" refX="3.5" refY="0" orient="auto">
-      <polygon points="0 10, 3.5 0, 7 10" fill="#ea580c"/>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#5a5a5a"/>
     </marker>
   </defs>
+  <rect width="960" height="640" fill="#f8f6f3"/>
 
-  <!-- Background -->
-  <rect width="960" height="360" fill="#ffffff"/>
+  <text x="480" y="44" text-anchor="middle" font-size="22" font-weight="700" fill="#1a1a1a">Daily Usage  —  one session, six tool calls</text>
+  <text x="480" y="70" text-anchor="middle" font-size="14" fill="#6a6a6a">Sequence diagram: User ⇄ Host AI ⇄ Cairn ⇄ .cairn/</text>
 
-  <!-- Title & Subtitle -->
-  <text x="480" y="30" text-anchor="middle" font-size="20" font-weight="600" fill="#111827">Daily Usage — Fully Automatic</text>
-  <text x="480" y="50" text-anchor="middle" font-size="13" fill="#6b7280">After init, the AI drives the memory loop. Human reviews periodically.</text>
+  <!-- Lifelines -->
+  <g font-size="13" font-weight="600" fill="#1a1a1a">
+    <rect x="60" y="100" width="180" height="40" rx="10" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2"/>
+    <text x="150" y="126" text-anchor="middle">User</text>
 
-  <!-- "AUTOMATIC" label above main flow -->
-  <rect x="370" y="62" width="120" height="20" rx="10" fill="#eff6ff"/>
-  <text x="430" y="76" text-anchor="middle" font-size="10" font-weight="600" fill="#2563eb">AUTOMATIC</text>
+    <rect x="290" y="100" width="180" height="40" rx="10" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2"/>
+    <text x="380" y="126" text-anchor="middle">Host AI</text>
 
-  <!-- ===== Step 1: AI Opens Project ===== -->
-  <rect x="20" y="92" width="150" height="120" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
-  <!-- Accent top bar -->
-  <rect x="20" y="92" width="150" height="6" rx="3" fill="#2563eb"/>
-  <!-- Play icon -->
-  <text x="95" y="126" text-anchor="middle" font-size="22" fill="#2563eb">▶</text>
-  <!-- Label -->
-  <text x="95" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="#1e3a5f">AI Opens Project</text>
-  <!-- Subtext line 1 -->
-  <text x="95" y="165" text-anchor="middle" font-size="10" fill="#6b7280">MCP Server starts</text>
-  <!-- Subtext line 2 -->
-  <text x="95" y="179" text-anchor="middle" font-size="10" fill="#6b7280">Git Ear scans since</text>
-  <text x="95" y="191" text-anchor="middle" font-size="10" fill="#6b7280">last session</text>
+    <rect x="520" y="100" width="180" height="40" rx="10" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="2"/>
+    <text x="610" y="126" text-anchor="middle">Cairn MCP</text>
 
-  <!-- Arrow 1→2 -->
-  <line x1="170" y1="152" x2="193" y2="152" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <rect x="750" y="100" width="160" height="40" rx="10" fill="#e8e6e3" stroke="#4a4a4a" stroke-width="2"/>
+    <text x="830" y="126" text-anchor="middle">.cairn/</text>
+  </g>
 
-  <!-- ===== Step 2: cairn_context() ===== -->
-  <rect x="195" y="92" width="150" height="120" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
-  <rect x="195" y="92" width="150" height="6" rx="3" fill="#16a34a"/>
-  <!-- Function name -->
-  <text x="270" y="124" text-anchor="middle" font-size="12" font-weight="700" fill="#16a34a" font-family="monospace">cairn_context()</text>
-  <!-- Label -->
-  <text x="270" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="#14532d">Load Constraints</text>
-  <!-- Subtext -->
-  <text x="270" y="165" text-anchor="middle" font-size="10" fill="#6b7280">stage · no-go · debt</text>
-  <text x="270" y="179" text-anchor="middle" font-size="10" fill="#6b7280">domains</text>
+  <!-- vertical dashed lifelines -->
+  <line x1="150" y1="140" x2="150" y2="612" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="380" y1="140" x2="380" y2="612" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="610" y1="140" x2="610" y2="612" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="830" y1="140" x2="830" y2="612" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="4,4"/>
 
-  <!-- Arrow 2→3 -->
-  <line x1="345" y1="152" x2="368" y2="152" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow-amber)"/>
+  <!-- Messages -->
+  <g font-size="12" fill="#1a1a1a">
+    <!-- 1: user → AI -->
+    <line x1="150" y1="180" x2="375" y2="180" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="262" y="174" text-anchor="middle" fill="#5a5a5a">"Add caching for /products"</text>
 
-  <!-- ===== Step 3: Work + cairn_signal() ===== -->
-  <rect x="370" y="92" width="190" height="120" rx="10" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
-  <rect x="370" y="92" width="190" height="6" rx="3" fill="#f59e0b"/>
-  <!-- Function name -->
-  <text x="465" y="124" text-anchor="middle" font-size="12" font-weight="700" fill="#f59e0b" font-family="monospace">cairn_signal()</text>
-  <!-- Label -->
-  <text x="465" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="#78350f">AI Works Within</text>
-  <text x="465" y="163" text-anchor="middle" font-size="12" font-weight="600" fill="#78350f">Constraints</text>
-  <!-- Subtext -->
-  <text x="465" y="180" text-anchor="middle" font-size="10" fill="#6b7280">Captures decisions,</text>
-  <text x="465" y="192" text-anchor="middle" font-size="10" fill="#6b7280">rejections, constraints</text>
-  <!-- Loop indicator -->
-  <path d="M 540,108 A 10,10 0 1,1 540,128" stroke="#f59e0b" stroke-width="1.5" fill="none" marker-end="url(#arrow-amber)"/>
-  <text x="548" y="122" font-size="8" fill="#b45309">×N</text>
+    <!-- 2: AI → Cairn cairn_context -->
+    <line x1="380" y1="220" x2="605" y2="220" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="492" y="214" text-anchor="middle" fill="#5a5a5a">cairn_context({ task: "caching" })</text>
 
-  <!-- Arrow 3→4 -->
-  <line x1="560" y1="152" x2="583" y2="152" stroke="#9333ea" stroke-width="2" marker-end="url(#arrow-purple)"/>
+    <!-- 2b: Cairn → disk read -->
+    <line x1="610" y1="252" x2="825" y2="252" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="717" y="246" text-anchor="middle" fill="#5a5a5a">load blood + skeleton + DNA</text>
 
-  <!-- ===== Step 4: cairn_session_end() ===== -->
-  <rect x="585" y="92" width="150" height="120" rx="10" fill="#faf5ff" stroke="#d8b4fe" stroke-width="1.5"/>
-  <rect x="585" y="92" width="150" height="6" rx="3" fill="#9333ea"/>
-  <!-- Function name -->
-  <text x="660" y="120" text-anchor="middle" font-size="11" font-weight="700" fill="#9333ea" font-family="monospace">cairn_session_end()</text>
-  <!-- Label -->
-  <text x="660" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="#3b0764">Session End</text>
-  <!-- Subtext -->
-  <text x="660" y="165" text-anchor="middle" font-size="10" fill="#6b7280">batch L1 signals</text>
-  <text x="660" y="179" text-anchor="middle" font-size="10" fill="#6b7280">regenerate views</text>
-  <text x="660" y="193" text-anchor="middle" font-size="10" fill="#6b7280">session record</text>
+    <!-- 2c: disk → Cairn -->
+    <line x1="830" y1="282" x2="615" y2="282" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <!-- Arrow 4→5 -->
-  <line x1="735" y1="152" x2="758" y2="152" stroke="#374151" stroke-width="2" marker-end="url(#arrow-gray)"/>
+    <!-- 2d: Cairn → AI returns context -->
+    <line x1="610" y1="312" x2="385" y2="312" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="498" y="306" text-anchor="middle" fill="#5a5a5a">no_go: ["redis"], DNA: simplicity=high</text>
 
-  <!-- ===== Step 5: AI Closes ===== -->
-  <rect x="760" y="92" width="160" height="120" rx="10" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
-  <rect x="760" y="92" width="160" height="6" rx="3" fill="#374151"/>
-  <!-- Icon -->
-  <text x="840" y="126" text-anchor="middle" font-size="22" fill="#374151">⏹</text>
-  <!-- Label -->
-  <text x="840" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="#374151">Server Exits</text>
-  <!-- Subtext -->
-  <text x="840" y="165" text-anchor="middle" font-size="10" fill="#6b7280">Memory persists</text>
-  <text x="840" y="179" text-anchor="middle" font-size="10" fill="#6b7280">in .cairn/</text>
+    <!-- 3: AI → user proposes -->
+    <line x1="380" y1="350" x2="155" y2="350" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="268" y="344" text-anchor="middle" fill="#5a5a5a">"Proposing in-process LRU, no Redis"</text>
 
-  <!-- ===== Human Action: cairn review ===== -->
-  <!-- "MANUAL" label -->
-  <rect x="420" y="230" width="90" height="20" rx="10" fill="#fff7ed"/>
-  <text x="465" y="244" text-anchor="middle" font-size="10" font-weight="600" fill="#ea580c">MANUAL</text>
+    <!-- 4: user accepts + defers invalidation -->
+    <line x1="150" y1="390" x2="375" y2="390" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="262" y="384" text-anchor="middle" fill="#5a5a5a">"Yes; skip invalidation for now"</text>
 
-  <!-- Dashed box -->
-  <rect x="370" y="258" width="280" height="72" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="8,4"/>
-  <!-- Clock icon -->
-  <text x="395" y="292" font-size="18">🕐</text>
-  <!-- Command name -->
-  <text x="430" y="288" font-size="14" font-weight="700" fill="#ea580c" font-family="monospace">cairn_review()</text>
-  <!-- Subtext -->
-  <text x="510" y="310" text-anchor="middle" font-size="11" fill="#9a3412">AI presents staged entries for user decision</text>
+    <!-- 5: AI → Cairn cairn_signal -->
+    <line x1="380" y1="430" x2="605" y2="430" stroke="#5a5a5a" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+    <text x="492" y="424" text-anchor="middle" fill="#5a5a5a">cairn_signal({ type: "debt_acceptance" })</text>
 
-  <!-- Dashed arrow: human action → main flow -->
-  <line x1="510" y1="258" x2="510" y2="216" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow-orange-up)"/>
+    <!-- 5b: Cairn TrustRouter writes blood/staged -->
+    <line x1="610" y1="462" x2="825" y2="462" stroke="#5a5a5a" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+    <text x="717" y="456" text-anchor="middle" fill="#5a5a5a">route → write staged/&lt;id&gt;.yaml</text>
 
-  <!-- Step numbers -->
-  <circle cx="34" cy="106" r="8" fill="#2563eb"/>
-  <text x="34" y="110" text-anchor="middle" font-size="9" font-weight="600" fill="#ffffff">1</text>
-  <circle cx="209" cy="106" r="8" fill="#16a34a"/>
-  <text x="209" y="110" text-anchor="middle" font-size="9" font-weight="600" fill="#ffffff">2</text>
-  <circle cx="384" cy="106" r="8" fill="#f59e0b"/>
-  <text x="384" y="110" text-anchor="middle" font-size="9" font-weight="600" fill="#ffffff">3</text>
-  <circle cx="599" cy="106" r="8" fill="#9333ea"/>
-  <text x="599" y="110" text-anchor="middle" font-size="9" font-weight="600" fill="#ffffff">4</text>
-  <circle cx="774" cy="106" r="8" fill="#374151"/>
-  <text x="774" y="110" text-anchor="middle" font-size="9" font-weight="600" fill="#ffffff">5</text>
+    <!-- 6: user "ship it" -->
+    <line x1="150" y1="510" x2="375" y2="510" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="262" y="504" text-anchor="middle" fill="#5a5a5a">"Looks good, ship it"</text>
 
-  <!-- Bottom tagline -->
-  <text x="480" y="350" text-anchor="middle" font-size="11" fill="#9ca3af">The only manual step is periodic review — everything else is AI-driven</text>
+    <!-- 7: AI → Cairn cairn_session_end -->
+    <line x1="380" y1="550" x2="605" y2="550" stroke="#5a5a5a" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+    <text x="492" y="544" text-anchor="middle" fill="#5a5a5a">cairn_session_end({ summary })</text>
+
+    <!-- 7b: cairn → disk -->
+    <line x1="610" y1="582" x2="825" y2="582" stroke="#5a5a5a" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+    <text x="717" y="576" text-anchor="middle" fill="#5a5a5a">git scan + decay + calibrate + views</text>
+  </g>
+
+  <text x="480" y="624" text-anchor="middle" font-size="11" fill="#6a6a6a">Solid arrows = reads/responses.  Dashed arrows = writes.</text>
 </svg>

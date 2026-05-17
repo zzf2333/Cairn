@@ -1,92 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" width="960" height="560">
-  <style>
-    text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
-  </style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" width="960" height="560" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif">
   <defs>
-    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
-    </marker>
-    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
-    </marker>
-    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#5a5a5a"/>
     </marker>
   </defs>
-  <rect width="960" height="560" fill="#ffffff"/>
-  <text x="480" y="38" text-anchor="middle" font-size="20" font-weight="600" fill="#111827">The Problem Cairn Solves</text>
-  <text x="480" y="60" text-anchor="middle" font-size="13" fill="#6b7280">Every AI session starts from zero — unless you give it a memory.</text>
-  <!-- Left panel background -->
-  <rect x="20" y="78" width="430" height="462" rx="12" fill="#fff5f5" stroke="#fca5a5" stroke-width="1.5"/>
-  <!-- Left header -->
-  <rect x="20" y="78" width="430" height="44" rx="12" fill="#dc2626"/>
-  <rect x="20" y="100" width="430" height="22" fill="#dc2626"/>
-  <text x="235" y="106" text-anchor="middle" font-size="14" font-weight="600" fill="#ffffff">WITHOUT CAIRN</text>
-  <!-- AI session box -->
-  <rect x="60" y="140" width="350" height="60" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
-  <!-- Brain icon circle -->
-  <circle cx="94" cy="170" r="18" fill="#fee2e2" stroke="#fca5a5" stroke-width="1.5"/>
-  <text x="94" y="175" text-anchor="middle" font-size="16">🤖</text>
-  <text x="200" y="163" text-anchor="middle" font-size="14" font-weight="600" fill="#111827">AI Session — Month 18</text>
-  <text x="200" y="182" text-anchor="middle" font-size="12" fill="#6b7280">No project history available</text>
-  <line x1="235" y1="200" x2="235" y2="228" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arrow-red)"/>
-  <text x="235" y="246" text-anchor="middle" font-size="12" fill="#6b7280">AI suggests...</text>
-  <!-- Suggestion 1 -->
-  <rect x="60" y="255" width="350" height="44" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
-  <text x="88" y="282" font-size="18" fill="#dc2626">✕</text>
-  <text x="115" y="275" font-size="13" font-weight="600" fill="#111827">Use Redux Toolkit</text>
-  <text x="115" y="292" font-size="11" fill="#9ca3af">Migrated away in Month 7 (boilerplate cost)</text>
-  <!-- Suggestion 2 -->
-  <rect x="60" y="308" width="350" height="44" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
-  <text x="88" y="335" font-size="18" fill="#dc2626">✕</text>
-  <text x="115" y="328" font-size="13" font-weight="600" fill="#111827">Migrate API layer to tRPC</text>
-  <text x="115" y="345" font-size="11" fill="#9ca3af">Tried in Month 11, rolled back (integration cost)</text>
-  <!-- Suggestion 3 -->
-  <rect x="60" y="361" width="350" height="44" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
-  <text x="88" y="388" font-size="18" fill="#dc2626">✕</text>
-  <text x="115" y="381" font-size="13" font-weight="600" fill="#111827">Break into Microservices</text>
-  <text x="115" y="398" font-size="11" fill="#9ca3af">Team too small, evaluated and excluded</text>
-  <rect x="60" y="420" width="350" height="56" rx="8" fill="#fee2e2" stroke="#fca5a5" stroke-width="1"/>
-  <text x="235" y="444" text-anchor="middle" font-size="13" font-weight="600" fill="#dc2626">10 min re-explaining each session</text>
-  <text x="235" y="462" text-anchor="middle" font-size="12" fill="#7f1d1d">Next week: same loop. Same AI. Same suggestions.</text>
-  <!-- "Every session" banner -->
-  <text x="235" y="504" text-anchor="middle" font-size="12" fill="#9ca3af">AI is a "brilliant new hire" — every single time.</text>
-  <!-- VS Badge -->
-  <circle cx="480" cy="310" r="26" fill="#111827" stroke="#ffffff" stroke-width="3"/>
-  <text x="480" y="315" text-anchor="middle" font-size="14" font-weight="600" fill="#ffffff">VS</text>
-  <line x1="480" y1="90" x2="480" y2="280" stroke="#e5e7eb" stroke-width="1.5" stroke-dasharray="6,4"/>
-  <line x1="480" y1="340" x2="480" y2="530" stroke="#e5e7eb" stroke-width="1.5" stroke-dasharray="6,4"/>
-  <!-- Right panel background -->
-  <rect x="510" y="78" width="430" height="462" rx="12" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
-  <!-- Right header -->
-  <rect x="510" y="78" width="430" height="44" rx="12" fill="#16a34a"/>
-  <rect x="510" y="100" width="430" height="22" fill="#16a34a"/>
-  <text x="725" y="106" text-anchor="middle" font-size="14" font-weight="600" fill="#ffffff">WITH CAIRN</text>
-  <rect x="550" y="140" width="350" height="60" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5"/>
-  <circle cx="584" cy="170" r="18" fill="#dcfce7" stroke="#86efac" stroke-width="1.5"/>
-  <text x="584" y="175" text-anchor="middle" font-size="16">🤖</text>
-  <text x="690" y="163" text-anchor="middle" font-size="14" font-weight="600" fill="#111827">AI Session — Month 18</text>
-  <text x="690" y="182" text-anchor="middle" font-size="12" fill="#16a34a">Calls cairn_context() first</text>
-  <line x1="725" y1="200" x2="725" y2="228" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arrow-green)"/>
-  <rect x="550" y="230" width="350" height="130" rx="8" fill="#111827" stroke="#374151" stroke-width="1.5"/>
-  <rect x="550" y="230" width="350" height="26" rx="8" fill="#374151"/>
-  <rect x="550" y="244" width="350" height="12" fill="#374151"/>
-  <text x="725" y="247" text-anchor="middle" font-size="11" fill="#9ca3af">cairn_context() response</text>
-  <text x="572" y="278" font-size="11" fill="#86efac" font-family="monospace">## no-go</text>
-  <text x="572" y="295" font-size="11" fill="#d1d5db" font-family="monospace">- tRPC  # integration cost too high</text>
-  <text x="572" y="312" font-size="11" fill="#d1d5db" font-family="monospace">- Redux  # team size makes it wasteful</text>
-  <text x="572" y="329" font-size="11" fill="#86efac" font-family="monospace">## stage: growth</text>
-  <text x="572" y="346" font-size="11" fill="#d1d5db" font-family="monospace">## accepted debt: auth-jwt-session</text>
-  <line x1="725" y1="360" x2="725" y2="388" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arrow-green)"/>
-  <!-- Good suggestion 1 -->
-  <rect x="550" y="395" width="350" height="44" rx="8" fill="#dcfce7" stroke="#86efac" stroke-width="1.5"/>
-  <text x="578" y="422" font-size="18" fill="#16a34a">✓</text>
-  <text x="605" y="415" font-size="13" font-weight="600" fill="#111827">Context-aware suggestions</text>
-  <text x="605" y="432" font-size="11" fill="#166534">Respects your no-go rules automatically</text>
-  <!-- Good suggestion 2 -->
-  <rect x="550" y="448" width="350" height="44" rx="8" fill="#dcfce7" stroke="#86efac" stroke-width="1.5"/>
-  <text x="578" y="475" font-size="18" fill="#16a34a">✓</text>
-  <text x="605" y="468" font-size="13" font-weight="600" fill="#111827">Stage-calibrated advice</text>
-  <text x="605" y="485" font-size="11" fill="#166534">Knows "growth" means stability > new features</text>
-  <text x="725" y="516" text-anchor="middle" font-size="12" fill="#6b7280">One .cairn/ setup. Every session benefits.</text>
+  <rect width="960" height="560" fill="#f8f6f3"/>
+
+  <text x="480" y="44" text-anchor="middle" font-size="22" font-weight="700" fill="#1a1a1a">AI without project memory  vs.  AI with Cairn</text>
+  <text x="480" y="70" text-anchor="middle" font-size="14" fill="#6a6a6a">The same project, six months apart, same suggestion, different outcome.</text>
+
+  <!-- LEFT panel: no memory -->
+  <rect x="40" y="100" width="430" height="430" rx="14" fill="#ffffff" stroke="#4a4a4a" stroke-width="2"/>
+  <rect x="40" y="100" width="430" height="46" rx="14" fill="#e8e6e3" stroke="#4a4a4a" stroke-width="2"/>
+  <text x="255" y="130" text-anchor="middle" font-size="16" font-weight="700" fill="#1a1a1a">Without Cairn  —  cognitive amnesia</text>
+
+  <rect x="68" y="172" width="374" height="62" rx="10" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="1.5"/>
+  <text x="255" y="194" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">User asks: "Add caching for /products."</text>
+  <text x="255" y="216" text-anchor="middle" font-size="12" fill="#1a1a1a">AI reads code, picks the most popular library.</text>
+
+  <line x1="255" y1="234" x2="255" y2="266" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="68" y="272" width="374" height="62" rx="10" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="1.5"/>
+  <text x="255" y="294" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">"I recommend Redis."</text>
+  <text x="255" y="316" text-anchor="middle" font-size="12" fill="#1a1a1a">— same recommendation as six months ago.</text>
+
+  <line x1="255" y1="334" x2="255" y2="366" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="68" y="372" width="374" height="62" rx="10" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.5"/>
+  <text x="255" y="394" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">Team has to re-argue the same point.</text>
+  <text x="255" y="416" text-anchor="middle" font-size="12" fill="#1a1a1a">The earlier rejection lives only in chat history.</text>
+
+  <text x="255" y="478" text-anchor="middle" font-size="12" fill="#6a6a6a">Path-dependent context is invisible.</text>
+  <text x="255" y="496" text-anchor="middle" font-size="12" fill="#6a6a6a">Trauma + tradeoffs are not addressable.</text>
+  <text x="255" y="514" text-anchor="middle" font-size="12" fill="#6a6a6a">Same wall, hit twice.</text>
+
+  <!-- RIGHT panel: with cairn -->
+  <rect x="490" y="100" width="430" height="430" rx="14" fill="#ffffff" stroke="#4a4a4a" stroke-width="2"/>
+  <rect x="490" y="100" width="430" height="46" rx="14" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="2"/>
+  <text x="705" y="130" text-anchor="middle" font-size="16" font-weight="700" fill="#1a1a1a">With Cairn  —  durable cognition</text>
+
+  <rect x="518" y="172" width="374" height="62" rx="10" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="1.5"/>
+  <text x="705" y="194" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">User asks: "Add caching for /products."</text>
+  <text x="705" y="216" text-anchor="middle" font-size="12" fill="#1a1a1a">AI calls cairn_context first.</text>
+
+  <line x1="705" y1="234" x2="705" y2="266" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="518" y="272" width="374" height="62" rx="10" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="1.5"/>
+  <text x="705" y="294" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">"Project has a G3 no-go on Redis."</text>
+  <text x="705" y="316" text-anchor="middle" font-size="12" fill="#1a1a1a">"Proposing in-process LRU instead."</text>
+
+  <line x1="705" y1="334" x2="705" y2="366" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="518" y="372" width="374" height="62" rx="10" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.5"/>
+  <text x="705" y="394" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">Team confirms. Decision captured.</text>
+  <text x="705" y="416" text-anchor="middle" font-size="12" fill="#1a1a1a">Next AI agent inherits the same context.</text>
+
+  <text x="705" y="478" text-anchor="middle" font-size="12" fill="#6a6a6a">Constraints + rejections are addressable.</text>
+  <text x="705" y="496" text-anchor="middle" font-size="12" fill="#6a6a6a">DNA traits emerge from real patterns.</text>
+  <text x="705" y="514" text-anchor="middle" font-size="12" fill="#6a6a6a">Project memory survives the session.</text>
 </svg>

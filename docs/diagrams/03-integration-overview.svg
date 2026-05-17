@@ -1,158 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" width="960" height="620">
-  <style>
-    text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
-  </style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" width="960" height="600" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif">
   <defs>
-    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
-    </marker>
-    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
-    </marker>
-    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea"/>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#5a5a5a"/>
     </marker>
   </defs>
+  <rect width="960" height="600" fill="#f8f6f3"/>
 
-  <!-- Background -->
-  <rect width="960" height="620" fill="#ffffff"/>
+  <text x="480" y="44" text-anchor="middle" font-size="22" font-weight="700" fill="#1a1a1a">Integration Overview</text>
+  <text x="480" y="70" text-anchor="middle" font-size="14" fill="#6a6a6a">Two host platforms today. Same MCP protocol. Same .cairn/ on disk.</text>
 
-  <!-- Title & Subtitle -->
-  <text x="480" y="38" text-anchor="middle" font-size="20" font-weight="600" fill="#111827">Integration Overview</text>
-  <text x="480" y="58" text-anchor="middle" font-size="13" fill="#6b7280">MCP (primary) + Skill Adapters (fallback) — all accessing the same .cairn/ data</text>
+  <!-- Two host AIs (top) -->
+  <rect x="100" y="110" width="320" height="100" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5"/>
+  <text x="260" y="142" text-anchor="middle" font-size="16" font-weight="600" fill="#1a1a1a">Claude Code</text>
+  <text x="260" y="166" text-anchor="middle" font-size="12" fill="#1a1a1a">Protocol: skills/claude-code/SKILL.md</text>
+  <text x="260" y="186" text-anchor="middle" font-size="12" fill="#1a1a1a">Config: ~/.claude.json mcpServers.cairn</text>
 
-  <!-- ===== TOP: CLI Panel (centered, y: 80–180) ===== -->
-  <rect x="360" y="80" width="240" height="80" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
-  <!-- Header bar -->
-  <rect x="360" y="80" width="240" height="32" rx="10" fill="#ea580c"/>
-  <rect x="360" y="98" width="240" height="14" fill="#ea580c"/>
-  <text x="480" y="101" text-anchor="middle" font-size="13" font-weight="600" fill="#ffffff">CLI (cairn)</text>
-  <text x="480" y="128" text-anchor="middle" font-size="11" fill="#c2410c">Node.js 18+ · Terminal</text>
-  <!-- Single command: version -->
-  <rect x="410" y="138" width="140" height="14" rx="4" fill="#fed7aa" stroke="#fdba74" stroke-width="1"/>
-  <text x="480" y="149" text-anchor="middle" font-size="9" fill="#7c2d12">version only</text>
+  <rect x="540" y="110" width="320" height="100" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5"/>
+  <text x="700" y="142" text-anchor="middle" font-size="16" font-weight="600" fill="#1a1a1a">Codex</text>
+  <text x="700" y="166" text-anchor="middle" font-size="12" fill="#1a1a1a">Protocol: skills/codex.md (append to AGENTS.md)</text>
+  <text x="700" y="186" text-anchor="middle" font-size="12" fill="#1a1a1a">Config: ~/.codex/config.toml mcp_servers.cairn</text>
 
-  <!-- Orange arrow: CLI → .cairn/ -->
-  <path d="M 480,160 L 480,218" stroke="#ea580c" stroke-width="2" fill="none" marker-end="url(#arrow-orange)"/>
+  <!-- Arrows from both to MCP -->
+  <line x1="260" y1="216" x2="350" y2="290" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="700" y1="216" x2="610" y2="290" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="334" y="262" font-size="12" fill="#5a5a5a">MCP stdio</text>
+  <text x="566" y="262" font-size="12" fill="#5a5a5a">MCP stdio</text>
 
-  <!-- ===== CENTER: .cairn/ Directory (y: 220–400) ===== -->
-  <rect x="310" y="220" width="340" height="200" rx="10" fill="#f9fafb" stroke="#374151" stroke-width="2.5"/>
-  <!-- Header bar -->
-  <rect x="310" y="220" width="340" height="32" rx="10" fill="#111827"/>
-  <rect x="310" y="238" width="340" height="14" fill="#111827"/>
-  <text x="480" y="241" text-anchor="middle" font-size="13" font-weight="600" fill="#f9fafb">.cairn/</text>
-  <!-- Directory listing -->
-  <text x="330" y="270" font-size="11" fill="#6b7280" font-family="monospace">├── config.yaml</text>
-  <text x="330" y="285" font-size="11" fill="#6b7280" font-family="monospace">├── state.yaml</text>
-  <text x="330" y="300" font-size="11" fill="#6b7280" font-family="monospace">├── signals/       (L1 candidates)</text>
-  <text x="330" y="315" font-size="11" fill="#6b7280" font-family="monospace">├── staged/        (L2 human review)</text>
-  <text x="330" y="330" font-size="11" fill="#6b7280" font-family="monospace">├── memory/        (source of truth)</text>
-  <text x="330" y="345" font-size="11" fill="#6b7280" font-family="monospace">├── views/</text>
-  <text x="330" y="358" font-size="11" fill="#6b7280" font-family="monospace">│   ├── output.md</text>
-  <text x="330" y="371" font-size="11" fill="#6b7280" font-family="monospace">│   ├── domains/</text>
-  <text x="330" y="384" font-size="11" fill="#6b7280" font-family="monospace">│   └── stage.md</text>
-  <text x="330" y="397" font-size="11" fill="#6b7280" font-family="monospace">└── sessions/      (audit records)</text>
-  <!-- Bottom text -->
-  <text x="480" y="416" text-anchor="middle" font-size="11" fill="#9ca3af">version-controlled · tool-agnostic</text>
+  <!-- MCP Server -->
+  <rect x="200" y="300" width="560" height="130" rx="12" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="2.5"/>
+  <text x="480" y="330" text-anchor="middle" font-size="16" font-weight="600" fill="#1a1a1a">cairn-mcp-server</text>
+  <text x="480" y="352" text-anchor="middle" font-size="12" fill="#1a1a1a">14 MCP tools  ·  10 CLI subcommands  ·  Headless (no LLM)</text>
 
-  <!-- ===== LEFT: Skill Adapters Panel (x: 20–280, y: 220–540) ===== -->
-  <rect x="20" y="220" width="260" height="336" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
-  <!-- Header bar -->
-  <rect x="20" y="220" width="260" height="32" rx="10" fill="#2563eb"/>
-  <rect x="20" y="238" width="260" height="14" fill="#2563eb"/>
-  <text x="150" y="241" text-anchor="middle" font-size="13" font-weight="600" fill="#ffffff">Skill Adapters</text>
-  <text x="150" y="268" text-anchor="middle" font-size="11" fill="#3b82f6">Alternative path · reads views/ directly</text>
-  <!-- 8 AI tool boxes -->
-  <rect x="36" y="282" width="228" height="24" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
-  <text x="150" y="299" text-anchor="middle" font-size="11" fill="#1e40af">Claude Code</text>
-  <rect x="36" y="312" width="228" height="24" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
-  <text x="150" y="329" text-anchor="middle" font-size="11" fill="#1e40af">Cursor</text>
-  <rect x="36" y="342" width="228" height="24" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
-  <text x="150" y="359" text-anchor="middle" font-size="11" fill="#1e40af">Cline / Roo Code</text>
-  <rect x="36" y="372" width="228" height="24" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
-  <text x="150" y="389" text-anchor="middle" font-size="11" fill="#1e40af">Windsurf</text>
-  <rect x="36" y="402" width="228" height="24" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
-  <text x="150" y="419" text-anchor="middle" font-size="11" fill="#1e40af">GitHub Copilot</text>
-  <rect x="36" y="432" width="228" height="24" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
-  <text x="150" y="449" text-anchor="middle" font-size="11" fill="#1e40af">Codex CLI</text>
-  <rect x="36" y="462" width="228" height="24" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
-  <text x="150" y="479" text-anchor="middle" font-size="11" fill="#1e40af">Gemini CLI</text>
-  <rect x="36" y="492" width="228" height="24" rx="6" fill="#dbeafe" stroke="#bfdbfe" stroke-width="1"/>
-  <text x="150" y="509" text-anchor="middle" font-size="11" fill="#1e40af">OpenCode</text>
-  <!-- Bottom label -->
-  <text x="150" y="540" text-anchor="middle" font-size="11" fill="#6b7280">read-only · file injection</text>
+  <g font-size="11" fill="#1a1a1a">
+    <rect x="226" y="370" width="120" height="44" rx="8" fill="#ffffff" stroke="#4a4a4a" stroke-width="1.2"/>
+    <text x="286" y="388" text-anchor="middle" font-weight="600">cairn_context</text>
+    <text x="286" y="404" text-anchor="middle" fill="#6a6a6a">activation</text>
 
-  <!-- Blue arrow: Skill Adapters → .cairn/ (pointing right toward views/) -->
-  <path d="M 280,345 L 308,345" stroke="#2563eb" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/>
+    <rect x="356" y="370" width="120" height="44" rx="8" fill="#ffffff" stroke="#4a4a4a" stroke-width="1.2"/>
+    <text x="416" y="388" text-anchor="middle" font-weight="600">cairn_signal</text>
+    <text x="416" y="404" text-anchor="middle" fill="#6a6a6a">capture</text>
 
-  <!-- ===== RIGHT: MCP Server Panel (x: 680–940, y: 220–540) ===== -->
-  <rect x="680" y="220" width="260" height="336" rx="10" fill="#faf5ff" stroke="#d8b4fe" stroke-width="1.5"/>
-  <!-- Header bar -->
-  <rect x="680" y="220" width="260" height="32" rx="10" fill="#9333ea"/>
-  <rect x="680" y="238" width="260" height="14" fill="#9333ea"/>
-  <text x="810" y="241" text-anchor="middle" font-size="13" font-weight="600" fill="#ffffff">MCP Server</text>
-  <text x="810" y="268" text-anchor="middle" font-size="11" fill="#a855f7">cairn-mcp-server · Primary path</text>
-  <!-- MCP Clients -->
-  <text x="810" y="288" text-anchor="middle" font-size="10" fill="#7c3aed">Claude Code · Cursor · Claude Desktop</text>
-  <text x="810" y="302" text-anchor="middle" font-size="10" fill="#7c3aed">Cline · Windsurf · GitHub Copilot</text>
-  <text x="810" y="316" text-anchor="middle" font-size="10" fill="#7c3aed">Codex CLI · Gemini CLI · OpenCode</text>
-  <line x1="696" y1="326" x2="924" y2="326" stroke="#d8b4fe" stroke-width="1"/>
-  <!-- 8 MCP tools -->
-  <!-- cairn_context() — Stable -->
-  <rect x="696" y="332" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="708" cy="344" r="3" fill="#16a34a"/>
-  <text x="716" y="348" font-size="10" font-weight="600" fill="#5b21b6">cairn_context()</text>
-  <text x="916" y="348" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
-  <!-- cairn_signal() — Stable -->
-  <rect x="696" y="358" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="708" cy="370" r="3" fill="#16a34a"/>
-  <text x="716" y="374" font-size="10" font-weight="600" fill="#5b21b6">cairn_signal()</text>
-  <text x="916" y="374" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
-  <!-- cairn_session_end() — Stable -->
-  <rect x="696" y="384" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="708" cy="396" r="3" fill="#16a34a"/>
-  <text x="716" y="400" font-size="10" font-weight="600" fill="#5b21b6">cairn_session_end()</text>
-  <text x="916" y="400" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
-  <!-- cairn_status() — Stable -->
-  <rect x="696" y="410" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="708" cy="422" r="3" fill="#16a34a"/>
-  <text x="716" y="426" font-size="10" font-weight="600" fill="#5b21b6">cairn_status()</text>
-  <text x="916" y="426" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
-  <!-- cairn_review() — Stable -->
-  <rect x="696" y="436" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="708" cy="448" r="3" fill="#16a34a"/>
-  <text x="716" y="452" font-size="10" font-weight="600" fill="#5b21b6">cairn_review()</text>
-  <text x="916" y="452" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
-  <!-- cairn_memory() — Stable -->
-  <rect x="696" y="462" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="708" cy="474" r="3" fill="#16a34a"/>
-  <text x="716" y="478" font-size="10" font-weight="600" fill="#5b21b6">cairn_memory()</text>
-  <text x="916" y="478" text-anchor="end" font-size="9" fill="#7c3aed">Stable</text>
-  <!-- cairn_plan() — Experimental -->
-  <rect x="696" y="488" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="708" cy="500" r="3" fill="#f59e0b"/>
-  <text x="716" y="504" font-size="10" font-weight="600" fill="#5b21b6">cairn_plan()</text>
-  <text x="916" y="504" text-anchor="end" font-size="9" fill="#b45309">Experimental</text>
-  <!-- cairn_doctor() — Experimental -->
-  <rect x="696" y="514" width="228" height="24" rx="6" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
-  <circle cx="708" cy="526" r="3" fill="#f59e0b"/>
-  <text x="716" y="530" font-size="10" font-weight="600" fill="#5b21b6">cairn_doctor()</text>
-  <text x="916" y="530" text-anchor="end" font-size="9" fill="#b45309">Experimental</text>
-  <!-- Bottom label -->
-  <text x="810" y="550" text-anchor="middle" font-size="11" fill="#6b7280">full engine access · typed tool calls</text>
+    <rect x="486" y="370" width="138" height="44" rx="8" fill="#ffffff" stroke="#4a4a4a" stroke-width="1.2"/>
+    <text x="555" y="388" text-anchor="middle" font-weight="600">cairn_session_end</text>
+    <text x="555" y="404" text-anchor="middle" fill="#6a6a6a">maintenance</text>
 
-  <!-- Purple arrow: MCP Server → .cairn/ (pointing left) -->
-  <path d="M 680,345 L 652,345" stroke="#9333ea" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
+    <rect x="634" y="370" width="116" height="44" rx="8" fill="#ffffff" stroke="#4a4a4a" stroke-width="1.2"/>
+    <text x="692" y="388" text-anchor="middle" font-weight="600">cairn_doctor</text>
+    <text x="692" y="404" text-anchor="middle" fill="#6a6a6a">diagnostics</text>
+  </g>
 
-  <!-- ===== BOTTOM: Legend Bar (y: 556–604) ===== -->
-  <rect x="220" y="556" width="520" height="48" rx="8" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
-  <!-- Blue legend -->
-  <line x1="240" y1="580" x2="270" y2="580" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/>
-  <text x="278" y="584" font-size="11" fill="#6b7280">Skill adapters (file injection)</text>
-  <!-- Orange legend -->
-  <line x1="440" y1="580" x2="470" y2="580" stroke="#ea580c" stroke-width="2" marker-end="url(#arrow-orange)"/>
-  <text x="478" y="584" font-size="11" fill="#6b7280">CLI commands</text>
-  <!-- Purple legend -->
-  <line x1="580" y1="580" x2="610" y2="580" stroke="#9333ea" stroke-width="2" marker-end="url(#arrow-purple)"/>
-  <text x="618" y="584" font-size="11" fill="#6b7280">MCP tool calls</text>
+  <!-- Arrow MCP → storage -->
+  <line x1="480" y1="436" x2="480" y2="474" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="498" y="460" font-size="13" fill="#5a5a5a">atomic write+rename</text>
+
+  <!-- Storage -->
+  <rect x="200" y="482" width="560" height="92" rx="12" fill="#e8e6e3" stroke="#4a4a4a" stroke-width="2.5"/>
+  <text x="480" y="510" text-anchor="middle" font-size="16" font-weight="600" fill="#1a1a1a">.cairn/  on disk  ·  git-tracked</text>
+  <text x="480" y="534" text-anchor="middle" font-size="12" fill="#1a1a1a">config / state / skeleton / blood / staged / domains / dna / governance / views / logs / sessions</text>
+  <text x="480" y="556" text-anchor="middle" font-size="12" fill="#6a6a6a">Project cognition export, portable across machines and AI agents.</text>
 </svg>
