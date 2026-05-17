@@ -7,36 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.0] - 2026-05-17 (release readiness — stability, recovery, observability)
 
+Published to npm as `cairn-mcp-server@0.4.0`. Tag: [v0.4.0](https://github.com/zzf2333/Cairn/releases/tag/v0.4.0). First release on the 0.4 line — 0.3.x existed in git/CHANGELOG only and never reached npm; users on `0.2.10` should upgrade directly to `0.4.0`.
+
 ### Added
 
-- **`docs/STABILITY.md`** — Stable / Experimental / Internal 边界 + 1.0 之后承诺窗口
-- **`docs/MIGRATION.md`** — 0.x → 1.0 升级路径(0.3 → 0.4 无破坏性变更)
-- **`docs/RECOVERY.md`** — 5 类损坏场景的诊断 + 修复
-- **`docs/TROUBLESHOOTING.md`** — 10 个常见症状的诊断步骤
-- **`docs/EXAMPLES.md`** — 小型 / 中型 / 维护期 三个典型项目的 `.cairn/` 样本
-- **`docs/PERFORMANCE.md`** — SLO + 基准数据(p99 ≤ 500ms @ 1k blood)
-- **`cairn_version`** — `state.yaml` 新字段,记录写入数据的 Cairn 版本
-- **`session_in_progress`** — `state.yaml` 新字段,session_end 中断时记录 checkpoint
-- **`cairn migrate`** CLI — 0.x → 0.4 版本 stamp,后续版本自动 migration 入口
-- **`cairn doctor --fix`** — 扫描损坏 yaml + 孤儿 skeleton 引用,移到 `.cairn/quarantine/`
-- **`cairn doctor --recover`** — 清掉未完成的 session_in_progress 检查点
-- **`cairn doctor --metrics`** — `.cairn/` 健康快照(blood/DNA/staged/last session)
-- **`cairn_context` interaction_hint** — 空 cwd 场景输出 `review_staged_first` / `needs_init` 引导(修 C3/D3)
-- **结构化工具调用日志** — 写入 `.cairn/logs/tools-YYYY-MM-DD.jsonl`,默认开,可关
-- **Codex CLI driver 改善** — 去掉 `--ephemeral` 让 `codex exec resume` 真正保留上下文(修 B3)
+- **`docs/STABILITY.md`** — Stable / Experimental / Internal boundary + post-1.0 commitment window
+- **`docs/MIGRATION.md`** — 0.x → 1.0 upgrade path (0.3 → 0.4 has no breaking changes)
+- **`docs/RECOVERY.md`** — diagnosis + fix for 5 corruption / interruption scenarios
+- **`docs/TROUBLESHOOTING.md`** — 10 common symptoms with diagnosis steps
+- **`docs/EXAMPLES.md`** — `.cairn/` samples for small / mid / maintenance-stage projects
+- **`docs/PERFORMANCE.md`** — SLO + benchmark data (p99 ≤ 500ms @ 1k blood events)
+- **`state.cairn_version`** — new field recording the runtime version that wrote the data
+- **`state.session_in_progress`** — new field; `cairn_session_end` writes step-level checkpoints so a mid-pipeline crash is recoverable
+- **`cairn migrate`** CLI — stamps current version into `.cairn/state.yaml`; placeholder for future schema migrations
+- **`cairn doctor --fix`** — scans `.cairn/` for corrupted yaml + orphan skeleton refs; quarantines broken files to `.cairn/quarantine/<timestamp>/`
+- **`cairn doctor --recover`** — clears an incomplete `session_in_progress` checkpoint after a session crash
+- **`cairn doctor --metrics`** — prints `.cairn/` health snapshot (blood / DNA / staged / last session_end)
+- **`cairn_context` `interaction_hint`** — optional output field; emits `review_staged_first` or `needs_init` when the cwd is empty (fixes Codex C3 / D3 fall-through to "no source files" / "wrong project")
+- **Structured tool-call logging** — written to `.cairn/logs/tools-YYYY-MM-DD.jsonl` with daily rotation; controlled by `config.yaml.logging.{ enabled, retention_days }`; default on
+- **Codex CLI driver fix** — dropped `--ephemeral` flag from `codex exec`; the flag was disabling session persistence and breaking `codex exec resume` (fixes B3)
 
 ### Improved
 
-- **BloodStore in-memory cache** — 1k blood 规模 `cairn_context` p99 从 1715ms → 14.8ms(**~115× 提速**),`save / remove` 自动 invalidate
-- **`StateStore.recordActivationBatch`** — activation 不再每条 event 单写 state.yaml,改批量
-- **所有 store 用 `atomicWriteFile`(write+rename)** — 并发安全,绝不留半写状态
-- **`skills/codex.md` + 6 个紧凑 adapter** — maintenance phase = reflective_challenge 强度提示(修 A7)+ 空目录响应模板(修 C3/D3)
-- **`skills/claude-code/SKILL.md`** — 对称加 maintenance 强度 + 空目录响应
+- **BloodStore in-memory cache** — `cairn_context` p99 at 1k blood events dropped from 1715ms to 14.8ms (**~115× speedup**); `save` / `remove` automatically invalidate
+- **`StateStore.recordActivationBatch`** — `cairn_context` no longer issues N writes to `state.yaml` per activation; batched into a single write
+- **All 11 stores use `atomicWriteFile` (write + rename)** — concurrent writes never leave half-written state
+- **`skills/codex.md` + 6 compact adapters** — maintenance phase explicitly = `reflective_challenge` strength (fixes A7); added empty-workspace response template (fixes C3 / D3)
+- **`skills/claude-code/SKILL.md`** — same maintenance strength and empty-workspace template, kept symmetric with adapters
 
 ### Reverse-Regression Scenarios
 
-- Codex 4 个稳定 fail 修复方向已落地:A7 / B3 / C3 / D3 — 实际通过率待 dogfood 验证
-- 新增测试:`tests/stores/atomic-write.test.ts`(4),`tests/engines/recovery-engine.test.ts`(4),`tests/e2e/cli-smoke.test.ts`(16),`tests/performance/benchmark.test.ts`(3)— 全套 268 测试通过
+- All 4 stable Codex platform diffs (A7 / B3 / C3 / D3) now have landed workarounds. Real pass-rate uplift pending the next CLI-driver run.
+- New test suites: `tests/stores/atomic-write.test.ts` (4), `tests/engines/recovery-engine.test.ts` (4), `tests/e2e/cli-smoke.test.ts` (16), `tests/performance/benchmark.test.ts` (3). 268 unit tests + 6 perf tests, all passing.
+
+### Fixed
+
+- **CI test setup** — `git init && git commit` inside tests now passes inline `user.email` / `user.name` so GitHub Actions runners (which have no global git identity) no longer fail with `fatal: empty ident name`.
 
 ## [0.3.0] - 2026-05-16 (end-to-end usability patch)
 

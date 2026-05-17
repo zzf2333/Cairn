@@ -1,142 +1,153 @@
-# Release Readiness — 1.0 发布就绪清单
+# Release Readiness — 1.0 Acceptance Checklist
 
-> 这份清单不是"应该写的文档列表"，而是 **1.0 发布的硬性准入指标**。
+> This is not a "documents we should write" list — it is the **hard acceptance criteria for cutting 1.0**.
 >
-> 1.0 意味着 SemVer 生效：`.cairn/` schema、MCP 工具签名、CLI 命令一旦标 1.0，破坏性变更必须走 major bump。在此之前的所有"现在能跑"都不构成 1.0 准入。
+> 1.0 means SemVer takes effect: once we tag `1.0.0`, breaking changes to `.cairn/` schema, MCP tool signatures, or CLI subcommands require a major bump. Everything that "works now" does not by itself qualify.
 
 ---
 
-## 当前状态快照
+## Current Snapshot
 
-| 维度 | 评分 | 说明 |
-|------|------|------|
-| 单测覆盖 | ✅ | 247/247 通过，行覆盖阈值 80% |
-| 架构落地 | ✅ | 13 schema / 11 store / 14 engine / 14 tool 全部 wired，无 dormant 代码 |
-| MCP 协议 | ✅ | stdio 真实启动通过 |
-| Claude Code 适配 | ✅ | 25/25 反向回归通过 |
-| Codex 适配 | 🟡 | 21/25（86%），4 个稳定平台差异已记录但未给 workaround |
-| 文档同步 | ✅ | README / mcp/README / 架构文档 / 设计哲学 / 7 个 adapter / SKILL 全部对齐代码 |
-| Dogfood | ❌ | Cairn 没有用 Cairn 跑过自己的开发 |
-| 长周期数据验证 | ❌ | DNA / decay / resurrection 阈值是设计值，不是测量值 |
-| 稳定性承诺 | ❌ | 没有 `docs/STABILITY.md` 划定 stable / experimental 边界 |
-| 错误恢复 | ❌ | 损坏 / 并发 / 中断三类场景没有文档化路径 |
-| 性能基准 | 🟡 | scale 测试到 1k blood events，但没 p50/p99 数字 |
-| 迁移路径 | ❌ | 0.x → 1.0 schema 变更没有 migration script |
+| Axis | Score | Notes |
+|------|-------|-------|
+| Unit tests | ✅ | 268/268 passing, 80% line coverage threshold |
+| Architecture landed | ✅ | 13 schema / 11 store / 14 engine / 14 tool, no dormant code |
+| MCP protocol | ✅ | stdio boot verified end-to-end |
+| Claude Code adaptation | ✅ | 25/25 reverse-regression scenarios passing |
+| Codex adaptation | 🟡 | 21/25 (86%); 4 stable platform diffs (A7/B3/C3/D3) now have workarounds — real pass rate pending dogfood |
+| Doc parity with code | ✅ | README / mcp/README / architecture doc / design philosophy / 7 adapters / SKILL all aligned |
+| Dogfood | 🟡 | Started 2026-05-17 — Cairn now tracks Cairn (see `.cairn/` in repo root) |
+| Long-horizon data | ❌ | DNA / decay / resurrection thresholds are still design values, not measurements |
+| Stability contract | ✅ | `docs/STABILITY.md` draws Stable / Experimental / Internal boundary |
+| Recovery paths | ✅ | `docs/RECOVERY.md` + `cairn doctor --fix / --recover / --metrics` |
+| Performance benchmark | ✅ | `npm run bench` enforces SLO (p99 ≤ 500ms @ 1k blood) |
+| Migration path | ✅ | `docs/MIGRATION.md` + `cairn migrate` CLI |
+| External alpha users | ❌ | None yet |
 
-整体评级：**0.3.0（功能 RC），距 1.0 还差 dogfood + 稳定性承诺 + 错误恢复**。
-
----
-
-## 1.0 准入硬指标（必须全部 ✅）
-
-### A. 稳定性承诺
-
-- [ ] **`docs/STABILITY.md`** 划定边界：
-    - Stable：MCP 工具名 + 参数签名、`.cairn/` 顶层目录、`config.yaml` 字段
-    - Experimental（可能变更）：DNA trait 字段、resurrection 阈值常量、governance policy 格式
-    - Internal（不承诺）：views 输出格式、session record 结构
-- [ ] **`docs/MIGRATION.md`** 给出 0.x → 1.0 升级步骤，包括 schema diff 与自动迁移脚本
-- [ ] `cairn_init_status` 输出新增 `cairn_version` 字段，老版本 `.cairn/` 启动时给出明确升级提示
-
-### B. Dogfood
-
-- [ ] 在本仓库自身启用 `.cairn/`，连续运行 **≥ 30 天**
-- [ ] 至少 **20 条真实 blood event**（不是测试合成）
-- [ ] 至少 **1 个 DNA trait 候选** 通过人工裁决（emerged 或 rejected 都算，需要走完流程）
-- [ ] 期间发现的 bug / 阈值问题写入 `tests/scenarios/_findings.md`，并对应回归测试
-
-### C. 错误恢复路径
-
-- [ ] **损坏自愈**：`cairn_doctor` 能识别并修复以下损坏：
-    - 单个 yaml 文件 parse 失败（隔离后继续）
-    - blood 引用了不存在的 skeleton 节点
-    - staged/ 中的 draft_event 缺字段
-- [ ] **并发写入**：两个 AI 会话同时调用 `cairn_signal` 不丢失数据（文件锁 or 原子 write+rename）
-- [ ] **session_end 中途崩溃**：下次启动时 `cairn_init_status` 检测出未完成 session，给出恢复建议
-- [ ] **`docs/RECOVERY.md`** 列出所有受支持的恢复场景与命令
-
-### D. Codex 4 个稳定 fail 给 workaround
-
-| 场景 | 现状 | 1.0 准入要求 |
-|------|------|--------------|
-| **A7 stage maintenance** 弱于 hard_constraint | 已记录 | 在 `skills/codex.md` 补充"maintenance phase 视为 reflective challenge 强度"的显式指令 |
-| **B3 multi-turn user_rejection** resume 丢上下文 | 已记录 | 修 `platform-codex-cli.ts` 或在文档明示用户单轮使用 |
-| **C3 staged review** 空 cwd 时 Codex 走 no_op | 已记录 | `cairn_context` 在空目录场景下输出更强提示，引导处理 staged 队列 |
-| **D3 empty init flow** 同 C3 | 已记录 | 同 C3 修复，或在 SKILL 里给出空目录场景的标准应答模板 |
-
-通过标准：至少 3/4 修复，剩余 1 个明确标记为"Codex 平台限制"并在 README 警告。
-
-### E. 性能基准
-
-- [ ] `cairn_context` 在以下规模下记录 p50 / p99：
-    - 100 blood events
-    - 1,000 blood events
-    - 10,000 blood events
-- [ ] 任一规模下 p99 **≤ 2s**（典型 AI 工具调用容忍上限）
-- [ ] `cairn_session_end` 全流水线在 1k 规模下 **≤ 5s**
-- [ ] 基准写入 `docs/PERFORMANCE.md`，与每个 release 对比
-
-### F. 外部 alpha 验证
-
-- [ ] 至少 **3 个外部用户**完成完整使用循环（init → 30 天使用 → 至少 1 次 session_end）
-- [ ] 收到 **至少 5 条**外部反馈并记录在 `tests/scenarios/_findings.md`
-- [ ] 所有阻塞性 issue 关闭
+Overall: **0.4.0 released to npm** as `cairn-mcp-server@0.4.0` (2026-05-17). Remaining to 1.0: long-horizon dogfood data + external alpha validation.
 
 ---
 
-## 1.0 强烈建议（不阻塞，但显著降低后续风险）
+## 0.4.0 — Released
 
-### G. 可观测性
+✅ Published 2026-05-17 — https://github.com/zzf2333/Cairn/releases/tag/v0.4.0
+✅ `npm install -g cairn-mcp-server@0.4.0`
 
-- [ ] 结构化日志：MCP 工具调用的入参 / 出参 / 耗时落到 `.cairn/logs/`（默认开启，可关）
-- [ ] `cairn doctor --metrics` 输出当前 .cairn 健康度指标（blood 数量、DNA traits、staged backlog、上次 session_end 距今）
+### Shipped scope
 
-### H. 用户文档
-
-- [ ] README 增加 **trauma / reevaluation_mode** 两个机制的用户视角解释
-- [ ] `docs/TROUBLESHOOTING.md` — 常见症状 → 诊断步骤
-- [ ] `docs/EXAMPLES.md` — 三个典型项目（小型 / 中型 / 维护期）的真实 `.cairn/` 样本
-
-### I. CLI 完整性
-
-- [ ] `cairn` 子命令全部跑过端到端：`init / status / doctor / review / audit / dna / skeleton / blood / stage`
-- [ ] 任一子命令崩溃不破坏 `.cairn/` 状态
-- [ ] 标准输出 / 错误输出分离，exit code 规范化
-
----
-
-## 阶段路径
-
-| 阶段 | 目标 | 准入 | 预计周期 |
-|------|------|------|----------|
-| **0.4.0** | Stability + 错误恢复文档化 | A + C 完成 | 1-2 周 |
-| **0.5.0 RC** | Codex 4 fail workaround + 性能基准 | D + E 完成 | 1 周 |
-| **0.9.0 alpha** | 外部 alpha 用户开始使用 | F 启动 | 即时 |
-| **1.0.0** | Dogfood 30 天 + alpha 反馈消化 | B + F 完成 | 1-2 月 |
+| Group | Items |
+|-------|-------|
+| **Stability** | `docs/STABILITY.md`, `docs/MIGRATION.md`, `state.cairn_version` field, `cairn migrate` CLI |
+| **Recovery** | atomic write-rename for all stores, `doctor --fix` (corruption quarantine), `doctor --recover` (session checkpoint), `docs/RECOVERY.md` |
+| **Codex workarounds** | maintenance = reflective_challenge strength (A7), `interaction_hint` for empty workspace (C3/D3), `codex exec resume` fixed by dropping `--ephemeral` (B3) |
+| **Performance** | BloodStore in-memory cache + batch activation record → 1k p99 from 1715ms to 14.8ms (115× speedup), `docs/PERFORMANCE.md` with SLO gates |
+| **Observability** | structured tool-call logs at `.cairn/logs/tools-YYYY-MM-DD.jsonl`, `cairn doctor --metrics` health snapshot |
+| **User docs** | README defense-mechanisms section, `docs/TROUBLESHOOTING.md`, `docs/EXAMPLES.md` |
+| **CLI E2E** | `tests/e2e/cli-smoke.test.ts` — 16 scenarios + exit-code convention |
+| **Dogfood** | `.cairn/` initialized in repo root; `tests/scenarios/_findings.md` template |
 
 ---
 
-## 不进入 1.0 的范围（明确划线）
+## 1.0 Acceptance Criteria (all must be ✅)
 
-以下功能即便完成也不阻塞 1.0，留给 1.x：
+### A. Stability commitment — ✅ done
 
-- 多语言文档（中文外）
-- Web UI / 可视化 dashboard
-- 多 AI 协作冲突解决的更强机制（当前文件锁足够）
-- DNA trait 的更多种类（当前只有 `simplicity_bias` / `infra_aggressiveness`）
-- 跨项目共享 DNA / blood
-- 实时双向同步（当前是文件 + git）
+- [x] `docs/STABILITY.md` defines Stable / Experimental / Internal
+- [x] `docs/MIGRATION.md` describes 0.x → 1.0 upgrade path
+- [x] `cairn_init_status` exposes `cairn_version` + warns on mismatch
+
+### B. Dogfood — 🟡 started
+
+- [x] `.cairn/` enabled in this repository (started 2026-05-17)
+- [ ] ≥ 30 days continuous use
+- [ ] ≥ 20 real blood events (not synthetic test fixtures)
+- [ ] ≥ 1 DNA trait candidate runs end-to-end through human ratification (emerged or rejected)
+- [ ] Surprises logged in `mcp/tests/scenarios/_findings.md` with corresponding regression tests
+
+### C. Recovery paths — ✅ done
+
+- [x] `cairn doctor --fix` quarantines corrupted yaml + reports orphan skeleton refs
+- [x] Atomic write-rename in all 11 stores; no half-written state on concurrent writes
+- [x] `cairn_session_end` writes step-level checkpoints; `cairn doctor --recover` clears them
+- [x] `docs/RECOVERY.md` documents 5 scenarios end-to-end
+
+### D. Codex 4 stable fails — ✅ workarounds landed (real-world validation pending)
+
+| Scenario | Status |
+|----------|--------|
+| A7 maintenance vs hard_constraint | `skills/codex.md` + 6 adapters: maintenance phase explicitly = reflective_challenge strength |
+| B3 multi-turn user_rejection | `codex exec resume` fixed — dropped `--ephemeral` flag which was disabling session persistence |
+| C3 staged review on empty cwd | `cairn_context` emits `interaction_hint: review_staged_first`; skills documented response template |
+| D3 empty init flow | `cairn_context` emits `interaction_hint: needs_init`; skills documented response template |
+
+Real pass-rate uplift is pending the next reverse-regression run on real CLIs.
+
+### E. Performance SLO — ✅ done
+
+- [x] `cairn_context` activate p99 ≤ 500ms @ 1k blood (measured: ~15ms — 33× headroom)
+- [x] `cairn_session_end` full pipeline ≤ 5s @ 1k blood (measured: ~115ms — 43× headroom)
+- [x] `docs/PERFORMANCE.md` documents method and current data
+- [x] `npm run bench` fails the build if SLO regresses
+
+10k scale is intentionally not yet in the SLO gate — setup time on 10k yaml files exceeds vitest default timeout. Will be addressed once dogfood produces a real ≥ 1,000-event dataset.
+
+### F. External alpha — ❌ not started
+
+- [ ] ≥ 3 external users complete a full cycle (init → 30 days of use → ≥ 1 `cairn_session_end`)
+- [ ] ≥ 5 external feedback items recorded in `mcp/tests/scenarios/_findings.md`
+- [ ] All blocking issues closed
+
+### G. Observability — ✅ done
+
+- [x] Structured logs at `.cairn/logs/tools-YYYY-MM-DD.jsonl`, default on, configurable via `config.yaml.logging`
+- [x] `cairn doctor --metrics` prints blood/DNA/staged/last-session snapshot
+
+### H. User docs — ✅ done
+
+- [x] README "Defense Mechanisms" section explaining trauma + reevaluation_mode
+- [x] `docs/TROUBLESHOOTING.md` — 10 common symptoms with diagnosis steps
+- [x] `docs/EXAMPLES.md` — small / mid / maintenance project samples
+
+### I. CLI completeness — ✅ done
+
+- [x] `tests/e2e/cli-smoke.test.ts` covers every subcommand end-to-end
+- [x] Exit-code convention: 0 success, 1 user/input error, 2 `.cairn/` state error, 3 external dependency error
+- [x] No subcommand crash destroys `.cairn/` state
 
 ---
 
-## 自检问题
+## Phased path to 1.0
 
-发布 1.0 前必须能回答 yes：
+| Phase | Goal | Gate | ETA |
+|-------|------|------|-----|
+| **0.4.0** | Stability + recovery + perf + observability + docs | A + C + D + E + G + H + I | ✅ released 2026-05-17 |
+| **0.5.x** | Dogfood findings → bug fixes + threshold tuning | B (incremental) | rolling |
+| **0.9.0-alpha** | Open external alpha enrollment | F kickoff | when ≥ 14 dogfood days + zero P0 bugs |
+| **1.0.0** | Hard cut, SemVer takes effect | B + F complete | 1-2 months |
 
-1. 一个新用户在 Codex 上跟着 README 跑 30 分钟，能不能产生 ≥ 1 条 blood 且不出错？
-2. 我自己用 Cairn 写 Cairn，1 个月后 `.cairn/` 里的内容能不能让我说"是的，这就是我的设计史"？
-3. 如果 `.cairn/blood/` 有一个文件被手动改坏，Cairn 还能跑起来吗？
-4. 0.3.0 用户升级到 1.0.0，他的 `.cairn/` 数据会被吃掉还是平稳迁移？
-5. 我能不能在 1.0 之后承诺至少 6 个月不破坏 MCP 工具签名？
+---
 
-任何一个回答是 no → 不发 1.0。
+## Out of scope for 1.0
+
+The following are deliberately deferred to post-1.0:
+
+- Localized docs beyond English
+- Web UI / dashboard
+- Stronger multi-AI write-conflict resolution beyond file locking
+- More DNA trait kinds (currently `simplicity_bias` + `infra_aggressiveness`)
+- Cross-project DNA / blood sharing
+- Real-time bidirectional sync
+
+---
+
+## Self-check before pulling the 1.0 trigger
+
+Must answer **yes** to all five:
+
+1. Can a brand-new Codex user, following only the README, produce ≥ 1 blood event in 30 minutes without errors?
+2. After a month of using Cairn to build Cairn, would I look at `.cairn/` and say "yes, that is my actual decision history"?
+3. If a single `.cairn/blood/*.yaml` file is hand-corrupted, does Cairn still boot and recover?
+4. Can a 0.4.0 user upgrade to 1.0.0 without losing `.cairn/` data?
+5. Am I prepared to commit to ≥ 6 months of no breaking changes to MCP tool signatures after 1.0?
+
+Any "no" → not 1.0.
