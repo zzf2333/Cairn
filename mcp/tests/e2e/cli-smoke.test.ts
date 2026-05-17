@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
-import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { createTmpDir, cleanTmpDir } from "../test-helpers.js";
+import { createTmpDir, cleanTmpDir, initTestRepo } from "../test-helpers.js";
 
 const CLI = resolve(import.meta.dirname, "../../dist/cli/index.js");
 
@@ -21,7 +20,7 @@ function runCli(args: string[], cwd: string): { stdout: string; stderr: string; 
 describe.skipIf(!existsSync(CLI))("CLI E2E smoke", () => {
     beforeEach(async () => {
         tmpDir = await createTmpDir();
-        execSync("git init && git commit --allow-empty -m 'init'", { cwd: tmpDir });
+        initTestRepo(tmpDir);
     });
 
     afterEach(async () => {

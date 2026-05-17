@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { execSync } from "node:child_process";
 import { mkdir, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { createTmpDir, cleanTmpDir, makeConfig, makeState } from "../test-helpers.js";
+import { createTmpDir, cleanTmpDir, makeConfig, makeState, initTestRepo } from "../test-helpers.js";
 import { buildPaths, ALL_DIRS } from "../../src/paths.js";
 import { bootstrapEmpty } from "../../src/bootstrap.js";
 import { createContext, ensureCairnDirs, type CairnContext } from "../../src/context.js";
@@ -19,7 +18,7 @@ let ctx: CairnContext;
 
 beforeEach(async () => {
     tmpDir = await createTmpDir();
-    execSync("git init && git commit --allow-empty -m 'init'", { cwd: tmpDir });
+    initTestRepo(tmpDir);
 });
 
 afterEach(async () => {

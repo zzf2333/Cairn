@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execSync } from "node:child_process";
 import type { EvolutionEvent } from "../src/schemas/evolution-event.js";
 import type { SkeletonNode } from "../src/schemas/skeleton.js";
 import type { DNAIdentity } from "../src/schemas/dna.js";
@@ -14,6 +15,13 @@ export async function createTmpDir(): Promise<string> {
 
 export async function cleanTmpDir(dir: string): Promise<void> {
     await rm(dir, { recursive: true, force: true });
+}
+
+export function initTestRepo(dir: string, options: { stdio?: "ignore" | "inherit" } = {}): void {
+    execSync(
+        `git init -q && git -c user.email=test@cairn.local -c user.name=cairn-test commit -q --allow-empty -m 'init'`,
+        { cwd: dir, stdio: options.stdio ?? undefined },
+    );
 }
 
 const now = "2026-05-15T10:00:00Z";

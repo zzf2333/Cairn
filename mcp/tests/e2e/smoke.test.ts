@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { stat, readdir } from "node:fs/promises";
-import { execSync } from "node:child_process";
-import { createTmpDir, cleanTmpDir } from "../test-helpers.js";
+import { createTmpDir, cleanTmpDir, initTestRepo } from "../test-helpers.js";
 import { buildPaths, ALL_DIRS } from "../../src/paths.js";
 import { bootstrapEmpty } from "../../src/bootstrap.js";
 import { createContext, ensureCairnDirs } from "../../src/context.js";
@@ -11,7 +10,7 @@ let tmpDir: string;
 
 beforeEach(async () => {
     tmpDir = await createTmpDir();
-    execSync("git init && git commit --allow-empty -m 'init'", { cwd: tmpDir });
+    initTestRepo(tmpDir);
 });
 
 afterEach(async () => {

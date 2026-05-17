@@ -5,6 +5,7 @@ import {
     createTmpDir, cleanTmpDir,
     makeEvolutionEvent, makeTraumaEvent,
     makeSkeletonNode, makeDNA, makeConfig, makeState, makeStagedEntry,
+    initTestRepo,
 } from "../test-helpers.js";
 import { buildPaths, ALL_DIRS } from "../../src/paths.js";
 import { BloodStore } from "../../src/stores/blood-store.js";
@@ -438,7 +439,7 @@ describe("cairn_signal", () => {
 
 describe("cairn_session_end", () => {
     beforeEach(() => {
-        execSync("git init && git commit --allow-empty -m 'init'", { cwd: tmpDir });
+        initTestRepo(tmpDir);
     });
 
     it("creates session record", async () => {
@@ -529,8 +530,8 @@ describe("cairn_session_end", () => {
     it("scans git history when prior commit exists and routes revert as rejection", async () => {
         await handleSessionEnd(ctx, { summary: "first session" });
 
-        execSync("git commit --allow-empty -m 'feat: try thing'", { cwd: tmpDir });
-        execSync("git commit --allow-empty -m 'Revert feat: try thing'", { cwd: tmpDir });
+        execSync("git -c user.email=test@cairn.local -c user.name=cairn-test commit --allow-empty -m 'feat: try thing'", { cwd: tmpDir });
+        execSync("git -c user.email=test@cairn.local -c user.name=cairn-test commit --allow-empty -m 'Revert feat: try thing'", { cwd: tmpDir });
 
         const result = await handleSessionEnd(ctx, { summary: "second session" });
         const data = parseResult(result);
@@ -1025,7 +1026,7 @@ describe("cairn_dna_*", () => {
 
 describe("Compression closed loop via session_end", () => {
     beforeEach(() => {
-        execSync("git init && git commit --allow-empty -m 'init'", { cwd: tmpDir });
+        initTestRepo(tmpDir);
     });
 
     it("session_end produces a DNA staged candidate when infra rejections accumulate", async () => {

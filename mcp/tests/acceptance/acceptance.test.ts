@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { execSync } from "node:child_process";
-import { createTmpDir, cleanTmpDir, makeEvolutionEvent, makeTraumaEvent, makeSkeletonNode, makeConfig, makeState, makeStagedEntry } from "../test-helpers.js";
+import { createTmpDir, cleanTmpDir, makeEvolutionEvent, makeTraumaEvent, makeSkeletonNode, makeConfig, makeState, makeStagedEntry, initTestRepo } from "../test-helpers.js";
 import { buildPaths } from "../../src/paths.js";
 import { ALL_DIRS } from "../../src/paths.js";
 import { BloodStore } from "../../src/stores/blood-store.js";
@@ -78,7 +77,7 @@ beforeEach(async () => {
     for (const dir of ALL_DIRS(paths)) {
         await mkdir(dir, { recursive: true });
     }
-    execSync("git init && git commit --allow-empty -m 'init'", { cwd: tmpDir, stdio: "ignore" });
+    initTestRepo(tmpDir, { stdio: "ignore" });
     await new ConfigStore(paths.config).save(makeConfig());
     await new StateStore(paths.state).save(makeState());
     ctx = buildContext(paths);
