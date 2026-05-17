@@ -14,6 +14,19 @@ export async function loadExpected(path: string): Promise<ExpectedSpec> {
     return yamlParse(raw) as ExpectedSpec;
 }
 
+/**
+ * Strip the `(?i)` inline-flag prefix used in our expected.yaml files —
+ * JavaScript regex doesn't support inline flags. We always use the `i`
+ * flag in `new RegExp(_, "i")` so the behavior is preserved.
+ */
+function sanitizePattern(pattern: string): string {
+    return pattern.replace(/^\(\?i\)/, "").replace(/\(\?i\)/g, "");
+}
+
+function makeRegex(pattern: string, flags = "i"): RegExp {
+    return new RegExp(sanitizePattern(pattern), flags);
+}
+
 function getNested(obj: Record<string, unknown>, dottedPath: string): string | undefined {
     const parts = dottedPath.split(".");
     let cur: unknown = obj;
@@ -32,7 +45,7 @@ function argsMatch(call: ToolCallRecord, matchSpec: Record<string, string> | und
         const actual = getNested(call.args, path);
         if (actual === undefined) return false;
         try {
-            if (!new RegExp(pattern).test(actual)) return false;
+            if (!makeRegex(pattern).test(actual)) return false;
         } catch {
             // invalid regex — treat as literal contains
             if (!actual.includes(pattern)) return false;
@@ -88,7 +101,7 @@ function checkForbiddenCall(calls: ToolCallRecord[], a: ToolCallAssertion): Asse
 }
 
 function checkRequiredText(text: string, a: TextPatternAssertion): AssertionResult {
-    const re = new RegExp(a.pattern, "i");
+    const re = makeRegex(a.pattern);
     const m = text.match(re);
     if (!m) {
         return {
@@ -100,7 +113,7 @@ function checkRequiredText(text: string, a: TextPatternAssertion): AssertionResu
     if (a.near_pattern) {
         const idx = m.index ?? 0;
         const window = text.slice(Math.max(0, idx - 400), Math.min(text.length, idx + 400));
-        if (!new RegExp(a.near_pattern, "i").test(window)) {
+        if (!makeRegex(a.near_pattern).test(window)) {
             return {
                 name: `required text: ${a.pattern}`,
                 passed: false,
@@ -116,7 +129,7 @@ function checkRequiredText(text: string, a: TextPatternAssertion): AssertionResu
 }
 
 function checkForbiddenText(text: string, a: TextPatternAssertion): AssertionResult {
-    if (new RegExp(a.pattern, "i").test(text)) {
+    if (makeRegex(a.pattern).test(text)) {
         return {
             name: `forbidden text: ${a.pattern}`,
             passed: false,

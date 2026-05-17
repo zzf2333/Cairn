@@ -12,10 +12,10 @@ required_tool_calls:
 
 required_text_patterns:
   - pattern: "(?i)PKCE|OAuth\\s*2"
-  - pattern: "(?i)team|maintain|operational|complexity|burden|too\\s*small|3\\s*engineer"
-    description: must surface the historical rejection reason
-  - pattern: "(?i)rejected|previously|history|on record|in memory|cairn|已.*拒|历史"
-    description: must explicitly acknowledge this came from project memory
+  - pattern: "(?i)rejected|previously|history|on record|in memory|cairn|hard.?constraint|no-?go|blocked|forbidden|已.*拒|历史"
+    description: must explicitly acknowledge this came from project memory or is a recorded constraint
+  - pattern: "(?i)reevaluat|exec|human.*ratif|stage_accept|cairn_stage|override|lift|让.*人.*确认|重新.*评估|授权|推翻"
+    description: must point at the reevaluation / override path so the user knows how to revisit
 
 forbidden_tool_calls:
   - tool: cairn_signal

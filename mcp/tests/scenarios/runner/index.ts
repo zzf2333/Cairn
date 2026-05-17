@@ -10,22 +10,34 @@ import { loadExpected, evaluate, allPassed } from "./assertions.js";
 import { printResult, printSummary } from "./reporter.js";
 import { runClaudeCode } from "./platform-claude-code.js";
 import { runCodex } from "./platform-codex.js";
+import { runClaudeCodeCli } from "./platform-claude-code-cli.js";
+import { runCodexCli } from "./platform-codex-cli.js";
 import type { Platform, RunRecord, ScenarioResult, ScenarioSpec } from "./types.js";
+
+type Driver = "cli" | "sdk";
 
 interface CliOptions {
     filter?: string;
     platforms: Platform[];
     saveLogs: boolean;
     bail: boolean;
+    driver: Driver;
 }
 
 function parseCli(argv: string[]): CliOptions {
-    const opts: CliOptions = { platforms: ["claude-code", "codex"], saveLogs: true, bail: false };
+    const opts: CliOptions = {
+        platforms: ["claude-code", "codex"],
+        saveLogs: true,
+        bail: false,
+        driver: (process.env.CAIRN_SCENARIO_DRIVER as Driver) ?? "cli",
+    };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === "--platform" || a === "-p") {
             const v = argv[++i];
             opts.platforms = v.split(",").map((s) => s.trim()) as Platform[];
+        } else if (a === "--driver") {
+            opts.driver = argv[++i] as Driver;
         } else if (a === "--no-logs") {
             opts.saveLogs = false;
         } else if (a === "--bail") {
@@ -34,70 +46,96 @@ function parseCli(argv: string[]): CliOptions {
             opts.filter = a;
         }
     }
+    if (opts.driver !== "cli" && opts.driver !== "sdk") {
+        throw new Error(`unknown --driver '${opts.driver}', expected cli or sdk`);
+    }
     return opts;
 }
 
 async function runOnePlatform(
     scenario: ScenarioSpec,
     platform: Platform,
+    driver: Driver,
     saveLogs: boolean,
 ): Promise<ScenarioResult> {
     const tmp = await mkdtemp(join(tmpdir(), `cairn-scenario-${scenario.id}-${platform}-`));
+    const mcpServerPath = resolve(import.meta.dirname, "../../../dist/index.js");
     try {
         if (existsSync(scenario.fixturePath)) {
             const spec = await loadFixtureSpec(scenario.fixturePath);
             await buildFixture(tmp, spec);
         }
-        // run with the MCP server pinned to tmp
-        const bridge = await startMcp(tmp);
+
+        const promptRaw = await readFile(scenario.promptPath, "utf8");
+        const userTurns = parsePromptTurns(promptRaw);
+        const expected = await loadExpected(scenario.expectedPath);
+
+        let run: RunRecord;
         try {
-            const promptRaw = await readFile(scenario.promptPath, "utf8");
-            const userTurns = parsePromptTurns(promptRaw);
-            const expected = await loadExpected(scenario.expectedPath);
-
-            let run: RunRecord;
-            try {
+            if (driver === "cli") {
+                // CLI driver — each CLI spawns its own MCP server via inline config.
                 if (platform === "claude-code") {
-                    run = await runClaudeCode({ bridge, scenarioId: scenario.id, userTurns });
+                    run = await runClaudeCodeCli({
+                        scenarioId: scenario.id,
+                        userTurns,
+                        projectRoot: tmp,
+                        mcpServerPath,
+                    });
                 } else {
-                    run = await runCodex({ bridge, scenarioId: scenario.id, userTurns });
+                    run = await runCodexCli({
+                        scenarioId: scenario.id,
+                        userTurns,
+                        projectRoot: tmp,
+                        mcpServerPath,
+                    });
                 }
-            } catch (e) {
-                run = {
-                    scenarioId: scenario.id,
-                    platform,
-                    model: "(failed before model invocation)",
-                    started_at: new Date().toISOString(),
-                    finished_at: new Date().toISOString(),
-                    duration_ms: 0,
-                    tool_calls: [],
-                    assistant_text: "",
-                    user_turns: userTurns,
-                    raw_messages: [],
-                    error: (e as Error).message,
-                };
+            } else {
+                // SDK driver — we run the MCP server ourselves and bridge tool calls into the SDK.
+                const bridge = await startMcp(tmp);
+                try {
+                    if (platform === "claude-code") {
+                        run = await runClaudeCode({ bridge, scenarioId: scenario.id, userTurns });
+                    } else {
+                        run = await runCodex({ bridge, scenarioId: scenario.id, userTurns });
+                    }
+                } finally {
+                    await bridge.close();
+                }
             }
-
-            const assertions = run.error ? [{ name: "driver", passed: false, detail: run.error }] : evaluate(run, expected);
-            const passed = !run.error && allPassed(assertions);
-
-            if (saveLogs) {
-                const logDir = resolve(import.meta.dirname, "../_runs", scenario.id);
-                await mkdir(logDir, { recursive: true });
-                await writeFile(join(logDir, `${platform}.json`), JSON.stringify({ run, assertions, passed }, null, 2));
-            }
-            return { scenarioId: scenario.id, platform, passed, assertions, run };
-        } finally {
-            await bridge.close();
+        } catch (e) {
+            run = {
+                scenarioId: scenario.id,
+                platform,
+                model: "(failed before model invocation)",
+                started_at: new Date().toISOString(),
+                finished_at: new Date().toISOString(),
+                duration_ms: 0,
+                tool_calls: [],
+                assistant_text: "",
+                user_turns: userTurns,
+                raw_messages: [],
+                error: (e as Error).message,
+            };
         }
+
+        const assertions = run.error ? [{ name: "driver", passed: false, detail: run.error }] : evaluate(run, expected);
+        const passed = !run.error && allPassed(assertions);
+
+        if (saveLogs) {
+            const logDir = resolve(import.meta.dirname, "../_runs", scenario.id);
+            await mkdir(logDir, { recursive: true });
+            await writeFile(
+                join(logDir, `${platform}-${driver}.json`),
+                JSON.stringify({ run, assertions, passed, driver }, null, 2),
+            );
+        }
+        return { scenarioId: scenario.id, platform, passed, assertions, run };
     } finally {
         await rm(tmp, { recursive: true, force: true });
     }
 }
 
 function parsePromptTurns(raw: string): string[] {
-    // Split prompt.md by lines starting with "## USER" to support multi-turn scenarios.
-    // Single-turn prompts (no ## USER marker) are returned as one turn.
     const lines = raw.split("\n");
     const turns: string[] = [];
     let current: string[] = [];
@@ -110,7 +148,6 @@ function parsePromptTurns(raw: string): string[] {
             continue;
         }
         if (/^##\s+/.test(ln) && !/^##\s*USER\b/i.test(ln)) {
-            // section like "## NOTES" — skip
             if (inUser && current.length > 0) {
                 turns.push(current.join("\n").trim());
                 current = [];
@@ -133,13 +170,15 @@ async function main(): Promise<void> {
         console.error(`No scenarios matched filter '${opts.filter ?? "*"}'`);
         process.exit(1);
     }
-    console.log(`Found ${scenarios.length} scenario(s); platforms = [${opts.platforms.join(", ")}]`);
+    console.log(
+        `Found ${scenarios.length} scenario(s); driver=${opts.driver}; platforms = [${opts.platforms.join(", ")}]`,
+    );
     console.log("");
 
     const results: ScenarioResult[] = [];
     outer: for (const s of scenarios) {
         for (const p of opts.platforms) {
-            const r = await runOnePlatform(s, p, opts.saveLogs);
+            const r = await runOnePlatform(s, p, opts.driver, opts.saveLogs);
             results.push(r);
             printResult(r);
             if (opts.bail && !r.passed) break outer;

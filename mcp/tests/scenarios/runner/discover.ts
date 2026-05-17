@@ -29,7 +29,14 @@ export async function discoverScenarios(filter?: string): Promise<ScenarioSpec[]
         const id = `${m[1].toUpperCase()}${m[2]}`;
         if (filter) {
             const f = filter.toLowerCase();
-            if (!id.toLowerCase().includes(f) && !name.toLowerCase().includes(f)) continue;
+            // Exact id match wins; otherwise fall back to substring match on id or dir name.
+            const idLower = id.toLowerCase();
+            const exactId = idLower === f;
+            const subId = idLower.includes(f);
+            const subName = name.toLowerCase().includes(f);
+            if (!exactId && !subId && !subName) continue;
+            // Defer non-exact matches so we can prefer exact if any.
+            if (!exactId && out.some((s) => s.id.toLowerCase() === f)) continue;
         }
         out.push({
             id,
