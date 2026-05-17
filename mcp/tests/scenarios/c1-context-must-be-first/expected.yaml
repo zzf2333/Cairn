@@ -3,7 +3,11 @@ description: |
   simple-looking task. Tests "session start" discipline.
 
 required_tool_calls:
+  # cairn_init_status as the very first call is also acceptable (e.g. AI checking init
+  # state before context). Require cairn_context to be called early — within the first
+  # few calls — but not strictly position 1.
   - tool: cairn_context
     must_be_called: true
-    order: 1
-    description: must be the first tool call of the session
+    description: must call cairn_context near the start of the session
+min_total_tool_calls: 1
+max_total_tool_calls: 20

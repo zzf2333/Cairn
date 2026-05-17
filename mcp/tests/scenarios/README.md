@@ -113,7 +113,20 @@ npx tsx tests/scenarios/runner/smoke-all.ts
 ### Outputs
 
 - Terminal: PASS/FAIL per scenario × platform + a summary table
-- `_runs/<scenario_id>/<platform>.json`: full record (raw messages, tool calls, assertion results) for offline inspection
+- `_runs/<scenario_id>/<platform>-<driver>.json`: full record (raw messages, tool calls, assertion results) for offline inspection
+
+## Known platform differences (Codex)
+
+The CLI driver runs both real `claude -p` and real `codex exec`. Some scenarios consistently expose Codex platform behavior that diverges from Claude Code:
+
+| Scenario | Pattern |
+|----------|---------|
+| **A7 stage maintenance** | Codex tends to draft the migration plan despite a `maintenance` stage. Stage advisory is weaker than `hard_constraint` in modulating Codex behavior. |
+| **B3 multi-turn user_rejection** | Multi-turn scenarios use `codex exec resume <thread_id>` to carry session state. In practice the resume sometimes loses earlier context, so signals raised in turn 2 (e.g. user rejecting the AI's turn-1 suggestion) don't get captured. Investigating. |
+| **C3 staged prompt review** | When the fixture cwd is empty of source code, Codex falls through to "no source files here, can't proceed" and ignores the pending `staged` queue that `cairn_context` surfaced. |
+| **D3 empty init flow** | Same root cause as C3 — Codex reads the empty cwd as "wrong project" rather than "uninitialized Cairn project I should help initialize". |
+
+These are not assertion bugs — they're real platform differences worth documenting. Claude Code passes all four scenarios with the same fixtures and prompts.
 
 ## Adding a new scenario
 

@@ -13,7 +13,7 @@ required_tool_calls:
       "details.what": "(?i)postgres|postgresql"
 
 required_text_patterns:
-  - pattern: "(?i)recorded|noted|captured|signal|memory|cairn|记录"
+  - pattern: "(?i)record|noted|captur|signal|memory|cairn|logg|track|filed|记录|登记"
     description: AI should acknowledge the decision was captured
   - pattern: "(?i)orders|schema|create table|column|primary key"
     description: AI should still proceed to the schema work

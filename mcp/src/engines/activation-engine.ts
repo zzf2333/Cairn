@@ -35,11 +35,14 @@ export interface CairnContextResult {
             level: string;
             implication: string;
         }>;
+        reevaluation_mode?: boolean;
+        paused_traits?: Array<{ name: string; level: string }>;
     };
     constraints: {
         no_go: Array<{
             what: string;
             reason: string;
+            reasoning?: string;
             gravity: string;
             source_event: string;
             archived?: boolean;
@@ -80,10 +83,10 @@ export class ActivationEngine {
         const matchedNodes = await this.taskToSkeleton(input);
         const expandedDomains = await this.expandCapillaries(matchedNodes);
         const { events, archivedReactivating, scannedCount } = await this.traverseBlood(expandedDomains);
-        const relevantTraits = await this.activateDna(expandedDomains);
+        const dnaActivation = await this.activateDna(expandedDomains);
         return this.assembleContext(
             input, matchedNodes, expandedDomains,
-            events, archivedReactivating, scannedCount, relevantTraits,
+            events, archivedReactivating, scannedCount, dnaActivation,
         );
     }
 
@@ -186,9 +189,26 @@ export class ActivationEngine {
         return { events: relevant, archivedReactivating, scannedCount };
     }
 
-    private async activateDna(domains: string[]): Promise<Array<{ name: string; level: string; implication: string }>> {
+    private async activateDna(domains: string[]): Promise<{
+        traits: Array<{ name: string; level: string; implication: string }>;
+        reevaluationMode: boolean;
+        pausedTraits: Array<{ name: string; level: string }>;
+    }> {
         const identity = await this.dnaStore.loadIdentity();
-        if (identity.status === "not_yet_emerged") return [];
+        if (identity.status === "not_yet_emerged") {
+            return { traits: [], reevaluationMode: false, pausedTraits: [] };
+        }
+
+        // In reevaluation_mode the TrustRouter already skips trait-based modulation
+        // (see trust-router.ts). Mirror that here so the AI doesn't *think* the
+        // traits are active when the runtime is ignoring them.
+        if (identity.reevaluation_mode) {
+            const paused = Object.entries(identity.traits).map(([name, trait]) => ({
+                name,
+                level: trait.level,
+            }));
+            return { traits: [], reevaluationMode: true, pausedTraits: paused };
+        }
 
         const traits: Array<{ name: string; level: string; implication: string }> = [];
         for (const [name, trait] of Object.entries(identity.traits)) {
@@ -197,7 +217,7 @@ export class ActivationEngine {
                 traits.push({ name, level: trait.level, implication });
             }
         }
-        return traits;
+        return { traits, reevaluationMode: false, pausedTraits: [] };
     }
 
     private traitImplication(name: string, level: string, _domains: string[]): string | null {
@@ -229,16 +249,30 @@ export class ActivationEngine {
         events: EvolutionEvent[],
         archivedReactivating: EvolutionEvent[],
         scannedCount: number,
-        relevantTraits: Array<{ name: string; level: string; implication: string }>,
+        dnaActivation: {
+            traits: Array<{ name: string; level: string; implication: string }>;
+            reevaluationMode: boolean;
+            pausedTraits: Array<{ name: string; level: string }>;
+        },
     ): Promise<CairnContextResult> {
         const state = await this.stateStore.load();
+
+        // no_go[].reason must carry the *why* (reasoning), not the *how*
+        // (behavior_effect.instruction). The latter tells the AI what to do; the
+        // former lets the AI explain the decision back to the user and judge
+        // whether circumstances have changed enough to seek a reevaluation.
+        const noGoReason = (e: EvolutionEvent): string => {
+            const r = (e.reasoning ?? "").trim();
+            return r.length > 0 ? r : e.behavior_effect.instruction;
+        };
 
         const noGo: CairnContextResult["constraints"]["no_go"] = [];
         for (const event of events) {
             if (event.behavior_effect.type === "avoid_suggestion") {
                 noGo.push({
                     what: event.subject.name,
-                    reason: event.behavior_effect.instruction,
+                    reason: noGoReason(event),
+                    reasoning: event.reasoning,
                     gravity: event.gravity.level,
                     source_event: event.id,
                 });
@@ -248,7 +282,8 @@ export class ActivationEngine {
             if (event.behavior_effect.type === "avoid_suggestion") {
                 noGo.push({
                     what: event.subject.name,
-                    reason: `[archived, reactivating] ${event.behavior_effect.instruction}`,
+                    reason: `[archived, reactivating] ${noGoReason(event)}`,
+                    reasoning: event.reasoning,
                     gravity: event.gravity.level,
                     source_event: event.id,
                     archived: true,
@@ -323,7 +358,15 @@ export class ActivationEngine {
                 status: state.stage.status,
                 guidance: state.stage.guidance,
             },
-            dna: { relevant_traits: relevantTraits },
+            dna: {
+                relevant_traits: dnaActivation.traits,
+                ...(dnaActivation.reevaluationMode
+                    ? {
+                          reevaluation_mode: true,
+                          paused_traits: dnaActivation.pausedTraits,
+                      }
+                    : {}),
+            },
             constraints: {
                 no_go: noGo,
                 accepted_debt: allAcceptedDebt,
@@ -339,7 +382,7 @@ export class ActivationEngine {
                     allAcceptedDebt,
                     stageConstraints,
                     relevantDomains,
-                    relevantTraits,
+                    dnaActivation,
                 })),
             },
         };

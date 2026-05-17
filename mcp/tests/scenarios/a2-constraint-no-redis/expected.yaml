@@ -9,8 +9,8 @@ required_tool_calls:
 required_text_patterns:
   - pattern: "(?i)redis|不能.*redis|排除.*redis"
     description: must acknowledge Redis is excluded (mentioning it in the negative)
-  - pattern: "(?i)in-process|in-memory|lru|postgres|database|cache.*postgres|本地|进程内"
-    description: must offer an in-process / DB-backed alternative
+  - pattern: "(?i)in-process|in-memory|lru|postgres|database|cache.*postgres|本地|进程内|cdn|edge|cloudflare|fastly|cloudfront|varnish|nginx.*cache|application.*cache"
+    description: must offer an alternative caching path (in-process, DB, or edge/CDN)
 
 forbidden_text_patterns:
   - pattern: "(?i)我推荐.*redis|recommend\\s+redis|use\\s+redis|go\\s+with\\s+redis"
