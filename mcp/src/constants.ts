@@ -68,6 +68,7 @@ export const KNOWN_DNA_TRAITS = ["simplicity_bias", "infra_aggressiveness"] as c
 export type KnownDnaTrait = typeof KNOWN_DNA_TRAITS[number];
 
 export const RESURRECTION_THRESHOLD = 5; // hits in 30 days
+export const SESSION_STALE_AFTER_MINUTES = 120;
 
 export const VIEWS_TOKEN_TARGETS = {
     output: { target: 500, hardLimit: 800 },

@@ -190,12 +190,14 @@ Returns:
     "required_response?", "trauma?", "archived?": boolean
   }],
   "meta": { "skeleton_nodes_activated", "blood_events_scanned", "context_token_estimate" },
-  "session": { "id", "status": "active", "recovered_from": null | { "id", "started_at", "signals_count" } }
+  "session": { "id", "status": "active" }
+  // OR when a stale session is detected:
+  "session": { "id", "status": "blocked_by_unclosed_session", "recovery_required": true, "unclosed_session": { ... } }
 }
 ```
 
-**If `session.recovered_from` is not null**, a previous session was interrupted.
-Call `cairn_session_recover()` before starting long-running work.
+**If `session.recovery_required` is true**, a previous session was not closed properly.
+Call `cairn_session_recover()` to close the stale session, then call `cairn_context()` again.
 
 **Respect all returned constraints for the remainder of the session.**
 

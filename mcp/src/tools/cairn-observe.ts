@@ -133,6 +133,11 @@ export async function handleObserve(ctx: CairnContext, args: Record<string, unkn
         const skipped = results.filter(r => r.recommendation === "skip").length;
         const staged = results.filter(r => r.action_taken === "staged").length;
 
+        if (captured > 0) {
+            await ctx.stateStore.touchSession();
+            await ctx.stateStore.incrementSignalCount(false);
+        }
+
         return toolResult(JSON.stringify({
             observed: true,
             summary,

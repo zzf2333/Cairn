@@ -56,7 +56,7 @@ Call `cairn_init_status()`. If `status: not_initialized`:
 
 **Call `cairn_context({ task?, files? })` before every response**, regardless of task size. `cairn_context` is the session guard — it creates an active session, activates cognition, and detects stale sessions. Skip only if you already called it this turn with hot context.
 
-If the response includes `session.recovered_from` (not null), a previous session was interrupted. Call `cairn_session_recover()` before starting long-running work.
+If the response includes `session.recovery_required` (true), a previous session was not closed properly. Call `cairn_session_recover()` to close the stale session, then call `cairn_context()` again.
 
 Respect every returned field for the remainder of the session:
 

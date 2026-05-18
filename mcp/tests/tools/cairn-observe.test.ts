@@ -270,3 +270,59 @@ describe("cairn_observe", () => {
         expect(data.instruction).toContain("Safe to proceed");
     });
 });
+
+describe("cairn_observe session integration", () => {
+    it("increments signals_count when candidates are captured", async () => {
+        await ctx.stateStore.startSession({ id: "obs_session" });
+        await handleObserve(ctx, {
+            summary: "Made a decision",
+            candidates: [{
+                signal_type: "decision",
+                domain: "api-layer",
+                details: { what: "Use REST" },
+                evidence: { user_said: "REST" },
+                recommendation: "capture",
+                recommendation_reason: "significant",
+            }],
+        });
+        const session = await ctx.stateStore.getActiveSession();
+        expect(session!.signals_count).toBe(1);
+    });
+
+    it("does not increment signals_count when all skipped", async () => {
+        await ctx.stateStore.startSession({ id: "obs_skip_session" });
+        await handleObserve(ctx, {
+            summary: "Routine changes",
+            candidates: [{
+                signal_type: "decision",
+                details: { what: "Minor fix" },
+                evidence: {},
+                recommendation: "skip",
+                recommendation_reason: "not worth it",
+            }],
+        });
+        const session = await ctx.stateStore.getActiveSession();
+        expect(session!.signals_count).toBe(0);
+    });
+
+    it("touches active_session last_touched_at on capture", async () => {
+        await ctx.stateStore.startSession({ id: "obs_touch_session" });
+        const state = await ctx.stateStore.load();
+        state.active_session!.last_touched_at = "2020-01-01T00:00:00.000Z";
+        await ctx.stateStore.save(state);
+
+        await handleObserve(ctx, {
+            summary: "Decision made",
+            candidates: [{
+                signal_type: "decision",
+                domain: "api-layer",
+                details: { what: "Use middleware" },
+                evidence: {},
+                recommendation: "capture",
+                recommendation_reason: "architecture",
+            }],
+        });
+        const session = await ctx.stateStore.getActiveSession();
+        expect(session!.last_touched_at).not.toBe("2020-01-01T00:00:00.000Z");
+    });
+});

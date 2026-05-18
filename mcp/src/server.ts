@@ -70,7 +70,7 @@ const CAIRN_INSTRUCTIONS = [
     "",
     "SESSION START: Call cairn_context({ task?, files? }) BEFORE responding to any user request.",
     "cairn_context is the session guard — it tracks an active session, activates cognition, and detects stale sessions.",
-    "If response includes session.recovered_from, a previous session was not closed properly — call cairn_session_recover() first.",
+    "If response includes session.recovery_required, a previous session was not closed — call cairn_session_recover() first, then call cairn_context() again.",
     "cairn_plan REJECTS calls without prior cairn_context. cairn_signal warns but continues.",
     "Respect ALL returned constraints for the entire session:",
     "- constraints.no_go: never suggest these directions; entries with archived:true are weaker (recent reactivations) but still warn",

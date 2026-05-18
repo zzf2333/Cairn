@@ -1467,16 +1467,38 @@ describe("cairn_context session guard", () => {
         expect(second!.task).toBe("second task");
     });
 
-    it("detects stale session with signals and includes recovered_from", async () => {
+    it("blocks when stale session detected (signals > 0, last_touched > threshold)", async () => {
         await handleContext(ctx, { task: "old task" });
         await ctx.stateStore.incrementSignalCount(false);
         await ctx.stateStore.incrementSignalCount(false);
 
+        const state = await ctx.stateStore.load();
+        state.active_session!.last_touched_at = new Date(Date.now() - 3 * 60 * 60_000).toISOString();
+        await ctx.stateStore.save(state);
+
         const result = await handleContext(ctx, { task: "new task" });
         const data = parseResult(result);
-        expect(data.session).toBeDefined();
-        expect(data.session.recovered_from).not.toBeNull();
-        expect(data.session.recovered_from.signals_count).toBe(2);
+        expect(data.session.status).toBe("blocked_by_unclosed_session");
+        expect(data.session.recovery_required).toBe(true);
+        expect(data.session.unclosed_session.signals_count).toBe(2);
+
+        const session = await ctx.stateStore.getActiveSession();
+        expect(session!.id).toBe(data.session.id);
+        expect(session!.signals_count).toBe(2);
+    });
+
+    it("touches same-workflow re-call when signals > 0 but not stale", async () => {
+        await handleContext(ctx, { task: "first task" });
+        const firstId = (await ctx.stateStore.getActiveSession())!.id;
+        await ctx.stateStore.incrementSignalCount(false);
+
+        const result = await handleContext(ctx, { task: "continued task" });
+        const data = parseResult(result);
+        expect(data.session.status).toBe("active");
+        expect(data.session.id).toBe(firstId);
+
+        const session = await ctx.stateStore.getActiveSession();
+        expect(session!.task).toBe("continued task");
     });
 
     it("includes session field in response", async () => {
@@ -1485,7 +1507,7 @@ describe("cairn_context session guard", () => {
         expect(data.session).toBeDefined();
         expect(data.session.id).toBeDefined();
         expect(data.session.status).toBe("active");
-        expect(data.session.recovered_from).toBeNull();
+        expect(data.session.recovery_required).toBeUndefined();
     });
 });
 
