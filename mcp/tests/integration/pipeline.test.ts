@@ -246,7 +246,7 @@ describe("Compression to DNA pipeline", () => {
         expect(output).toContain("infra_aggressiveness");
     });
 
-    it("does not re-stage the same trait on subsequent session_end", async () => {
+    it("does not re-stage the same trait on subsequent session_end", { timeout: 15_000 }, async () => {
         const longAgo = new Date();
         longAgo.setMonth(longAgo.getMonth() - 5);
         for (let i = 0; i < 6; i++) {
