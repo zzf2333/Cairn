@@ -99,65 +99,32 @@ Without the skill file, the AI still has Cairn's built-in MCP instructions and c
 
 ---
 
-## 4. First session — the AI drives
+## 4. Initialize — tell the AI one sentence
 
-You do not manually populate `.cairn/`. The AI does, guided by Cairn's built-in instructions. Here's what happens:
+You do not manually populate `.cairn/`. Just tell your AI to do it:
 
-### Step 1: AI detects uninitialized state
+| Host | What to type |
+|------|--------------|
+| Claude Code | `Initialize Cairn for this project` or `初始化 Cairn` |
+| Codex | `Initialize Cairn for this project` |
 
-The AI calls `cairn_init_status()` and gets back:
+That's the trigger. The AI takes it from here — the whole process takes about 2 minutes.
 
-```json
-{
-  "status": "not_initialized",
-  "guide": {
-    "analysis_steps": [
-      "Read README.md and docs/",
-      "Check package.json / Cargo.toml / go.mod",
-      "Run git log --oneline -20",
-      "Examine directory structure for domain boundaries",
-      "..."
-    ],
-    "schema_reference": {
-      "event_types": ["architecture_decision", "rejection", "constraint_added", ...],
-      "behavior_effect_types": ["avoid_suggestion", "prefer_approach", "warn_before", "require_review"],
-      "validity_levels": ["transient", "tactical", "strategic", "identity"],
-      "..."
-    },
-    "tips": ["Always call with dry_run: true first", "Aim for 5-15 blood_candidates", "..."]
-  }
-}
-```
+### What happens behind the scenes
 
-The `guide` contains everything the AI needs: what to analyze, all valid enum values for every field, and practical tips. The AI follows this guide to analyze your project.
-
-### Step 2: AI proposes initial cognition (dry run)
-
-```
-cairn_init_commit({ dry_run: true, config, skeleton, blood_candidates, stage?, dna? })
-```
-
-The dry-run shows what would be written and how TrustRouter would route each blood candidate:
-
-```
-Proposed:
-  - 4 skeletons: api, data, auth, ui
-  - 9 blood_candidates_auto_confirmed (G0/G1)
-  - 3 blood_candidates_staged (G2+, need your review)
-  - stage: maturity (confidence 0.78)
-```
-
-### Step 3: You confirm, AI writes
-
-You review the dry-run output and confirm. The AI calls `cairn_init_commit(...)` without `dry_run` to write.
-
-### Step 4: Review staged events
-
-High-gravity events (G2+ in standard mode) go to the staged queue. The AI calls `cairn_stage_list()` and presents each entry for your accept/reject decision.
-
-### Step 5: Ready
-
-`cairn_context()` now returns real constraints and domain activations. The AI proceeds with whatever you originally asked for, now with cognition loaded.
+1. **AI calls `cairn_init_status()`** — gets a structured guide with analysis steps, all valid enum values, and tips
+2. **AI analyzes your project** — reads README, deps, git log, directory structure
+3. **AI proposes initial cognition (dry run)** — calls `cairn_init_commit({ dry_run: true, ... })` and shows you:
+   ```
+   Proposed:
+     - 4 skeletons: api, data, auth, ui
+     - 9 blood_candidates_auto_confirmed (G0/G1)
+     - 3 blood_candidates_staged (G2+, need your review)
+     - stage: maturity (confidence 0.78)
+   ```
+4. **You confirm** — the AI writes the cognition
+5. **You review staged events** — high-gravity decisions (G2+) need your explicit accept/reject
+6. **Done** — `cairn_context()` now returns real constraints; the AI is ready for work
 
 The dry-run step matters. The AI can be wrong about your project structure on first analysis; the dry-run is the chance to catch it before anything writes.
 

@@ -66,23 +66,39 @@ More diagrams: [Integration overview](./docs/diagrams/03-integration-overview.pn
 
 ## Install in 3 minutes
 
+**Step 1 — Install**
+
 ```bash
-# 1. install
 npm install -g cairn-mcp-server
-
-# 2a. Claude Code — add to .claude/mcp.json (project) or ~/.claude.json (global)
-#     "mcpServers": { "cairn": { "command": "cairn-mcp-server" } }
-
-# 2b. Codex — add to ~/.codex/config.toml
-#     [mcp_servers.cairn]
-#     command = "cairn-mcp-server"
-
-# 3. open your AI tool — initialization is fully AI-driven
 ```
 
-That's it. No `cairn init` required — the MCP server auto-bootstraps `.cairn/` on startup. On first use, the AI calls `cairn_init_status()`, receives a structured guide (analysis steps + all valid enum values + tips), analyzes your project, and proposes initial cognition via `cairn_init_commit({ dry_run: true })` for your review.
+**Step 2 — Wire MCP** (pick your host)
 
-Optionally append the protocol file (`skills/claude-code/SKILL.md` or `skills/codex.md`) to your project's `CLAUDE.md` / `AGENTS.md` for stronger ongoing session enforcement.
+| Host | Config file | Add this |
+|------|-------------|----------|
+| Claude Code | `.claude/mcp.json` or `~/.claude.json` | `"mcpServers": { "cairn": { "command": "cairn-mcp-server" } }` |
+| Codex | `~/.codex/config.toml` | `[mcp_servers.cairn]`<br>`command = "cairn-mcp-server"` |
+
+Restart your AI tool after editing.
+
+**Step 3 — Initialize** (one sentence in your AI tool)
+
+No `cairn init` needed — just tell your AI:
+
+> **Claude Code**: `Initialize Cairn for this project`
+>
+> **Codex**: `Initialize Cairn for this project`
+
+The AI will analyze your project, propose initial cognition (skeleton + decisions + stage) for your review, and write it after you confirm. The whole process takes about 2 minutes.
+
+**Step 4 (optional) — Add the protocol file**
+
+Append the skill file to your project instructions for stronger ongoing session enforcement:
+
+| Host | File | Append to |
+|------|------|-----------|
+| Claude Code | `skills/claude-code/SKILL.md` | `CLAUDE.md` |
+| Codex | `skills/codex.md` | `AGENTS.md` |
 
 Full walkthrough in [`docs/v-intervene/enter.md`](./docs/v-intervene/enter.md).
 
