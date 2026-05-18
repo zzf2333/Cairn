@@ -3,6 +3,9 @@
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
       <polygon points="0 0, 8 4, 0 8" fill="#5a5a5a"/>
     </marker>
+      <filter id="shadow-soft" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
   </defs>
   <rect width="960" height="680" fill="#f8f6f3"/>
 
@@ -10,17 +13,17 @@
   <text x="480" y="70" text-anchor="middle" font-size="14" fill="#6a6a6a">Three sources → TrustRouter → three destinations → engine maintenance</text>
 
   <!-- 3 sources -->
-  <rect x="50" y="110" width="240" height="84" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5"/>
+  <rect x="50" y="110" width="240" height="84" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
   <text x="170" y="140" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">Git commits</text>
   <text x="170" y="162" text-anchor="middle" font-size="12" fill="#1a1a1a">GitEar scans since last session</text>
   <text x="170" y="180" text-anchor="middle" font-size="12" fill="#6a6a6a">revert, refactor, feat patterns</text>
 
-  <rect x="360" y="110" width="240" height="84" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5"/>
+  <rect x="360" y="110" width="240" height="84" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
   <text x="480" y="140" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">Conversation turns</text>
   <text x="480" y="162" text-anchor="middle" font-size="12" fill="#1a1a1a">cairn_signal from Host AI</text>
   <text x="480" y="180" text-anchor="middle" font-size="12" fill="#6a6a6a">decisions, rejections, debt</text>
 
-  <rect x="670" y="110" width="240" height="84" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5"/>
+  <rect x="670" y="110" width="240" height="84" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
   <text x="790" y="140" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">Code-vs-cognition drift</text>
   <text x="790" y="162" text-anchor="middle" font-size="12" fill="#1a1a1a">CalibrationEar.calibrate()</text>
   <text x="790" y="180" text-anchor="middle" font-size="12" fill="#6a6a6a">no_go_violation, dna_drift...</text>
@@ -31,7 +34,7 @@
   <line x1="790" y1="200" x2="580" y2="252" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
 
   <!-- TrustRouter -->
-  <rect x="280" y="262" width="400" height="100" rx="12" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="2.5"/>
+  <rect x="280" y="262" width="400" height="100" rx="12" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
   <text x="480" y="292" text-anchor="middle" font-size="16" font-weight="700" fill="#1a1a1a">TrustRouter</text>
   <text x="480" y="314" text-anchor="middle" font-size="12" fill="#1a1a1a">dedup  →  governance  →  trauma escalation</text>
   <text x="480" y="332" text-anchor="middle" font-size="12" fill="#1a1a1a">→  DNA modulation  →  gravity routing</text>
@@ -43,17 +46,17 @@
   <line x1="580" y1="364" x2="760" y2="420" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
 
   <!-- destinations -->
-  <rect x="80" y="426" width="240" height="78" rx="12" fill="#e8e6e3" stroke="#4a4a4a" stroke-width="2"/>
+  <rect x="80" y="426" width="240" height="78" rx="12" fill="#e8e6e3" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
   <text x="200" y="454" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">dropped  (G0)</text>
   <text x="200" y="476" text-anchor="middle" font-size="12" fill="#6a6a6a">noise — not stored</text>
   <text x="200" y="494" text-anchor="middle" font-size="12" fill="#6a6a6a">audit log records the drop</text>
 
-  <rect x="360" y="426" width="240" height="78" rx="12" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="2"/>
+  <rect x="360" y="426" width="240" height="78" rx="12" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
   <text x="480" y="454" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">staged  (G2+)</text>
   <text x="480" y="476" text-anchor="middle" font-size="12" fill="#1a1a1a">.cairn/staged/&lt;id&gt;.yaml</text>
   <text x="480" y="494" text-anchor="middle" font-size="12" fill="#6a6a6a">awaits human ratification</text>
 
-  <rect x="640" y="426" width="240" height="78" rx="12" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="2"/>
+  <rect x="640" y="426" width="240" height="78" rx="12" fill="#9dd4c7" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
   <text x="760" y="454" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">blood  (G1 / auto)</text>
   <text x="760" y="476" text-anchor="middle" font-size="12" fill="#1a1a1a">.cairn/blood/&lt;id&gt;.yaml</text>
   <text x="760" y="494" text-anchor="middle" font-size="12" fill="#6a6a6a">confirmed evolution event</text>
@@ -62,31 +65,31 @@
   <line x1="760" y1="506" x2="760" y2="540" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)"/>
 
   <!-- maintenance pipeline -->
-  <rect x="80" y="546" width="800" height="106" rx="12" fill="#ffffff" stroke="#4a4a4a" stroke-width="2"/>
+  <rect x="80" y="546" width="800" height="106" rx="12" fill="#ffffff" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
   <text x="480" y="572" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">cairn_session_end  —  maintenance pipeline</text>
 
   <g font-size="11" fill="#1a1a1a">
-    <rect x="100" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <rect x="100" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
     <text x="159" y="605" text-anchor="middle" font-weight="600">git_scan</text>
     <text x="159" y="622" text-anchor="middle" fill="#6a6a6a">GitEar</text>
 
-    <rect x="232" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <rect x="232" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
     <text x="291" y="605" text-anchor="middle" font-weight="600">decay</text>
     <text x="291" y="622" text-anchor="middle" fill="#6a6a6a">archive/downgrade</text>
 
-    <rect x="364" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <rect x="364" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
     <text x="423" y="605" text-anchor="middle" font-weight="600">calibration</text>
     <text x="423" y="622" text-anchor="middle" fill="#6a6a6a">+ safety valve</text>
 
-    <rect x="496" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <rect x="496" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
     <text x="555" y="605" text-anchor="middle" font-weight="600">stage</text>
     <text x="555" y="622" text-anchor="middle" fill="#6a6a6a">phase inference</text>
 
-    <rect x="628" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <rect x="628" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
     <text x="687" y="605" text-anchor="middle" font-weight="600">compression</text>
     <text x="687" y="622" text-anchor="middle" fill="#6a6a6a">DNA candidates</text>
 
-    <rect x="760" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="1.2"/>
+    <rect x="760" y="586" width="118" height="50" rx="8" fill="#f4e4c1" stroke="#4a4a4a" stroke-width="2.5" filter="url(#shadow-soft)"/>
     <text x="819" y="605" text-anchor="middle" font-weight="600">views regen</text>
     <text x="819" y="622" text-anchor="middle" fill="#6a6a6a">.cairn/views/</text>
 

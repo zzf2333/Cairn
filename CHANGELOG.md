@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2026-05-18 (README operational layer + diagram polish)
+
+Docs-only release. No engine, store, or tool behavior changed; 274 unit tests pass unchanged.
+
+0.4.2 rebuilt the deep documentation as a six-volume argument. 0.4.3 rebuilds the **surface** — the two READMEs and the two README-embedded diagrams — so a first-time visitor can see what Cairn gives the AI in one scan, without having to enter the volumes first. The volumes remain the canonical argument; the README is now the operational layer that points into them.
+
+### Changed
+
+**`README.md` / `README.zh.md`** — restructured from "philosophy entry + six-volume index" to a layered shape (operational surface → philosophical depth) while preserving Cairn's restrained voice:
+
+- **Hero** — main tagline kept (`A software project is not a pile of code...`), new operational sub-tagline added (`Cairn is the MCP layer that keeps that organism's cognition alive across AI sessions.`)
+- **"What Cairn gives the AI"** *(new)* — 14-row matrix of every MCP tool with columns `When the AI calls it` and `What it does`, sourced directly from `mcp/src/tools/`. Marks `cairn_context` + `cairn_session_end` as the two mandatory-per-session tools; tags `cairn_doctor` as *(maintenance)*
+- **"A session in flight"** *(new)* — daily-flow arrow chain (`cairn_init_status → cairn_context → [work] → cairn_signal → cairn_session_end`) with three concrete scenario flows (fresh task / design review / ratification)
+- **"What's in `.cairn/`"** *(new)* — trust section: per-file content table, explicit "not written" list (no source / no tokens / nothing outside `.cairn/`), explicit recommendation to commit `.cairn/`
+- **CLI** — reformatted from a flat code block to a 3-column table (`Command / When / What it does`)
+- **"The six volumes"** — preserved as-is but enhanced with a "Read it if you..." column showing per-volume reading time, plus three explicit reading paths (Philosopher / Engineer / Operator)
+- **"Why Cairn"** *(new)* — 50-word origin note positioned just before Contributing, preserving the project's restrained tone
+
+Section order is now: Hero → MCP tool matrix → How it works → 5-min install → Daily flow → `.cairn/` trust → CLI → Six volumes → Why Cairn → Contributing → License.
+
+### Fixed
+
+**`docs/diagrams/04-how-it-works.{svg,png}`** + **`docs/diagrams/02-three-layer-architecture.{svg,png}`** — visual style realigned to Style 6 (Claude Official) reference spec:
+
+- All node `stroke-width` normalized to `2.5` (previously a mix of `1.2 / 1.5 / 2 / 2.5` which left card edges blurring into the background)
+- All node rects now carry `filter="url(#shadow-soft)"` (`dy=2 stdDeviation=6 #000000 / opacity 0.06`) — Style 6's signature "warm card lift" was missing; nodes were flat against the cream backdrop
+- Color palette, font stack, 12px radius, `#f8f6f3` background — all already compliant, untouched
+- PNGs re-rendered at `@2x` (1920px wide) via `rsvg-convert -z 2`
+
+### Unchanged
+
+- `docs/` six-volume tree (the canonical argument)
+- All engine, store, schema, tool, and CLI behavior
+- Test suite (274 unit tests still pass)
+- Skill protocol files (`skills/claude-code/SKILL.md`, `skills/codex.md`)
+
+### Migration
+
+None. Existing `.cairn/` directories require no changes. `cairn_version` remains stamped at the engine version, not the README version.
+
+---
+
 ## [0.4.2] - 2026-05-17 (docs philosophical redesign)
 
 Docs-only release. No engine, store, or tool behavior changed; 268 existing unit tests pass unchanged.
