@@ -20,7 +20,7 @@ npm install -g cairn-mcp-server
 
 This puts two binaries on your `$PATH`:
 
-- `cairn` — the CLI (`init`, `doctor`, `migrate`, `dna`, `blood`, ...)
+- `cairn` — the CLI (`status`, `doctor`, `migrate`, `dna`, `blood`, ...)
 - `cairn-mcp-server` — the MCP server your AI talks to via stdio
 
 Verify:
@@ -30,13 +30,15 @@ cairn --version
 # 0.4.x
 ```
 
+> **Note:** You do not need to run `cairn init`. The MCP server auto-bootstraps `.cairn/` on startup if it doesn't exist. The CLI `cairn init` command still works but is optional — useful only for pre-creating the directory structure before configuring your AI tool.
+
 ---
 
 ## 2. Wire it into your AI tool
 
 ### Claude Code
 
-Edit `~/.claude.json` (or `.claude/mcp.json` at project root) and add:
+Edit `.claude/mcp.json` at project root (or `~/.claude.json` for global) and add:
 
 ```json
 {
@@ -84,68 +86,105 @@ Restart the `codex` CLI.
 
 ---
 
-## 3. Hand the AI its protocol
+## 3. (Optional) Hand the AI its protocol
 
-The runtime is wired. The AI still doesn't know *when* to call which tool. That contract lives in the skill files:
+The skill files tell the AI *when* to call which tool — the full session contract:
 
 | Host | File | Action |
 |------|------|--------|
 | Claude Code | `skills/claude-code/SKILL.md` | Append to your `CLAUDE.md` (project root or `~/.claude/`) |
 | Codex | `skills/codex.md` | Append to your `AGENTS.md` (project root or `~/.codex/`) |
 
-The skill file explains: when to call `cairn_init_status`, when to call `cairn_context`, when to capture a signal, how to handle staged review, when to call `cairn_session_end`, what to do with `interaction_hint`, how to respond to challenges. The full protocol — see [`protocol.md`](./protocol.md).
-
-Without the skill file, the AI sees the tools but doesn't know when to use them. With it, behavior changes immediately.
+Without the skill file, the AI still has Cairn's built-in MCP instructions and can perform initialization. The skill file adds stronger enforcement for ongoing session behavior — when to capture signals, how to respond to challenges, when to call `cairn_session_end`. See [`protocol.md`](./protocol.md) for the full contract.
 
 ---
 
-## 4. Verify the install
+## 4. First session — the AI drives
+
+You do not manually populate `.cairn/`. The AI does, guided by Cairn's built-in instructions. Here's what happens:
+
+### Step 1: AI detects uninitialized state
+
+The AI calls `cairn_init_status()` and gets back:
+
+```json
+{
+  "status": "not_initialized",
+  "guide": {
+    "analysis_steps": [
+      "Read README.md and docs/",
+      "Check package.json / Cargo.toml / go.mod",
+      "Run git log --oneline -20",
+      "Examine directory structure for domain boundaries",
+      "..."
+    ],
+    "schema_reference": {
+      "event_types": ["architecture_decision", "rejection", "constraint_added", ...],
+      "behavior_effect_types": ["avoid_suggestion", "prefer_approach", "warn_before", "require_review"],
+      "validity_levels": ["transient", "tactical", "strategic", "identity"],
+      "..."
+    },
+    "tips": ["Always call with dry_run: true first", "Aim for 5-15 blood_candidates", "..."]
+  }
+}
+```
+
+The `guide` contains everything the AI needs: what to analyze, all valid enum values for every field, and practical tips. The AI follows this guide to analyze your project.
+
+### Step 2: AI proposes initial cognition (dry run)
+
+```
+cairn_init_commit({ dry_run: true, config, skeleton, blood_candidates, stage?, dna? })
+```
+
+The dry-run shows what would be written and how TrustRouter would route each blood candidate:
+
+```
+Proposed:
+  - 4 skeletons: api, data, auth, ui
+  - 9 blood_candidates_auto_confirmed (G0/G1)
+  - 3 blood_candidates_staged (G2+, need your review)
+  - stage: maturity (confidence 0.78)
+```
+
+### Step 3: You confirm, AI writes
+
+You review the dry-run output and confirm. The AI calls `cairn_init_commit(...)` without `dry_run` to write.
+
+### Step 4: Review staged events
+
+High-gravity events (G2+ in standard mode) go to the staged queue. The AI calls `cairn_stage_list()` and presents each entry for your accept/reject decision.
+
+### Step 5: Ready
+
+`cairn_context()` now returns real constraints and domain activations. The AI proceeds with whatever you originally asked for, now with cognition loaded.
+
+The dry-run step matters. The AI can be wrong about your project structure on first analysis; the dry-run is the chance to catch it before anything writes.
+
+---
+
+## 5. Verify the install
+
+After initialization is complete:
 
 ```bash
 cairn doctor --metrics
 ```
 
-Output should look like:
+Output should look something like:
 
 ```
 .cairn health:
-  cairn_version:       (unstamped)
-  blood events:        0 (0 active, 0 archived, 0 trauma)
-  DNA identity:        not_yet_emerged
-  DNA traits:          0 (none)
+  cairn_version:       0.4.3
+  blood events:        10 (10 active, 0 archived, 0 trauma)
+  DNA identity:        emerging
+  DNA traits:          1 (simplicity_bias: medium)
   staged backlog:      0
   last session_end:    never
-  stage:               exploration (confidence 0.00, advisory)
+  stage:               growth (confidence 0.80, advisory)
 ```
 
-That's a healthy fresh install. Now ask your AI:
-
-> "Call `cairn_init_status` and show me the raw response."
-
-A JSON object with `status`, `has_cairn_dir`, `cairn_version`, `warnings` confirms MCP is live and the AI can reach Cairn.
-
----
-
-## 5. First session — the AI drives
-
-You do not manually populate `.cairn/`. The AI does, by following the skill protocol. A typical first session looks like:
-
-1. AI calls `cairn_init_status` → sees `status: not_initialized`
-2. AI analyzes your project (README, deps, git log, source structure)
-3. AI calls `cairn_init_commit({ dry_run: true, ... })` — proposes initial skeleton + blood candidates + possibly stage / DNA
-4. AI shows you the dry-run report:
-   ```
-   Proposed:
-     - 4 skeletons: api, data, auth, ui
-     - 12 blood_candidates_auto_confirmed (G0/G1)
-     - 3 blood_candidates_staged (G2+, need your review)
-     - stage: maturity (confidence 0.78)
-   ```
-5. You read it, confirm or adjust
-6. AI calls `cairn_init_commit({ ... })` (without `dry_run`) to write
-7. AI proceeds with whatever you originally asked for, now with cognition loaded
-
-The dry-run step matters. The AI can be wrong about your project structure on first analysis; the dry-run is the chance to catch it before anything writes.
+Non-zero blood events and a stamped `cairn_version` confirm initialization succeeded.
 
 ---
 

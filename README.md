@@ -64,24 +64,25 @@ More diagrams: [Integration overview](./docs/diagrams/03-integration-overview.pn
 
 ---
 
-## Install in 5 minutes
+## Install in 3 minutes
 
 ```bash
 # 1. install
 npm install -g cairn-mcp-server
 
-# 2a. Claude Code — add to ~/.claude.json
+# 2a. Claude Code — add to .claude/mcp.json (project) or ~/.claude.json (global)
 #     "mcpServers": { "cairn": { "command": "cairn-mcp-server" } }
 
 # 2b. Codex — add to ~/.codex/config.toml
 #     [mcp_servers.cairn]
 #     command = "cairn-mcp-server"
 
-# 3. verify
-cairn doctor --metrics
+# 3. open your AI tool — initialization is fully AI-driven
 ```
 
-Then append the relevant protocol (`skills/claude-code/SKILL.md` or `skills/codex.md`) to your project's `CLAUDE.md` / `AGENTS.md`.
+That's it. No `cairn init` required — the MCP server auto-bootstraps `.cairn/` on startup. On first use, the AI calls `cairn_init_status()`, receives a structured guide (analysis steps + all valid enum values + tips), analyzes your project, and proposes initial cognition via `cairn_init_commit({ dry_run: true })` for your review.
+
+Optionally append the protocol file (`skills/claude-code/SKILL.md` or `skills/codex.md`) to your project's `CLAUDE.md` / `AGENTS.md` for stronger ongoing session enforcement.
 
 Full walkthrough in [`docs/v-intervene/enter.md`](./docs/v-intervene/enter.md).
 
@@ -133,7 +134,7 @@ Cairn writes plain YAML you can read, diff, and git-track. Nothing leaves your m
 
 | Command | When | What it does |
 |---------|------|--------------|
-| `cairn init [--empty]` | First time setup | Scaffolds `.cairn/` directory |
+| `cairn init [--empty]` | Optional — pre-create scaffold | Scaffolds `.cairn/` directory (MCP server auto-bootstraps if missing) |
 | `cairn status` | Quick health glance | Cognitive snapshot |
 | `cairn doctor [--fix\|--recover\|--metrics]` | Something feels off | Consistency, auto-resurrection, repairs |
 | `cairn review` | Catch up on staged queue | Lists entries awaiting ratification |
