@@ -10,6 +10,7 @@ export async function handleContext(ctx: CairnContext, args: Record<string, unkn
         const existing = await ctx.stateStore.getActiveSession();
 
         let recoveredFrom: { id: string; started_at: string; signals_count: number } | null = null;
+        let currentSessionId: string;
 
         if (existing && existing.signals_count > 0) {
             recoveredFrom = {
@@ -17,11 +18,14 @@ export async function handleContext(ctx: CairnContext, args: Record<string, unkn
                 started_at: existing.started_at,
                 signals_count: existing.signals_count,
             };
-            await ctx.stateStore.startSession({ id: generateSessionId(), task, files });
+            currentSessionId = generateSessionId();
+            await ctx.stateStore.startSession({ id: currentSessionId, task, files });
         } else if (existing) {
+            currentSessionId = existing.id;
             await ctx.stateStore.touchSession({ task, files });
         } else {
-            await ctx.stateStore.startSession({ id: generateSessionId(), task, files });
+            currentSessionId = generateSessionId();
+            await ctx.stateStore.startSession({ id: currentSessionId, task, files });
         }
 
         const result = await ctx.activationEngine.activate({ task, files });
@@ -34,9 +38,8 @@ export async function handleContext(ctx: CairnContext, args: Record<string, unkn
             payload.observe_reminder = "Call cairn_observe before every git commit";
         }
 
-        const activeSession = await ctx.stateStore.getActiveSession();
         payload.session = {
-            id: activeSession!.id,
+            id: currentSessionId,
             status: "active",
             recovered_from: recoveredFrom,
         };

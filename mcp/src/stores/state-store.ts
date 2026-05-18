@@ -29,7 +29,7 @@ export class StateStore {
         await this.save(state);
     }
 
-    async startSession(params: { id: string; task?: string; files?: string[] }): Promise<void> {
+    async startSession(params: { id: string; task?: string; files?: string[]; context_loaded?: boolean }): Promise<void> {
         const state = await this.load();
         const now = new Date().toISOString();
         state.active_session = {
@@ -38,7 +38,7 @@ export class StateStore {
             last_touched_at: now,
             task: params.task ?? null,
             files: params.files ?? null,
-            context_loaded: true,
+            context_loaded: params.context_loaded ?? true,
             signals_count: 0,
             degraded_signals_count: 0,
         };

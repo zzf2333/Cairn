@@ -3,7 +3,7 @@ import { toolResult, formatToolError } from "../errors.js";
 import type { SessionRecord, State, EvolutionEvent } from "../schemas/index.js";
 import { downgradeGravity, type GravityLevel } from "../constants.js";
 import { mapGitSignalToEvent } from "../engines/git-signal-mapper.js";
-import { generateSessionId, warnIfNoContext } from "./session-guard.js";
+import { generateSessionId, checkContext } from "./session-guard.js";
 
 const STAGE_HYSTERESIS_DAYS = 14;
 const STAGE_MIN_CONFIDENCE = 0.6;
@@ -229,8 +229,9 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const now = new Date();
         const nowIso = now.toISOString();
 
-        const sessionWarning = await warnIfNoContext(ctx.stateStore);
-        const activeSession = await ctx.stateStore.getActiveSession();
+        const contextCheck = await checkContext(ctx.stateStore);
+        const sessionWarning = contextCheck.warning;
+        let activeSession = contextCheck.session;
 
         let sessionId: string;
         let sessionStartedAt: string;
@@ -241,6 +242,8 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         } else {
             sessionId = generateSessionId(now);
             sessionStartedAt = nowIso;
+            await ctx.stateStore.startSession({ id: sessionId, context_loaded: false });
+            activeSession = await ctx.stateStore.getActiveSession();
         }
 
         await ctx.stateStore.setSessionCheckpoint("init");

@@ -8,7 +8,8 @@ export function generateSessionId(now = new Date()): string {
     const h = String(now.getHours()).padStart(2, "0");
     const mi = String(now.getMinutes()).padStart(2, "0");
     const s = String(now.getSeconds()).padStart(2, "0");
-    return `sess_${y}_${mo}_${d}_${h}${mi}${s}`;
+    const ms = String(now.getMilliseconds()).padStart(3, "0");
+    return `sess_${y}_${mo}_${d}_${h}${mi}${s}_${ms}`;
 }
 
 export interface ContextGuardResult {
@@ -28,8 +29,21 @@ export async function requireContext(stateStore: StateStore): Promise<ContextGua
     };
 }
 
-export async function warnIfNoContext(stateStore: StateStore): Promise<string | null> {
+export interface ContextCheckResult {
+    session: ActiveSession | null;
+    warning: string | null;
+}
+
+export async function checkContext(stateStore: StateStore): Promise<ContextCheckResult> {
     const session = await stateStore.getActiveSession();
-    if (session?.context_loaded) return null;
-    return "cairn_context was not called before this tool. Signal accepted but marked as degraded.";
+    if (session?.context_loaded) return { session, warning: null };
+    return {
+        session,
+        warning: "cairn_context was not called before this tool. Signal accepted but marked as degraded.",
+    };
+}
+
+export async function warnIfNoContext(stateStore: StateStore): Promise<string | null> {
+    const { warning } = await checkContext(stateStore);
+    return warning;
 }

@@ -1599,11 +1599,14 @@ describe("cairn_session_end session integration", () => {
 
     it("uses active_session started_at for session record", async () => {
         await ctx.stateStore.startSession({ id: "sess_time_test" });
+        const state = await ctx.stateStore.load();
+        state.active_session!.started_at = "2020-01-01T00:00:00.000Z";
+        await ctx.stateStore.save(state);
         await handleSessionEnd(ctx, { summary: "test" });
         const sessions = await ctx.sessionStore.loadAll();
         const record = sessions.find(s => s.id === "sess_time_test");
         expect(record).toBeDefined();
-        expect(record!.started_at).not.toBe(record!.ended_at);
+        expect(record!.started_at).toBe("2020-01-01T00:00:00.000Z");
     });
 });
 
