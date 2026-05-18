@@ -137,6 +137,45 @@ describe("Signal to views pipeline", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Pipeline test 1b: G2 signal → staged → accept → blood → views
+// ---------------------------------------------------------------------------
+
+describe("Staged accept pipeline", () => {
+    it("G2 rejection flows through staged → accept → blood → views", async () => {
+        const signalResult = await handleSignal(ctx, {
+            signal_type: "constraint_declaration",
+            domain: "api-layer",
+            details: { what: "GraphQL", reason: "Too complex for our use case" },
+            evidence: { user_said: "No GraphQL" },
+        });
+        const signalData = parseResult(signalResult);
+        expect(signalData.accepted).toBe(true);
+        expect(signalData.routing.destination).toBe("staged");
+
+        const staged = await ctx.stagedStore.loadAll();
+        expect(staged.length).toBe(1);
+        const entry = staged[0];
+        expect(entry.draft_event.subject.name).toBe("GraphQL");
+
+        const acceptResult = await handleStageAccept(ctx, { id: entry.id });
+        const acceptData = parseResult(acceptResult);
+        expect(acceptData.success).toBe(true);
+        expect(acceptData.moved_to).toBe("blood");
+
+        const bloodEvents = await ctx.bloodStore.findActive();
+        const graphqlEvent = bloodEvents.find(e => e.subject.name === "GraphQL");
+        expect(graphqlEvent).toBeDefined();
+        expect(graphqlEvent!.governance_status).toBe("ratified");
+
+        const stagedAfter = await ctx.stagedStore.loadAll();
+        expect(stagedAfter.length).toBe(0);
+
+        const audit = await ctx.governanceStore.loadAuditLog();
+        expect(audit.some(a => a.action === "ratified")).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Pipeline test 2: constraint_declaration → human_ratified → constraints capillary
 // ---------------------------------------------------------------------------
 

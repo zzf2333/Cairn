@@ -207,9 +207,31 @@ describe("BloodEngine", () => {
         expect(loaded!.health.state).toBe("archived");
     });
 
-    it("resurrects an event", async () => {
+    it("two-step decay: stale then archived", async () => {
+        await bloodStore.save(makeEvolutionEvent("evt_001"));
+        await engine.markStale("evt_001", "inactive");
+        const stale = await bloodStore.load("evt_001");
+        expect(stale!.health.state).toBe("stale");
+
+        await engine.archive("evt_001", "confirmed inactive");
+        const archived = await bloodStore.load("evt_001");
+        expect(archived!.health.state).toBe("archived");
+    });
+
+    it("resurrects an event from stale", async () => {
         await bloodStore.save(makeEvolutionEvent("evt_001", {
             health: { state: "stale", reason: "old" },
+            lifecycle: { validity: "tactical", decay_policy: "downgrade", resurrection_count: 0 },
+        }));
+        await engine.resurrect("evt_001");
+        const loaded = await bloodStore.load("evt_001");
+        expect(loaded!.health.state).toBe("resurrected");
+        expect(loaded!.lifecycle.resurrection_count).toBe(1);
+    });
+
+    it("resurrects an event from archived", async () => {
+        await bloodStore.save(makeEvolutionEvent("evt_001", {
+            health: { state: "archived", reason: "old" },
             lifecycle: { validity: "tactical", decay_policy: "downgrade", resurrection_count: 0 },
         }));
         await engine.resurrect("evt_001");

@@ -471,6 +471,8 @@ async function handleLegacyInitCommit(ctx: CairnContext, args: InitCommitArgs) {
         });
     }
 
+    await ensureCairnDirs(ctx.paths);
+
     await ctx.configStore.save({
         version: "3.0",
         project: { name: config.project_name, created: now },
