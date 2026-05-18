@@ -312,11 +312,11 @@ describe("cairn_init_commit", () => {
         const data = parseResult(result);
         expect(data.written.blood_auto_confirmed + data.written.blood_staged).toBe(1);
 
-        const pending = await ctx.stagedStore.loadAll();
-        const entry = pending.find(e => e.draft_event.subject.name === "Use Express over Koa");
+        const blood = await ctx.bloodStore.findActive();
+        const entry = blood.find(e => e.subject.name === "Use Express over Koa");
         expect(entry).toBeDefined();
-        expect(entry!.draft_event.decision_or_change).toBe("Chose Express for its mature ecosystem");
-        expect(entry!.draft_event.reasoning).toBe("Koa lacks middleware coverage for our auth needs");
+        expect(entry!.decision_or_change).toBe("Chose Express for its mature ecosystem");
+        expect(entry!.reasoning).toBe("Koa lacks middleware coverage for our auth needs");
     });
 
     it("falls back reasoning to behavior_effect.instruction when not provided", async () => {
@@ -336,11 +336,11 @@ describe("cairn_init_commit", () => {
         };
         await handleInitCommit(ctx, args);
 
-        const pending = await ctx.stagedStore.loadAll();
-        const entry = pending.find(e => e.draft_event.subject.name === "Use REST");
+        const blood = await ctx.bloodStore.findActive();
+        const entry = blood.find(e => e.subject.name === "Use REST");
         expect(entry).toBeDefined();
-        expect(entry!.draft_event.reasoning).toBe("REST is simpler to maintain");
-        expect(entry!.draft_event.decision_or_change).toBe("Use REST");
+        expect(entry!.reasoning).toBe("REST is simpler to maintain");
+        expect(entry!.decision_or_change).toBe("Use REST");
     });
 
     it("populates constraints_added from blood candidate", async () => {
@@ -361,10 +361,10 @@ describe("cairn_init_commit", () => {
         };
         await handleInitCommit(ctx, args);
 
-        const pending = await ctx.stagedStore.loadAll();
-        const entry = pending.find(e => e.draft_event.subject.name === "No ORM usage");
+        const blood = await ctx.bloodStore.findActive();
+        const entry = blood.find(e => e.subject.name === "No ORM usage");
         expect(entry).toBeDefined();
-        expect(entry!.draft_event.constraints_added).toEqual(["No ORM in API layer"]);
+        expect(entry!.constraints_added).toEqual(["No ORM in API layer"]);
     });
 
     it("derives config.domains from skeleton nodes", async () => {
@@ -558,7 +558,7 @@ describe("cairn_init_commit — step-based", () => {
         expect(data.completed_steps).toContain("skeleton");
     });
 
-    it("blood step auto-confirms all candidates to blood (no staging)", async () => {
+    it("blood step routes through TrustRouter — G1 auto-confirms, G3 goes to staged", async () => {
         await handleInitCommit(ctx, {
             step: "config",
             config: { project_name: "step-app", domains: ["api"], cognitive_mode: "standard" },
@@ -570,33 +570,46 @@ describe("cairn_init_commit — step-based", () => {
 
         const result = await handleInitCommit(ctx, {
             step: "blood",
-            blood_candidates: [{
-                type: "architecture_decision",
-                domain: "api",
-                gravity: { level: "G3" },
-                summary: "REST over GraphQL",
-                behavior_effect: { type: "prefer_approach", instruction: "Use REST" },
-                source: { type: "agent_inferred", confidence: 0.9 },
-                lifecycle: { validity: "strategic" },
-            }],
+            blood_candidates: [
+                {
+                    type: "architecture_decision",
+                    domain: "api",
+                    gravity: { level: "G1" },
+                    summary: "REST over GraphQL",
+                    behavior_effect: { type: "prefer_approach", instruction: "Use REST" },
+                    source: { type: "agent_inferred", confidence: 0.9 },
+                    lifecycle: { validity: "strategic" },
+                },
+                {
+                    type: "rejection",
+                    domain: "api",
+                    gravity: { level: "G3" },
+                    summary: "Never use SOAP",
+                    behavior_effect: { type: "avoid_suggestion", instruction: "No SOAP" },
+                    source: { type: "human_explicit", confidence: 1.0 },
+                    lifecycle: { validity: "identity" },
+                },
+            ],
         });
         const data = parseResult(result);
         expect(data.step).toBe("blood");
         expect(data.auto_confirmed).toBe(1);
-        expect(data.staged).toBe(0);
+        expect(data.staged).toBe(1);
         expect(data.initialization_complete).toBe(true);
 
         const bloodEvents = await ctx.bloodStore.loadAll();
         expect(bloodEvents.length).toBe(1);
+        expect(bloodEvents[0].subject.name).toBe("REST over GraphQL");
         const staged = await ctx.stagedStore.loadAll();
-        expect(staged.length).toBe(0);
+        expect(staged.length).toBe(1);
+        expect(staged[0].draft_event.subject.name).toBe("Never use SOAP");
 
         const state = await ctx.stateStore.load();
         expect(state.initialization_status).toBe("complete");
         expect(state.cairn_version).toBeDefined();
     });
 
-    it("blood step dry_run previews without writing", async () => {
+    it("blood step dry_run previews TrustRouter routing without writing", async () => {
         await handleInitCommit(ctx, {
             step: "config",
             config: { project_name: "step-app", domains: ["api"], cognitive_mode: "standard" },
@@ -620,8 +633,8 @@ describe("cairn_init_commit — step-based", () => {
         });
         const data = parseResult(result);
         expect(data.dry_run).toBe(true);
-        expect(data.would_write.length).toBe(1);
-        expect(data.note).toContain("auto-confirm");
+        expect(data.summary.blood_staged).toBe(1);
+        expect(data.would_write.blood_staged.length).toBe(1);
 
         const bloodEvents = await ctx.bloodStore.loadAll();
         expect(bloodEvents.length).toBe(0);

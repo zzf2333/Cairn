@@ -63,11 +63,11 @@ function buildStepGuide(step: InitStep | null) {
                 },
                 tips: [
                     "Aim for 5-15 blood candidates covering: constraints, historical lessons (trauma), decision boundaries, and architecture philosophy",
-                    "All candidates auto-confirm to blood during init (no staging needed)",
+                    "Candidates are routed through TrustRouter: trauma/G3 events go to staged for human review, others auto-confirm",
                     "Use 'rejection' type for known anti-patterns, 'architecture_decision' for chosen directions",
                     "behavior_effect.type: 'avoid_suggestion' creates no-go zones; 'prefer_approach' creates preferences",
                     "lifecycle.validity: 'identity' for permanent decisions, 'strategic' for long-term, 'tactical' for short-term",
-                    "Use dry_run: true first to preview gravity assignments",
+                    "Use dry_run: true first to preview TrustRouter routing (auto-confirm vs staged vs dropped)",
                 ],
             };
         case "dna":

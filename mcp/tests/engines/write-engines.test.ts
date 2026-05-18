@@ -193,11 +193,18 @@ describe("BloodEngine", () => {
         expect(paths_loaded.paths.length).toBeGreaterThanOrEqual(1);
     });
 
+    it("marks event as stale", async () => {
+        await bloodStore.save(makeEvolutionEvent("evt_001"));
+        await engine.markStale("evt_001", "inactive");
+        const loaded = await bloodStore.load("evt_001");
+        expect(loaded!.health.state).toBe("stale");
+    });
+
     it("archives an event", async () => {
         await bloodStore.save(makeEvolutionEvent("evt_001"));
         await engine.archive("evt_001", "no longer relevant");
         const loaded = await bloodStore.load("evt_001");
-        expect(loaded!.health.state).toBe("stale");
+        expect(loaded!.health.state).toBe("archived");
     });
 
     it("resurrects an event", async () => {

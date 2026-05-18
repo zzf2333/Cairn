@@ -73,13 +73,27 @@ export class BloodEngine {
         await this.viewsEngine.regenerate();
     }
 
-    async archive(eventId: string, reason: string): Promise<void> {
+    async markStale(eventId: string, reason: string): Promise<void> {
         const event = await this.bloodStore.load(eventId);
         if (!event) {
             throw new CairnError(CairnErrorCode.EVENT_NOT_FOUND, `Event ${eventId} not found`);
         }
 
         event.health.state = "stale";
+        event.health.reason = reason;
+        event.updated_at = new Date().toISOString();
+
+        await this.bloodStore.save(event);
+        await this.viewsEngine.regenerate();
+    }
+
+    async archive(eventId: string, reason: string): Promise<void> {
+        const event = await this.bloodStore.load(eventId);
+        if (!event) {
+            throw new CairnError(CairnErrorCode.EVENT_NOT_FOUND, `Event ${eventId} not found`);
+        }
+
+        event.health.state = "archived";
         event.health.reason = reason;
         event.updated_at = new Date().toISOString();
 

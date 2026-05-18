@@ -110,7 +110,7 @@ afterEach(async () => {
 // ---------------------------------------------------------------------------
 
 describe("Signal to views pipeline", () => {
-    it("user_rejection flows through staged → accept → blood → views output", async () => {
+    it("G1 user_rejection auto-confirms to blood and updates views", async () => {
         const signalResult = await handleSignal(ctx, {
             signal_type: "user_rejection",
             domain: "api-layer",
@@ -119,23 +119,12 @@ describe("Signal to views pipeline", () => {
         });
         const signalData = parseResult(signalResult);
         expect(signalData.accepted).toBe(true);
-        expect(signalData.routing.destination).toBe("staged");
-
-        const staged = await ctx.stagedStore.loadAll();
-        expect(staged.length).toBe(1);
-        const entry = staged[0];
-        expect(entry.draft_event.subject.name).toBe("GraphQL");
-        expect(entry.draft_event.behavior_effect.type).toBe("avoid_suggestion");
-
-        const acceptResult = await handleStageAccept(ctx, { id: entry.id });
-        const acceptData = parseResult(acceptResult);
-        expect(acceptData.success).toBe(true);
-        expect(acceptData.moved_to).toBe("blood");
+        expect(signalData.routing.destination).toBe("blood");
 
         const bloodEvents = await ctx.bloodStore.findActive();
         const graphqlEvent = bloodEvents.find(e => e.subject.name === "GraphQL");
         expect(graphqlEvent).toBeDefined();
-        expect(graphqlEvent!.governance_status).toBe("ratified");
+        expect(graphqlEvent!.governance_status).toBe("auto_confirmed");
         expect(graphqlEvent!.behavior_effect.type).toBe("avoid_suggestion");
 
         const rejected = await ctx.domainStore.loadRejectedPaths("api-layer");
@@ -144,12 +133,6 @@ describe("Signal to views pipeline", () => {
         const output = await readFile(ctx.paths.viewsOutput, "utf-8");
         expect(output).toContain("## No-Go");
         expect(output).toContain("GraphQL");
-
-        const stagedAfter = await ctx.stagedStore.loadAll();
-        expect(stagedAfter.length).toBe(0);
-
-        const audit = await ctx.governanceStore.loadAuditLog();
-        expect(audit.some(a => a.action === "ratified")).toBe(true);
     });
 });
 
@@ -287,7 +270,7 @@ describe("Trauma lifecycle pipeline", () => {
 // ---------------------------------------------------------------------------
 
 describe("Observe to context pipeline", () => {
-    it("observe capture flows through staged → accept → blood → context constraint", async () => {
+    it("observe G1 capture auto-confirms to blood → context constraint", async () => {
         const observeResult = await handleObserve(ctx, {
             summary: "Decided against MongoDB",
             candidates: [{
@@ -301,13 +284,7 @@ describe("Observe to context pipeline", () => {
         });
         const observeData = parseResult(observeResult);
         expect(observeData.captured).toBe(1);
-        expect(observeData.staged).toBe(1);
-
-        const staged = await ctx.stagedStore.findPending();
-        expect(staged.length).toBe(1);
-        expect(staged[0].draft_event.subject.name).toBe("MongoDB");
-
-        await handleStageAccept(ctx, { id: staged[0].id });
+        expect(observeData.staged).toBe(0);
 
         const blood = await ctx.bloodStore.findActive();
         const mongoEvent = blood.find(e => e.subject.name === "MongoDB");

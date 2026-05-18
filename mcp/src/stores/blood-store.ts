@@ -108,7 +108,7 @@ export class BloodStore {
 
     async findArchived(): Promise<EvolutionEvent[]> {
         const all = await this.loadAll();
-        return all.filter(e => e.health.state === "stale");
+        return all.filter(e => e.health.state === "stale" || e.health.state === "archived");
     }
 
     async findTrauma(domain?: string): Promise<EvolutionEvent[]> {

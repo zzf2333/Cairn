@@ -119,10 +119,11 @@ export class ConsistencyEngine {
         const violations: ConsistencyViolation[] = [];
 
         for (const event of noGoEvents) {
-            if (event.health.state === "stale") {
+            if (event.health.state === "stale" || event.health.state === "archived") {
+                const stateLabel = event.health.state === "archived" ? "archived" : "stale";
                 violations.push({
                     rule: "no_go_support",
-                    description: `No-go event "${event.id}" (${event.subject.name}) has stale health — orphaned constraint`,
+                    description: `No-go event "${event.id}" (${event.subject.name}) has ${stateLabel} health — orphaned constraint`,
                     recommendation: `Review and either refresh or archive no-go for "${event.subject.name}"`,
                 });
             }

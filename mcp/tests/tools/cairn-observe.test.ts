@@ -99,7 +99,7 @@ afterEach(async () => {
 });
 
 describe("cairn_observe", () => {
-    it("routes capture candidate to staged in standard mode", async () => {
+    it("routes G1 capture candidate to blood in standard mode", async () => {
         const result = await handleObserve(ctx, {
             summary: "Decided to use REST",
             candidates: [{
@@ -115,7 +115,7 @@ describe("cairn_observe", () => {
         expect(data.observed).toBe(true);
         expect(data.captured).toBe(1);
         expect(data.skipped).toBe(0);
-        expect(data.results[0].action_taken).toBe("staged");
+        expect(data.results[0].action_taken).toBe("blood");
         expect(data.results[0].routing.governance).toBeDefined();
     });
 

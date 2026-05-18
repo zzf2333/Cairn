@@ -17,7 +17,7 @@ export async function runStatus(): Promise<void> {
     const activeCount = bloodEvents.filter(
         e => e.health.state === "ok" || e.health.state === "resurrected",
     ).length;
-    const staleCount = bloodEvents.filter(e => e.health.state === "stale").length;
+    const staleCount = bloodEvents.filter(e => e.health.state === "stale" || e.health.state === "archived").length;
     const traumaCount = bloodEvents.filter(e => e.trauma.is_trauma).length;
     const stageTransitions = stagedEntries.filter(e => e.draft_event.type === "stage_transition").length;
 

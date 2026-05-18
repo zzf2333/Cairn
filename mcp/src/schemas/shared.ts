@@ -11,7 +11,7 @@ export const GravitySchema = z.object({
 });
 export type Gravity = z.infer<typeof GravitySchema>;
 
-export const HEALTH_STATES = ["ok", "stale", "conflicted", "resurrected"] as const;
+export const HEALTH_STATES = ["ok", "stale", "archived", "conflicted", "resurrected"] as const;
 export const HealthSchema = z.object({
     state: z.enum(HEALTH_STATES).default("ok"),
     reason: z.string().nullable().default(null),

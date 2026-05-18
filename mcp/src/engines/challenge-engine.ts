@@ -76,7 +76,7 @@ export class ChallengeEngine {
             if (!matches) continue;
 
             const baseLevel = gravityToLevel(event.gravity.level as GravityLevel);
-            const isArchived = event.health.state === "stale";
+            const isArchived = event.health.state === "stale" || event.health.state === "archived";
             const finalLevel = isArchived ? downgradeLevelForArchived(baseLevel) : baseLevel;
             if (finalLevel === null) continue;
 

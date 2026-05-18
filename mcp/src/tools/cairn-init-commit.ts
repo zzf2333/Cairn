@@ -1,4 +1,5 @@
 import type { CairnContext } from "../context.js";
+import { ensureCairnDirs } from "../context.js";
 import { toolResult, formatToolError } from "../errors.js";
 import type { EvolutionEvent } from "../schemas/index.js";
 import type { BloodCandidate } from "../schemas/blood-candidate.js";
@@ -155,6 +156,8 @@ async function handleConfigStep(ctx: CairnContext, args: InitCommitArgs) {
         }));
     }
 
+    await ensureCairnDirs(ctx.paths);
+
     const now = new Date().toISOString();
     await ctx.configStore.save({
         version: "3.0",
@@ -239,18 +242,31 @@ async function handleBloodStep(ctx: CairnContext, args: InitCommitArgs) {
     }
 
     if (args.dry_run) {
-        const preview: Array<{ id: string; summary: string; gravity: string; domain: string }> = [];
+        const autoConfirm: Array<{ id: string; summary: string; gravity: string; domain: string }> = [];
+        const willStage: Array<{ id: string; summary: string; gravity: string; domain: string; routing_reason: string }> = [];
+        const willDrop: Array<{ id: string; summary: string; reason: string }> = [];
         const warnings: string[] = [];
 
         for (let i = 0; i < args.blood_candidates.length; i++) {
             const candidate = args.blood_candidates[i];
             const event = buildEventFromCandidate(candidate, i);
-            preview.push({
+            const routing = await ctx.trustRouter.route({
+                domain: event.domain,
+                subject_name: event.subject.name,
+                type: event.type,
+                gravity: event.gravity.level as GravityLevel,
+                isTrauma: event.trauma.is_trauma,
+            });
+
+            const row = {
                 id: event.id,
                 summary: event.subject.name,
-                gravity: event.gravity.level,
+                gravity: routing.gravity,
                 domain: event.domain,
-            });
+            };
+            if (routing.destination === "blood") autoConfirm.push(row);
+            else if (routing.destination === "staged") willStage.push({ ...row, routing_reason: routing.reason });
+            else willDrop.push({ id: event.id, summary: event.subject.name, reason: routing.reason });
         }
 
         if (args.blood_candidates.length > 50) {
@@ -260,21 +276,56 @@ async function handleBloodStep(ctx: CairnContext, args: InitCommitArgs) {
         return toolResult(JSON.stringify({
             dry_run: true,
             step: "blood",
-            would_write: preview,
-            total: preview.length,
-            note: "All candidates auto-confirm to blood during init (no staging).",
+            would_write: {
+                blood_auto_confirm: autoConfirm,
+                blood_staged: willStage,
+                blood_dropped: willDrop,
+            },
+            summary: {
+                blood_auto_confirm: autoConfirm.length,
+                blood_staged: willStage.length,
+                blood_dropped: willDrop.length,
+            },
             warnings,
             next_step: "dna",
         }));
     }
 
-    let confirmed = 0;
+    const now = new Date().toISOString();
+    let autoConfirmed = 0;
+    let staged = 0;
+
     for (let i = 0; i < args.blood_candidates.length; i++) {
         const candidate = args.blood_candidates[i];
         const event = buildEventFromCandidate(candidate, i);
-        event.governance_status = "auto_confirmed";
-        await ctx.bloodEngine.commit(event);
-        confirmed++;
+
+        const routing = await ctx.trustRouter.route({
+            domain: event.domain,
+            subject_name: event.subject.name,
+            type: event.type,
+            gravity: event.gravity.level as GravityLevel,
+            isTrauma: event.trauma.is_trauma,
+        });
+
+        if (routing.destination === "blood") {
+            event.governance_status = "auto_confirmed";
+            await ctx.bloodEngine.commit(event);
+            autoConfirmed++;
+        } else if (routing.destination === "staged") {
+            event.governance_status = "pending";
+            await ctx.stagedStore.save({
+                id: event.id,
+                draft_event: event,
+                review_status: "pending",
+                routing_reason: routing.reason,
+                gravity: routing.gravity as GravityLevel,
+                governance_required: routing.governance === "human_ratified"
+                    ? "human_ratified"
+                    : "auto_confirmable",
+                created_at: now,
+            });
+            staged++;
+        }
     }
 
     await ctx.stateStore.markInitStep("blood");
@@ -290,11 +341,12 @@ async function handleBloodStep(ctx: CairnContext, args: InitCommitArgs) {
 
     return toolResult(JSON.stringify({
         step: "blood",
-        auto_confirmed: confirmed,
-        staged: 0,
+        auto_confirmed: autoConfirmed,
+        staged,
         completed_steps: progress?.completed_steps ?? [],
         initialization_complete: state.initialization_status === "complete",
         next_step: nextStep(progress?.completed_steps ?? []),
+        pending_review: staged,
     }));
 }
 

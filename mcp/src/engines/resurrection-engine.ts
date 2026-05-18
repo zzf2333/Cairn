@@ -21,7 +21,7 @@ export class ResurrectionEngine {
 
         const allEvents = await this.bloodStore.loadAll();
         const archived = allEvents.filter(
-            e => e.health.state === "stale" || e.health.state === "conflicted",
+            e => e.health.state === "stale" || e.health.state === "archived" || e.health.state === "conflicted",
         );
 
         const candidates: ResurrectionCandidate[] = [];

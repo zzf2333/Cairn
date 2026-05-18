@@ -318,11 +318,15 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const cognitiveMode = config?.cognitive_mode ?? "standard";
         const decayActions = await ctx.decayEngine.checkDecay(cognitiveMode);
 
+        const decayStale: Array<{ id: string; reason: string }> = [];
         const decayArchived: Array<{ id: string; reason: string }> = [];
         const decayDowngraded: Array<{ id: string; from: string; to: string }> = [];
 
         for (const action of decayActions) {
             if (action.action === "mark_stale") {
+                await ctx.bloodEngine.markStale(action.event_id, action.reason);
+                decayStale.push({ id: action.event_id, reason: action.reason });
+            } else if (action.action === "archive") {
                 await ctx.bloodEngine.archive(action.event_id, action.reason);
                 decayArchived.push({ id: action.event_id, reason: action.reason });
             } else if (action.action === "downgrade") {
@@ -399,6 +403,7 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
             },
             decay: {
                 events_processed: decayActions.length,
+                stale: decayStale,
                 archived: decayArchived,
                 downgraded: decayDowngraded,
             },

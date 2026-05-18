@@ -21,7 +21,7 @@ export async function handleStatus(ctx: CairnContext) {
             ctx.governanceStore.loadAuditLog(),
         ]);
 
-        const staleCount = bloodEvents.filter(e => e.health.state === "stale").length;
+        const staleCount = bloodEvents.filter(e => e.health.state === "stale" || e.health.state === "archived").length;
         const activeCount = bloodEvents.filter(
             e => e.health.state === "ok" || e.health.state === "resurrected",
         ).length;

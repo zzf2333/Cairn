@@ -165,7 +165,7 @@ async function runMetrics(ctx: Awaited<ReturnType<typeof createContext>>): Promi
         ctx.dnaStagedStore.loadAll(),
     ]);
 
-    const archived = blood.filter(e => e.health.state === "stale").length;
+    const archived = blood.filter(e => e.health.state === "stale" || e.health.state === "archived").length;
     const active = blood.filter(e => e.health.state === "ok" || e.health.state === "resurrected").length;
     const traumaCount = blood.filter(e => e.trauma.is_trauma).length;
 

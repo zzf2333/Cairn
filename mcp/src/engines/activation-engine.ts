@@ -164,7 +164,7 @@ export class ActivationEngine {
 
         const archivedReactivating = allEvents.filter(e => {
             if (!matchesDomainAndGravity(e)) return false;
-            if (e.health.state !== "stale") return false;
+            if (e.health.state !== "stale" && e.health.state !== "archived") return false;
             const hits = state.activation_log.recent_hits[e.id] ?? 0;
             return hits >= RESURRECTION_THRESHOLD;
         });
@@ -340,7 +340,6 @@ export class ActivationEngine {
             const domainChallenges = await this.challengeEngine.detectConflicts({
                 task: input.task,
                 domain,
-                subject_name: noGo.length > 0 ? noGo[0].what : undefined,
             });
             for (const c of domainChallenges) {
                 if (!challenges.some(existing => existing.conflict_with === c.conflict_with)) {
