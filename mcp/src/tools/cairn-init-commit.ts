@@ -376,15 +376,17 @@ async function handleDnaStep(ctx: CairnContext, args: InitCommitArgs) {
     }
 
     const now = new Date().toISOString();
+    const timestamp = Date.now();
     const staged: string[] = [];
     const skipped: string[] = [];
-    for (const trait of args.dna.traits) {
+    for (let i = 0; i < args.dna.traits.length; i++) {
+        const trait = args.dna.traits[i];
         if (!(KNOWN_DNA_TRAITS as readonly string[]).includes(trait.name)) {
             skipped.push(trait.name);
             continue;
         }
         await ctx.dnaStagedStore.save({
-            id: `stg_dna_${trait.name}_init_${Date.now()}`,
+            id: `stg_dna_${trait.name}_init_${timestamp}_${i}`,
             trait_name: trait.name as typeof KNOWN_DNA_TRAITS[number],
             level: trait.level,
             confidence: trait.confidence,

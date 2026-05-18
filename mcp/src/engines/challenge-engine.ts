@@ -80,11 +80,12 @@ export class ChallengeEngine {
             const finalLevel = isInactive ? downgradeLevelForArchived(baseLevel) : baseLevel;
             if (finalLevel === null) continue;
 
+            const stateLabel = event.health.state === "archived" ? "archived" : "stale";
             challenges.push({
                 level: finalLevel,
                 conflict_with: event.id,
                 description: isInactive
-                    ? `[archived] Was no-go: ${event.subject.name} — ${event.behavior_effect.instruction}`
+                    ? `[${stateLabel}] Was no-go: ${event.subject.name} — ${event.behavior_effect.instruction}`
                     : `Conflicts with no-go: ${event.subject.name} — ${event.behavior_effect.instruction}`,
                 required_response: !isInactive && GRAVITY_ORDER[event.gravity.level as GravityLevel] >= GRAVITY_ORDER.G2
                     ? "Explain why this direction is necessary despite previous decision"
