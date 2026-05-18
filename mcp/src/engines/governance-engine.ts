@@ -3,7 +3,7 @@ import type { GovernanceStore } from "../stores/index.js";
 import type { ConfigStore } from "../stores/index.js";
 import { type GravityLevel, type CognitiveMode, gravityAtLeast, COGNITIVE_MODE_PARAMS } from "../constants.js";
 
-export type GovernancePermission = "agent_proposed" | "system_validated" | "human_ratified";
+export type GovernancePermission = "system_validated" | "human_ratified";
 
 export class GovernanceEngine {
     constructor(

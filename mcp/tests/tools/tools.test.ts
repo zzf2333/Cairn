@@ -651,7 +651,8 @@ describe("cairn_init_commit — step-based", () => {
         });
         const data = parseResult(result);
         expect(data.step).toBe("dna");
-        expect(data.traits_written).toBe(1);
+        expect(data.traits_staged).toBe(1);
+        expect(data.staged_traits).toContain("simplicity_bias");
         expect(data.completed_steps).toContain("dna");
     });
 
@@ -1016,7 +1017,7 @@ describe("cairn_status", () => {
         const data = parseResult(result);
         expect(data.blood.total).toBe(3);
         expect(data.blood.active).toBe(2); // evt_active + evt_trauma (ok/resurrected)
-        expect(data.blood.stale).toBe(1);
+        expect(data.blood.inactive).toBe(1);
         expect(data.blood.trauma).toBe(1);
     });
 

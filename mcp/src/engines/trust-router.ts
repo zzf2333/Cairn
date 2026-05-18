@@ -95,15 +95,6 @@ export class TrustRouter {
             };
         }
 
-        if (governance === "agent_proposed") {
-            return {
-                destination: "staged",
-                gravity,
-                governance,
-                reason: "agent proposed, awaiting confirmation",
-            };
-        }
-
         return {
             destination: "blood",
             gravity,

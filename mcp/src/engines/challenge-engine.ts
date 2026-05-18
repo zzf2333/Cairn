@@ -76,20 +76,20 @@ export class ChallengeEngine {
             if (!matches) continue;
 
             const baseLevel = gravityToLevel(event.gravity.level as GravityLevel);
-            const isArchived = event.health.state === "stale" || event.health.state === "archived";
-            const finalLevel = isArchived ? downgradeLevelForArchived(baseLevel) : baseLevel;
+            const isInactive = event.health.state === "stale" || event.health.state === "archived";
+            const finalLevel = isInactive ? downgradeLevelForArchived(baseLevel) : baseLevel;
             if (finalLevel === null) continue;
 
             challenges.push({
                 level: finalLevel,
                 conflict_with: event.id,
-                description: isArchived
+                description: isInactive
                     ? `[archived] Was no-go: ${event.subject.name} — ${event.behavior_effect.instruction}`
                     : `Conflicts with no-go: ${event.subject.name} — ${event.behavior_effect.instruction}`,
-                required_response: !isArchived && GRAVITY_ORDER[event.gravity.level as GravityLevel] >= GRAVITY_ORDER.G2
+                required_response: !isInactive && GRAVITY_ORDER[event.gravity.level as GravityLevel] >= GRAVITY_ORDER.G2
                     ? "Explain why this direction is necessary despite previous decision"
                     : undefined,
-                archived: isArchived || undefined,
+                archived: isInactive || undefined,
             });
         }
     }

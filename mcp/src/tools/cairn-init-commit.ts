@@ -368,38 +368,45 @@ async function handleDnaStep(ctx: CairnContext, args: InitCommitArgs) {
         return toolResult(JSON.stringify({
             dry_run: true,
             step: "dna",
-            would_write: args.dna.traits,
+            would_stage: args.dna.traits,
             warnings,
+            message: "Traits will be staged for review (not written directly). Use cairn_dna_accept to confirm each trait after committing this step.",
             next_step: "stage",
         }));
     }
 
     const now = new Date().toISOString();
-    const identity = await ctx.dnaStore.loadIdentity();
+    const staged: string[] = [];
+    const skipped: string[] = [];
     for (const trait of args.dna.traits) {
-        identity.traits[trait.name] = {
+        if (!(KNOWN_DNA_TRAITS as readonly string[]).includes(trait.name)) {
+            skipped.push(trait.name);
+            continue;
+        }
+        await ctx.dnaStagedStore.save({
+            id: `stg_dna_${trait.name}_init_${Date.now()}`,
+            trait_name: trait.name as typeof KNOWN_DNA_TRAITS[number],
             level: trait.level,
             confidence: trait.confidence,
-            evidence_count: 1,
-            last_updated: now,
+            evidence_events: [],
             reasoning: trait.reasoning,
-            drift_warning_count: 0,
-            last_safety_valve_at: null,
-        };
+            proposed_at: now,
+            review_status: "pending",
+        });
+        staged.push(trait.name);
     }
-    identity.status = "emerging";
-    await ctx.dnaStore.saveIdentity(identity);
 
     await ctx.stateStore.markInitStep("dna");
     const progress = await ctx.stateStore.getInitProgress();
 
-    if (progress?.completed_steps.includes("blood")) {
-        await ctx.viewsEngine.regenerate();
-    }
-
     return toolResult(JSON.stringify({
         step: "dna",
-        traits_written: args.dna.traits.length,
+        traits_staged: staged.length,
+        staged_traits: staged,
+        skipped_unknown_traits: skipped,
+        message: staged.length > 0
+            ? "DNA traits staged for review. Use cairn_dna_list to view, then cairn_dna_accept to confirm each trait."
+            : "No known DNA traits to stage.",
         completed_steps: progress?.completed_steps ?? [],
         next_step: nextStep(progress?.completed_steps ?? []),
     }));

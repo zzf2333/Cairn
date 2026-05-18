@@ -6,13 +6,12 @@
 
 ## What it is
 
-**Governance** is the approval ladder. Every signal that enters Cairn passes through a 3-tier status progression:
+**Governance** is the approval ladder. Every signal that enters Cairn passes through a 2-tier status progression:
 
 | Tier | Set by | Meaning |
 |------|--------|---------|
-| **`agent_proposed`** | Host AI on `cairn_signal` call | "AI saw a signal worth capturing" |
-| **`system_validated`** | TrustRouter | "Cairn's machinery agrees it's worth recording" — dedup'd, gravity-adjusted, trauma-checked, DNA-modulated |
-| **`human_ratified`** | User via `cairn_stage_accept` (or auto, for low-gravity in lightweight mode) | "A human signed off; this is now durable cognition" |
+| **`system_validated`** | TrustRouter | "Cairn's machinery agrees it's worth recording" — dedup'd, gravity-adjusted, trauma-checked, DNA-modulated. Low-gravity signals are auto-confirmed to Blood. |
+| **`human_ratified`** | User via `cairn_stage_accept` | "A human signed off; this is now durable cognition" |
 
 Plus storage at `.cairn/governance/`:
 
@@ -83,17 +82,16 @@ Minimal on purpose. The policy is mostly *derived* — from cognitive_mode, grav
   detail: "G1, lightweight mode auto-confirms"
 ```
 
-Three kinds of actor:
+Two kinds of actor:
 
 - **`user`** — explicit human ratification
 - **`system`** — auto-confirm, auto-archive, dedup-merge, drop-G0
-- **`AI`** — proposed via `cairn_signal` (visible at `agent_proposed` stage)
 
 The audit log is **the receipt**. Anything that touched the project's cognition has a row here, forever. You can answer "why did this constraint enter Blood?" by reading the audit log row for the accept event.
 
 ---
 
-## The three-tier path, end-to-end
+## The two-tier path, end-to-end
 
 A new constraint declaration in a `standard` mode project:
 
@@ -103,17 +101,14 @@ Host AI calls cairn_signal({
   details: { what: "no Redis", reason: "ops cost too high" }
 })
   ↓
-Stamped: governance_status = "agent_proposed"
-  ↓
 TrustRouter:
   - dedup → not a duplicate
   - gravity proposed: G2
   - trauma adjacency: no
   - DNA: simplicity_bias=high → +0 (already aligned)
   - final: G2
+  - governance: system_validated
   - destination: staged (G2 needs human ratification in standard mode)
-  ↓
-Stamped: governance_status = "system_validated"
 Written to: .cairn/staged/evt_pending_xxx.yaml
   ↓
 User runs: cairn_stage_accept({ id: "evt_pending_xxx" })

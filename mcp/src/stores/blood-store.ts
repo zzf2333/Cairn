@@ -106,7 +106,17 @@ export class BloodStore {
         return all.filter(e => e.health.state === "ok" || e.health.state === "resurrected");
     }
 
+    async findStale(): Promise<EvolutionEvent[]> {
+        const all = await this.loadAll();
+        return all.filter(e => e.health.state === "stale");
+    }
+
     async findArchived(): Promise<EvolutionEvent[]> {
+        const all = await this.loadAll();
+        return all.filter(e => e.health.state === "archived");
+    }
+
+    async findInactive(): Promise<EvolutionEvent[]> {
         const all = await this.loadAll();
         return all.filter(e => e.health.state === "stale" || e.health.state === "archived");
     }

@@ -82,7 +82,7 @@ describe("GovernanceEngine", () => {
 
     it("allows system_validated for G1 in standard mode", async () => {
         const perm = await engine.checkPermission("G1", false, false, false, false);
-        expect(["agent_proposed", "system_validated"]).toContain(perm);
+        expect(perm).toBe("system_validated");
     });
 
     it("logs audit entries", async () => {

@@ -17,7 +17,7 @@ export async function runStatus(): Promise<void> {
     const activeCount = bloodEvents.filter(
         e => e.health.state === "ok" || e.health.state === "resurrected",
     ).length;
-    const staleCount = bloodEvents.filter(e => e.health.state === "stale" || e.health.state === "archived").length;
+    const inactiveCount = bloodEvents.filter(e => e.health.state === "stale" || e.health.state === "archived").length;
     const traumaCount = bloodEvents.filter(e => e.trauma.is_trauma).length;
     const stageTransitions = stagedEntries.filter(e => e.draft_event.type === "stage_transition").length;
 
@@ -27,7 +27,7 @@ export async function runStatus(): Promise<void> {
 
     console.log(`Project: ${projectName} (stage: ${phase})`);
     console.log(`Cognitive Mode: ${mode}`);
-    console.log(`Blood: ${bloodEvents.length} events (${activeCount} active, ${staleCount} stale, ${traumaCount} trauma)`);
+    console.log(`Blood: ${bloodEvents.length} events (${activeCount} active, ${inactiveCount} inactive, ${traumaCount} trauma)`);
     console.log(`Skeleton: ${skeletonNodes.length} domains`);
     console.log(`DNA: ${dnaIdentity.status}${dnaIdentity.reevaluation_mode ? " (REEVALUATION_MODE)" : ""}`);
     if (dnaStagedPending.length > 0) {

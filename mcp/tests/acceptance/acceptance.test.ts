@@ -305,7 +305,7 @@ describe("Acceptance: Architecture Success Criteria", () => {
         it("lightweight mode has higher gravity threshold for approval", async () => {
             await ctx.configStore.save(makeConfig({ cognitive_mode: "lightweight" }));
             const perm = await ctx.governanceEngine.checkPermission("G2", false, false, false, false);
-            expect(["agent_proposed", "system_validated"]).toContain(perm);
+            expect(perm).toBe("system_validated");
         });
 
         it("institutional mode requires human_ratified for lower gravity", async () => {

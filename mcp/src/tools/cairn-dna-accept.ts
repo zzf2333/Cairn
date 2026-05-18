@@ -21,7 +21,7 @@ export async function handleDnaAccept(
         identity.traits[entry.trait_name] = {
             level: entry.level,
             confidence: entry.confidence,
-            evidence_count: (existing?.evidence_count ?? 0) + entry.evidence_events.length,
+            evidence_count: (existing?.evidence_count ?? 0) + Math.max(1, entry.evidence_events.length),
             last_updated: now,
             reasoning: entry.reasoning,
             drift_warning_count: existing?.drift_warning_count ?? 0,

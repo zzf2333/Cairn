@@ -157,7 +157,7 @@ export class ConsistencyEngine {
     async checkArchivedReactivation(): Promise<ConsistencyResult> {
         const state = await this.stateStore.load();
         const recentHits = state.activation_log.recent_hits;
-        const archivedEvents = await this.bloodStore.findArchived();
+        const archivedEvents = await this.bloodStore.findInactive();
 
         const violations: ConsistencyViolation[] = [];
 

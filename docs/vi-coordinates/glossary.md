@@ -35,7 +35,7 @@ Emergent project personality. `.cairn/dna/identity.yaml`. Traits (`simplicity_bi
 Decision weight axis, four levels: G0 (noise, dropped) / G1 (local, auto-confirmed) / G2 (module-scoped, staged) / G3 (project-defining, always staged). See [`../ii-anatomy/gravity.md`](../ii-anatomy/gravity.md).
 
 ### Governance
-Three-tier approval ladder: `agent_proposed` → `system_validated` → `human_ratified`. Required level depends on cognitive mode. See [`../ii-anatomy/governance.md`](../ii-anatomy/governance.md).
+Two-tier approval ladder: `system_validated` → `human_ratified`. Required level depends on cognitive mode. See [`../ii-anatomy/governance.md`](../ii-anatomy/governance.md).
 
 ---
 
