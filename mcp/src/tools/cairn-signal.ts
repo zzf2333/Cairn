@@ -2,6 +2,7 @@ import type { CairnContext } from "../context.js";
 import { toolResult, formatToolError } from "../errors.js";
 import type { GravityLevel } from "../constants.js";
 import { buildEventFromSignalDetails, type SignalDetails, type SignalEvidence } from "../utils/signal-builder.js";
+import { warnIfNoContext } from "./session-guard.js";
 
 interface SignalArgs {
     signal_type: string;
@@ -12,6 +13,8 @@ interface SignalArgs {
 
 export async function handleSignal(ctx: CairnContext, args: Record<string, unknown>) {
     try {
+        const contextWarning = await warnIfNoContext(ctx.stateStore);
+
         const {
             signal_type: signalType,
             domain,
@@ -71,7 +74,9 @@ export async function handleSignal(ctx: CairnContext, args: Record<string, unkno
             trauma: c.trauma,
         }));
 
-        return toolResult(JSON.stringify({
+        await ctx.stateStore.incrementSignalCount(!!contextWarning);
+
+        const response: Record<string, unknown> = {
             accepted: true,
             routing: {
                 level: routing.gravity,
@@ -79,7 +84,10 @@ export async function handleSignal(ctx: CairnContext, args: Record<string, unkno
                 governance: routing.governance,
             },
             challenges,
-        }));
+        };
+        if (contextWarning) response.warning = contextWarning;
+
+        return toolResult(JSON.stringify(response));
     } catch (error) {
         return formatToolError(error);
     }

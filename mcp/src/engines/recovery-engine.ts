@@ -111,11 +111,34 @@ export class RecoveryEngine {
         return { ...report, quarantined };
     }
 
-    async recoverSession(): Promise<{ recovered: boolean; previous_checkpoint?: { started_at: string; step: string } }> {
+    async recoverSession(): Promise<{
+        recovered: boolean;
+        previous_session?: { id?: string; started_at: string; step?: string };
+    }> {
         const state = await this.stateStore.load();
-        if (!state.session_in_progress) return { recovered: false };
-        const checkpoint = state.session_in_progress;
-        await this.stateStore.clearSessionCheckpoint();
-        return { recovered: true, previous_checkpoint: checkpoint };
+
+        if (state.active_session) {
+            const sessionInfo = {
+                id: state.active_session.id,
+                started_at: state.active_session.started_at,
+                step: state.active_session.checkpoint_step,
+            };
+            delete state.active_session;
+            delete state.session_in_progress;
+            await this.stateStore.save(state);
+            return { recovered: true, previous_session: sessionInfo };
+        }
+
+        if (state.session_in_progress) {
+            const checkpoint = state.session_in_progress;
+            delete state.session_in_progress;
+            await this.stateStore.save(state);
+            return {
+                recovered: true,
+                previous_session: { started_at: checkpoint.started_at, step: checkpoint.step },
+            };
+        }
+
+        return { recovered: false };
     }
 }

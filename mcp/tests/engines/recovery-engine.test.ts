@@ -91,7 +91,7 @@ describe("RecoveryEngine", () => {
 
         const result = await ctx.recoveryEngine.recoverSession();
         expect(result.recovered).toBe(true);
-        expect(result.previous_checkpoint?.step).toBe("decay_done");
+        expect(result.previous_session?.step).toBe("decay_done");
 
         const stateAfter = await ctx.stateStore.load();
         expect(stateAfter.session_in_progress).toBeUndefined();

@@ -52,9 +52,11 @@ Call `cairn_init_status()`. If `status: not_initialized`:
 3. Present the dry-run report (auto-confirmed vs staged blood candidates, skeleton, DNA) to the user
 4. After confirmation, call `cairn_init_commit({ ... })` (without `dry_run`) to write
 
-### 1. Session start — cairn_context
+### 1. Session start — cairn_context (session guard)
 
-**Call `cairn_context({ task?, files? })` before every response**, regardless of task size. Skip only if you already called it this turn with hot context.
+**Call `cairn_context({ task?, files? })` before every response**, regardless of task size. `cairn_context` is the session guard — it creates an active session, activates cognition, and detects stale sessions. Skip only if you already called it this turn with hot context.
+
+If the response includes `session.recovered_from` (not null), a previous session was interrupted. Call `cairn_session_recover()` before starting long-running work.
 
 Respect every returned field for the remainder of the session:
 
@@ -135,7 +137,7 @@ Extract candidates by reviewing the conversation since last observe/commit: reje
 
 ### 3. Planning — cairn_plan
 
-Before architecture / technology / module-boundary decisions: `cairn_plan({ task })`. Read-only. Returns historical constraints, DNA guidance, recommended direction, warnings, open questions. Do not use for routine fixes.
+Before architecture / technology / module-boundary decisions: `cairn_plan({ task })`. **Requires prior `cairn_context`** — will reject if context not loaded. Returns historical constraints, DNA guidance, recommended direction, warnings, open questions. Do not use for routine fixes.
 
 ### 4. Review queues
 

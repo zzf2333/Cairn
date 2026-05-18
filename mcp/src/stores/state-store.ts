@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
-import { StateSchema, StageSnapshotSchema, type State, type StageSnapshot, REQUIRED_INIT_STEPS, type InitStep } from "../schemas/index.js";
+import { StateSchema, StageSnapshotSchema, type State, type StageSnapshot, type ActiveSession, REQUIRED_INIT_STEPS, type InitStep } from "../schemas/index.js";
 import { atomicWriteFile } from "../utils/atomic-write.js";
 
 export class StateStore {
@@ -29,8 +29,68 @@ export class StateStore {
         await this.save(state);
     }
 
+    async startSession(params: { id: string; task?: string; files?: string[] }): Promise<void> {
+        const state = await this.load();
+        const now = new Date().toISOString();
+        state.active_session = {
+            id: params.id,
+            started_at: now,
+            last_touched_at: now,
+            task: params.task ?? null,
+            files: params.files ?? null,
+            context_loaded: true,
+            signals_count: 0,
+            degraded_signals_count: 0,
+        };
+        await this.save(state);
+    }
+
+    async touchSession(updates?: { task?: string; files?: string[] }): Promise<boolean> {
+        const state = await this.load();
+        if (!state.active_session) return false;
+        state.active_session.last_touched_at = new Date().toISOString();
+        if (updates?.task !== undefined) state.active_session.task = updates.task;
+        if (updates?.files !== undefined) state.active_session.files = updates.files;
+        await this.save(state);
+        return true;
+    }
+
+    async getActiveSession(): Promise<ActiveSession | null> {
+        const state = await this.load();
+        return state.active_session ?? null;
+    }
+
+    async incrementSignalCount(degraded: boolean): Promise<void> {
+        const state = await this.load();
+        if (!state.active_session) return;
+        state.active_session.signals_count += 1;
+        if (degraded) state.active_session.degraded_signals_count += 1;
+        state.active_session.last_touched_at = new Date().toISOString();
+        await this.save(state);
+    }
+
+    async setSessionCheckpoint(step: string): Promise<void> {
+        const state = await this.load();
+        if (state.active_session) {
+            state.active_session.checkpoint_step = step;
+            await this.save(state);
+        }
+    }
+
+    async clearSession(): Promise<void> {
+        const state = await this.load();
+        delete state.active_session;
+        delete state.session_in_progress;
+        await this.save(state);
+    }
+
     async startSessionCheckpoint(step: string): Promise<void> {
         const state = await this.load();
+        if (state.active_session) {
+            state.active_session.checkpoint_step = step;
+            await this.save(state);
+            return;
+        }
         state.session_in_progress = {
             started_at: new Date().toISOString(),
             step,
@@ -40,6 +100,11 @@ export class StateStore {
 
     async updateSessionCheckpoint(step: string): Promise<void> {
         const state = await this.load();
+        if (state.active_session) {
+            state.active_session.checkpoint_step = step;
+            await this.save(state);
+            return;
+        }
         if (state.session_in_progress) {
             state.session_in_progress.step = step;
             await this.save(state);
@@ -48,6 +113,7 @@ export class StateStore {
 
     async clearSessionCheckpoint(): Promise<void> {
         const state = await this.load();
+        delete state.active_session;
         delete state.session_in_progress;
         await this.save(state);
     }

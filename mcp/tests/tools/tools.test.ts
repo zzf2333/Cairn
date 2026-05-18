@@ -48,6 +48,7 @@ import { handleDoctor } from "../../src/tools/cairn-doctor.js";
 import { handleDnaList } from "../../src/tools/cairn-dna-list.js";
 import { handleDnaAccept } from "../../src/tools/cairn-dna-accept.js";
 import { handleDnaReject } from "../../src/tools/cairn-dna-reject.js";
+import { handleSessionRecover } from "../../src/tools/cairn-session-recover.js";
 
 function parseResult(result: { content: Array<{ type: string; text: string }>; isError?: boolean }) {
     return JSON.parse(result.content[0].text);
@@ -1048,6 +1049,10 @@ describe("cairn_status", () => {
 // ---------------------------------------------------------------------------
 
 describe("cairn_plan", () => {
+    beforeEach(async () => {
+        await ctx.stateStore.startSession({ id: "test_session" });
+    });
+
     it("returns historical constraints and DNA guidance", async () => {
         await ctx.skeletonStore.save(makeSkeletonNode("api-layer"));
         await ctx.bloodStore.save(makeEvolutionEvent("evt_nogo", {
@@ -1434,5 +1439,217 @@ describe("Compression closed loop via session_end", () => {
         await handleSessionEnd(ctx, { summary: "second" });
         const secondCount = (await ctx.dnaStagedStore.findPending()).length;
         expect(secondCount).toBe(firstCount);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Session guard: cairn_context session tracking
+// ---------------------------------------------------------------------------
+
+describe("cairn_context session guard", () => {
+    it("creates active_session on first call", async () => {
+        await handleContext(ctx, { task: "test task" });
+        const session = await ctx.stateStore.getActiveSession();
+        expect(session).not.toBeNull();
+        expect(session!.context_loaded).toBe(true);
+        expect(session!.task).toBe("test task");
+        expect(session!.signals_count).toBe(0);
+    });
+
+    it("touches existing session on second call when signals_count is 0", async () => {
+        await handleContext(ctx, { task: "first task" });
+        const first = await ctx.stateStore.getActiveSession();
+        const firstId = first!.id;
+
+        await handleContext(ctx, { task: "second task" });
+        const second = await ctx.stateStore.getActiveSession();
+        expect(second!.id).toBe(firstId);
+        expect(second!.task).toBe("second task");
+    });
+
+    it("detects stale session with signals and includes recovered_from", async () => {
+        await handleContext(ctx, { task: "old task" });
+        await ctx.stateStore.incrementSignalCount(false);
+        await ctx.stateStore.incrementSignalCount(false);
+
+        const result = await handleContext(ctx, { task: "new task" });
+        const data = parseResult(result);
+        expect(data.session).toBeDefined();
+        expect(data.session.recovered_from).not.toBeNull();
+        expect(data.session.recovered_from.signals_count).toBe(2);
+    });
+
+    it("includes session field in response", async () => {
+        const result = await handleContext(ctx, {});
+        const data = parseResult(result);
+        expect(data.session).toBeDefined();
+        expect(data.session.id).toBeDefined();
+        expect(data.session.status).toBe("active");
+        expect(data.session.recovered_from).toBeNull();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Session guard: cairn_plan hard-reject
+// ---------------------------------------------------------------------------
+
+describe("cairn_plan guard", () => {
+    it("rejects when context not loaded", async () => {
+        const result = await handlePlan(ctx, { task: "anything" });
+        expect(result.isError).toBe(true);
+        const data = parseResult(result);
+        expect(data.error).toBe("context_not_loaded");
+    });
+
+    it("succeeds when context is loaded", async () => {
+        await ctx.stateStore.startSession({ id: "test_session" });
+        const result = await handlePlan(ctx, { task: "add feature" });
+        expect(result.isError).toBeUndefined();
+        const data = parseResult(result);
+        expect(data.task).toBe("add feature");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Session guard: cairn_signal warning
+// ---------------------------------------------------------------------------
+
+describe("cairn_signal guard", () => {
+    it("warns when context not loaded", async () => {
+        const result = await handleSignal(ctx, {
+            signal_type: "decision",
+            domain: "api-layer",
+            details: { what: "test decision" },
+            evidence: {},
+        });
+        const data = parseResult(result);
+        expect(data.accepted).toBe(true);
+        expect(data.warning).toBeDefined();
+    });
+
+    it("no warning when context is loaded", async () => {
+        await ctx.stateStore.startSession({ id: "test_session" });
+        const result = await handleSignal(ctx, {
+            signal_type: "decision",
+            domain: "api-layer",
+            details: { what: "test decision" },
+            evidence: {},
+        });
+        const data = parseResult(result);
+        expect(data.accepted).toBe(true);
+        expect(data.warning).toBeUndefined();
+    });
+
+    it("increments signals_count on active session", async () => {
+        await ctx.stateStore.startSession({ id: "test_session" });
+        await handleSignal(ctx, {
+            signal_type: "decision",
+            domain: "api-layer",
+            details: { what: "test" },
+            evidence: {},
+        });
+        const session = await ctx.stateStore.getActiveSession();
+        expect(session!.signals_count).toBe(1);
+        expect(session!.degraded_signals_count).toBe(0);
+    });
+
+    it("increments degraded_signals_count when no context", async () => {
+        await handleSignal(ctx, {
+            signal_type: "decision",
+            details: { what: "test" },
+            evidence: {},
+        });
+        // No active_session, so incrementSignalCount is a no-op
+        const session = await ctx.stateStore.getActiveSession();
+        expect(session).toBeNull();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Session guard: cairn_session_end integration
+// ---------------------------------------------------------------------------
+
+describe("cairn_session_end session integration", () => {
+    beforeEach(() => {
+        initTestRepo(tmpDir);
+    });
+
+    it("reads session ID from active_session", async () => {
+        await ctx.stateStore.startSession({ id: "sess_guard_test" });
+        const result = await handleSessionEnd(ctx, { summary: "test" });
+        const data = parseResult(result);
+        expect(data.session.id).toBe("sess_guard_test");
+        expect(data.session.context_was_loaded).toBe(true);
+    });
+
+    it("clears active_session after completion", async () => {
+        await ctx.stateStore.startSession({ id: "sess_clear_test" });
+        await handleSessionEnd(ctx, { summary: "test" });
+        const session = await ctx.stateStore.getActiveSession();
+        expect(session).toBeNull();
+    });
+
+    it("works in degraded mode without active_session", async () => {
+        const result = await handleSessionEnd(ctx, { summary: "degraded test" });
+        const data = parseResult(result);
+        expect(data.warning).toBeDefined();
+        expect(data.session.context_was_loaded).toBe(false);
+        expect(data.views_regenerated).toBe(true);
+    });
+
+    it("uses active_session started_at for session record", async () => {
+        await ctx.stateStore.startSession({ id: "sess_time_test" });
+        await handleSessionEnd(ctx, { summary: "test" });
+        const sessions = await ctx.sessionStore.loadAll();
+        const record = sessions.find(s => s.id === "sess_time_test");
+        expect(record).toBeDefined();
+        expect(record!.started_at).not.toBe(record!.ended_at);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// cairn_session_recover
+// ---------------------------------------------------------------------------
+
+describe("cairn_session_recover", () => {
+    beforeEach(() => {
+        initTestRepo(tmpDir);
+    });
+
+    it("recovers stale active_session", async () => {
+        await ctx.stateStore.startSession({ id: "sess_stale" });
+        await ctx.stateStore.incrementSignalCount(false);
+
+        const result = await handleSessionRecover(ctx);
+        const data = parseResult(result);
+        expect(data.recovered).toBe(true);
+        expect(data.original_session.id).toBe("sess_stale");
+        expect(data.original_session.signals_count).toBe(1);
+        expect(data.session_end_result).toBeDefined();
+        expect(data.session_end_result.views_regenerated).toBe(true);
+
+        const session = await ctx.stateStore.getActiveSession();
+        expect(session).toBeNull();
+    });
+
+    it("returns no_stale_session when nothing to recover", async () => {
+        const result = await handleSessionRecover(ctx);
+        const data = parseResult(result);
+        expect(data.recovered).toBe(false);
+        expect(data.reason).toBe("no_stale_session");
+    });
+
+    it("handles legacy session_in_progress", async () => {
+        const state = await ctx.stateStore.load();
+        state.session_in_progress = { started_at: new Date().toISOString(), step: "decay_done" };
+        await ctx.stateStore.save(state);
+
+        const result = await handleSessionRecover(ctx);
+        const data = parseResult(result);
+        expect(data.recovered).toBe(true);
+        expect(data.legacy).toBe(true);
+
+        const after = await ctx.stateStore.load();
+        expect(after.session_in_progress).toBeUndefined();
     });
 });

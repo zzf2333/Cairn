@@ -29,14 +29,16 @@ Cairn is the active maintenance layer that prevents that cognitive collapse. It 
 
 ## What Cairn gives the AI
 
-Cairn exposes 14 MCP tools. Two are mandatory in every session flow; the rest are queue management and maintenance.
+Cairn exposes 16 MCP tools. Two are mandatory in every session flow; the rest are queue management and maintenance.
 
 | Tool | When the AI calls it | What it does |
 |------|----------------------|--------------|
-| `cairn_context` | At task start or file pivot | Activates domain-relevant cognition, constraints, challenges |
-| `cairn_plan` | Before design / architecture work | Pulls historical constraints + DNA guidance for the task |
+| `cairn_context` | At task start (session guard) | Creates active session, activates domain-relevant cognition, detects stale sessions |
+| `cairn_plan` | Before design / architecture work | Pulls historical constraints + DNA guidance (requires prior `cairn_context`) |
 | `cairn_signal` | On detecting a decision / rejection / constraint | Routes through TrustRouter, logs governance result |
+| `cairn_observe` | Before every git commit | Extracts and routes candidate signals from recent work |
 | `cairn_session_end` | Session close with summary | Git scan → decay → calibration → stage inference → DNA compression |
+| `cairn_session_recover` | When stale session detected | Runs session_end pipeline to close an interrupted session |
 | `cairn_status` | Mid-session health check | Snapshot of blood / staged / DNA / phase |
 | `cairn_stage_list` | Reviewing pending events | Lists staged evolution candidates awaiting ratification |
 | `cairn_stage_accept` | Approve event candidate | Promotes to blood, applies stage transition, logs audit |
@@ -48,7 +50,7 @@ Cairn exposes 14 MCP tools. Two are mandatory in every session flow; the rest ar
 | `cairn_init_commit` | Bootstrap after analysis | Writes initial config, skeleton, blood, DNA |
 | `cairn_doctor` | Diagnostics / troubleshooting *(maintenance)* | Consistency checks, decay actions, resurrection candidates |
 
-**Mandatory every flow**: `cairn_context` (start) + `cairn_session_end` (close). Everything else is on-demand or human-ratification.
+**Mandatory every flow**: `cairn_context` (start) + `cairn_session_end` (close). `cairn_context` acts as the session guard — it tracks an active session state machine and detects interrupted sessions. `cairn_plan` will reject if called without prior `cairn_context`; `cairn_signal` warns but continues.
 
 ---
 
@@ -117,12 +119,15 @@ Other MCP-capable hosts (Cline, Windsurf, Cursor, Copilot, Gemini CLI, OpenCode)
 
 ```
 cairn_init_status  →  cairn_context  →  [your work]  →  cairn_signal (×N)  →  cairn_session_end
-   one-time            every task         AI codes         on decision           maintenance
+   one-time          session guard       AI codes         on decision           maintenance
+                     (+ stale detect)                                       cairn_session_recover
+                                                                              (if previous crashed)
 ```
 
-Three concrete flows the AI runs on its own:
+Four concrete flows the AI runs on its own:
 
-- **Fresh task** — `cairn_context` activates constraints → AI codes → flags one decision via `cairn_signal` → `cairn_session_end` compresses.
+- **Fresh task** — `cairn_context` creates session + activates constraints → AI codes → flags decisions via `cairn_signal` → `cairn_session_end` compresses.
+- **Stale recovery** — `cairn_context` detects unclosed session → `cairn_session_recover` runs maintenance pipeline → new session begins cleanly.
 - **Design review** — `cairn_plan` surfaces what was tried before → AI proposes only un-tried paths.
 - **Ratification** — `cairn_stage_list` (you) → `cairn_stage_accept` / `cairn_stage_reject` → blood updated.
 

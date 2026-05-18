@@ -26,6 +26,19 @@ export const InitProgressSchema = z.object({
     started_at: z.string().optional(),
 });
 
+export const ActiveSessionSchema = z.object({
+    id: z.string(),
+    started_at: z.string(),
+    last_touched_at: z.string(),
+    task: z.string().nullable().default(null),
+    files: z.array(z.string()).nullable().default(null),
+    context_loaded: z.boolean().default(true),
+    signals_count: z.number().default(0),
+    degraded_signals_count: z.number().default(0),
+    checkpoint_step: z.string().optional(),
+});
+export type ActiveSession = z.infer<typeof ActiveSessionSchema>;
+
 export const StateSchema = z.object({
     cairn_version: z.string().optional(),
     initialization_status: z.enum(INIT_STATUSES).default("not_initialized"),
@@ -38,6 +51,7 @@ export const StateSchema = z.object({
         recent_hits: z.record(z.string(), z.number()).default({}),
     }).default({}),
     init_progress: InitProgressSchema.optional(),
+    active_session: ActiveSessionSchema.optional(),
     session_in_progress: z.object({
         started_at: z.string(),
         step: z.string(),

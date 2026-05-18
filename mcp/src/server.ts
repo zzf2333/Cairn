@@ -48,9 +48,10 @@ import { handleDnaList } from "./tools/cairn-dna-list.js";
 import { handleDnaAccept } from "./tools/cairn-dna-accept.js";
 import { handleDnaReject } from "./tools/cairn-dna-reject.js";
 import { handleObserve } from "./tools/cairn-observe.js";
+import { handleSessionRecover } from "./tools/cairn-session-recover.js";
 
 const CAIRN_INSTRUCTIONS = [
-    "Cairn is a project memory engine. 15 MCP tools across 4 phases.",
+    "Cairn is a project memory engine. 16 MCP tools across 4 phases.",
     "",
     "INIT (once per project, step-by-step):",
     "1. cairn_init_status() — returns current step and per-step guide.",
@@ -68,6 +69,9 @@ const CAIRN_INSTRUCTIONS = [
     "you MUST complete initialization before proceeding with the user's task.",
     "",
     "SESSION START: Call cairn_context({ task?, files? }) BEFORE responding to any user request.",
+    "cairn_context is the session guard — it tracks an active session, activates cognition, and detects stale sessions.",
+    "If response includes session.recovered_from, a previous session was not closed properly — call cairn_session_recover() first.",
+    "cairn_plan REJECTS calls without prior cairn_context. cairn_signal warns but continues.",
     "Respect ALL returned constraints for the entire session:",
     "- constraints.no_go: never suggest these directions; entries with archived:true are weaker (recent reactivations) but still warn",
     "- constraints.accepted_debt: do not fix; work within",
@@ -84,17 +88,19 @@ const CAIRN_INSTRUCTIONS = [
     "Include details.aliases for subjects with common synonyms (e.g. what='MongoDB', aliases=['document store','nosql']).",
     "Do NOT signal routine fixes, formatting, or duplicates.",
     "",
-    "",
     "PRE-COMMIT CHECKPOINT: Call cairn_observe({ summary, candidates }) BEFORE every git commit.",
     "Extract candidate signals from work done since last observe/commit. Each gets recommendation (capture/skip) with reasoning.",
     "Captured candidates route through TrustRouter to blood/staged; skipped ones are reported for human override.",
     "If any candidates are staged, present them to the user before proceeding with commit.",
     "",
-    "BEFORE DESIGN TASKS: Call cairn_plan({ task }) for historical constraints + DNA guidance.",
+    "BEFORE DESIGN TASKS: Call cairn_plan({ task }) for historical constraints + DNA guidance. Requires prior cairn_context.",
     "",
     "SESSION END: Call cairn_session_end({ summary, ... }) before the session closes.",
     "Side effects: scans git since last session, runs decay/calibration/safety-valve, infers stage,",
-    "and may produce DNA candidates for review. Output exposes git_signals, stage, dna_compression, dna_safety_valve.",
+    "and may produce DNA candidates for review. Output exposes git_signals, stage, dna_compression, dna_safety_valve, session stats.",
+    "",
+    "SESSION RECOVERY: Call cairn_session_recover() to close a stale session detected by cairn_context.",
+    "Runs the full session_end pipeline (git scan → decay → calibration → stage → compression → views).",
     "",
     "REVIEW QUEUES (two separate channels):",
     "- EvolutionEvent staged: cairn_stage_list() → cairn_stage_accept/reject per user decision",
@@ -244,6 +250,13 @@ export function createServer(ctx: CairnContext): McpServer {
             unresolved: z.array(z.string()).optional(),
         },
         async (args) => wrap(ctx, "cairn_session_end", args, () => handleSessionEnd(ctx, args)),
+    );
+
+    server.tool(
+        "cairn_session_recover",
+        "Recover a stale/crashed session by running the session_end pipeline",
+        {},
+        async () => wrap(ctx, "cairn_session_recover", {}, () => handleSessionRecover(ctx)),
     );
 
     server.tool(

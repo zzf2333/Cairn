@@ -3,6 +3,7 @@ import { toolResult, formatToolError } from "../errors.js";
 import type { SessionRecord, State, EvolutionEvent } from "../schemas/index.js";
 import { downgradeGravity, type GravityLevel } from "../constants.js";
 import { mapGitSignalToEvent } from "../engines/git-signal-mapper.js";
+import { generateSessionId, warnIfNoContext } from "./session-guard.js";
 
 const STAGE_HYSTERESIS_DAYS = 14;
 const STAGE_MIN_CONFIDENCE = 0.6;
@@ -216,16 +217,6 @@ interface SessionEndArgs {
     unresolved?: string[];
 }
 
-function formatSessionId(now: Date): string {
-    const y = now.getFullYear();
-    const mo = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    const h = String(now.getHours()).padStart(2, "0");
-    const mi = String(now.getMinutes()).padStart(2, "0");
-    const s = String(now.getSeconds()).padStart(2, "0");
-    return `sess_${y}_${mo}_${d}_${h}${mi}${s}`;
-}
-
 export async function handleSessionEnd(ctx: CairnContext, args: Record<string, unknown>) {
     try {
         const {
@@ -237,9 +228,22 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
 
         const now = new Date();
         const nowIso = now.toISOString();
-        const sessionId = formatSessionId(now);
 
-        await ctx.stateStore.startSessionCheckpoint("init");
+        const sessionWarning = await warnIfNoContext(ctx.stateStore);
+        const activeSession = await ctx.stateStore.getActiveSession();
+
+        let sessionId: string;
+        let sessionStartedAt: string;
+
+        if (activeSession) {
+            sessionId = activeSession.id;
+            sessionStartedAt = activeSession.started_at;
+        } else {
+            sessionId = generateSessionId(now);
+            sessionStartedAt = nowIso;
+        }
+
+        await ctx.stateStore.setSessionCheckpoint("init");
 
         const headCommit = await ctx.gitEar.getHeadCommit();
 
@@ -312,7 +316,7 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         state.last_session.ended_at = nowIso;
         await ctx.stateStore.save(state);
 
-        await ctx.stateStore.updateSessionCheckpoint("git_scan_done");
+        await ctx.stateStore.setSessionCheckpoint("git_scan_done");
 
         const config = await ctx.configStore.load();
         const cognitiveMode = config?.cognitive_mode ?? "standard";
@@ -346,7 +350,7 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
             }
         }
 
-        await ctx.stateStore.updateSessionCheckpoint("decay_done");
+        await ctx.stateStore.setSessionCheckpoint("decay_done");
 
         const calibration = await ctx.calibrationEar.calibrate();
         const safetyValve = await ctx.calibrationEar.applySafetyValve(calibration.signals);
@@ -356,24 +360,24 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
             calibrationByType[sig.signal_type] = (calibrationByType[sig.signal_type] ?? 0) + 1;
         }
 
-        await ctx.stateStore.updateSessionCheckpoint("calibration_done");
+        await ctx.stateStore.setSessionCheckpoint("calibration_done");
 
         const stageResult = await runStageInference(ctx, state, nowIso);
         if (stageResult.transitionStagedId) {
             gitNewStaged.push(stageResult.transitionStagedId);
         }
 
-        await ctx.stateStore.updateSessionCheckpoint("stage_done");
+        await ctx.stateStore.setSessionCheckpoint("stage_done");
 
         const dnaResult = await runCompressionInference(ctx, nowIso);
 
-        await ctx.stateStore.updateSessionCheckpoint("compression_done");
+        await ctx.stateStore.setSessionCheckpoint("compression_done");
 
         await ctx.viewsEngine.regenerate();
 
         const record: SessionRecord = {
             id: sessionId,
-            started_at: nowIso,
+            started_at: sessionStartedAt,
             ended_at: nowIso,
             summary,
             signals_captured: gitScan.signals.length + calibration.signals.length + safetyValve.signals.length,
@@ -385,11 +389,11 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
 
         await ctx.sessionStore.save(record);
 
-        await ctx.stateStore.clearSessionCheckpoint();
+        await ctx.stateStore.clearSession();
 
         const stagedCount = await ctx.stagedStore.count();
 
-        return toolResult(JSON.stringify({
+        const response: Record<string, unknown> = {
             signals_processed: gitScan.signals.length + calibration.signals.length,
             new_blood: gitNewBlood.length,
             new_staged: gitNewStaged.length,
@@ -426,7 +430,16 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
                 confidence_reduced: safetyValve.confidence_reduced,
                 entered_reevaluation: safetyValve.entered_reevaluation,
             },
-        }));
+            session: {
+                id: sessionId,
+                signals_count: activeSession?.signals_count ?? 0,
+                degraded_signals_count: activeSession?.degraded_signals_count ?? 0,
+                context_was_loaded: activeSession?.context_loaded ?? false,
+            },
+        };
+        if (sessionWarning) response.warning = sessionWarning;
+
+        return toolResult(JSON.stringify(response));
     } catch (error) {
         return formatToolError(error);
     }

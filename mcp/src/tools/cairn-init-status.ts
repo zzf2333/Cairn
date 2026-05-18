@@ -124,7 +124,11 @@ export async function handleInitStatus(ctx: CairnContext) {
             );
         }
 
-        if (state.session_in_progress) {
+        if (state.active_session) {
+            warnings.push(
+                `incomplete_session: session ${state.active_session.id} started at ${state.active_session.started_at} was not closed. Call cairn_session_recover() to clean up.`
+            );
+        } else if (state.session_in_progress) {
             warnings.push(
                 `incomplete_session: a previous cairn_session_end started at ${state.session_in_progress.started_at} did not finish (last step: ${state.session_in_progress.step}). Run 'cairn doctor --recover' to clean up.`
             );

@@ -1,10 +1,22 @@
 import type { CairnContext } from "../context.js";
 import { toolResult } from "../errors.js";
+import { requireContext } from "./session-guard.js";
 
 export async function handlePlan(
     ctx: CairnContext,
     args: { task: string },
 ) {
+    const guard = await requireContext(ctx.stateStore);
+    if (!guard.ok) {
+        return {
+            content: [{ type: "text" as const, text: JSON.stringify({
+                error: "context_not_loaded",
+                message: guard.warning,
+            }) }],
+            isError: true,
+        };
+    }
+
     const activation = await ctx.activationEngine.activate({ task: args.task });
 
     const identity = await ctx.dnaStore.loadIdentity();

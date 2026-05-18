@@ -4,18 +4,19 @@ Cairn is an AI-native engineering cognition engine. `.cairn/` stores
 structured project memory — decisions, rejections, trade-offs, trauma —
 that constrains your suggestions and prevents repeated mistakes.
 
-You interact with Cairn exclusively through **14 MCP tools**. Never read
+You interact with Cairn exclusively through **16 MCP tools**. Never read
 or write `.cairn/` files directly (except `views/` in degraded mode).
 
 | Tool | Purpose |
 |---|---|
 | `cairn_init_status` | Check initialization state |
 | `cairn_init_commit` | Write initial cognition (config, skeleton, blood, stage, DNA) |
-| `cairn_context` | Activate constraints before any task |
+| `cairn_context` | Session guard + activate constraints before any task |
 | `cairn_signal` | Capture real-time constraint signals |
 | `cairn_observe` | Pre-commit checkpoint: batch-extract and route candidate signals |
-| `cairn_plan` | Get history-aware planning guidance (read-only) |
+| `cairn_plan` | Get history-aware planning guidance (requires prior `cairn_context`) |
 | `cairn_session_end` | Close session, run automated maintenance pipeline |
+| `cairn_session_recover` | Close a stale/crashed session by running session_end pipeline |
 | `cairn_stage_list` | List staged EvolutionEvent entries pending review |
 | `cairn_stage_accept` | Promote staged entry to blood (and apply stage_transition to state if applicable) |
 | `cairn_stage_reject` | Reject staged entry with reason |
@@ -154,13 +155,12 @@ Trust Router and G2+ items enter `staged/` for human ratification.
 
 ---
 
-## 1. SESSION START — cairn_context
+## 1. SESSION START — cairn_context (session guard)
 
 **Call once at the start of every new session**, before responding to the
-user's first substantive message. Within the same session, skip the call
-if hot context from a recent `cairn_context` invocation is still valid for
-the current task (no new task topic, no new files). When in doubt, call
-again — it is read-only and cheap.
+user's first substantive message. `cairn_context` is the session guard —
+it creates an active session, activates cognition, and detects stale sessions.
+Within the same session, calling again is safe (it touches the existing session).
 
 Pass the current task and/or files if known:
 
@@ -189,9 +189,13 @@ Returns:
     "conflict_with", "description",
     "required_response?", "trauma?", "archived?": boolean
   }],
-  "meta": { "skeleton_nodes_activated", "blood_events_scanned", "context_token_estimate" }
+  "meta": { "skeleton_nodes_activated", "blood_events_scanned", "context_token_estimate" },
+  "session": { "id", "status": "active", "recovered_from": null | { "id", "started_at", "signals_count" } }
 }
 ```
+
+**If `session.recovered_from` is not null**, a previous session was interrupted.
+Call `cairn_session_recover()` before starting long-running work.
 
 **Respect all returned constraints for the remainder of the session.**
 
@@ -310,6 +314,8 @@ For each, recommend `capture` (meaningful for future sessions) or `skip`
 ---
 
 ## 3. PLANNING — cairn_plan
+
+**Requires prior `cairn_context`** — will reject if context not loaded.
 
 Before proposing designs or architecture changes, call:
 

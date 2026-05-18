@@ -149,9 +149,11 @@ async function runRecover(ctx: Awaited<ReturnType<typeof createContext>>): Promi
         console.log("No incomplete session to recover.");
         return;
     }
-    console.log(`Cleared checkpoint:`);
-    console.log(`  started_at: ${result.previous_checkpoint!.started_at}`);
-    console.log(`  last step:  ${result.previous_checkpoint!.step}`);
+    const prev = result.previous_session!;
+    console.log(`Cleared session:`);
+    if (prev.id) console.log(`  id:         ${prev.id}`);
+    console.log(`  started_at: ${prev.started_at}`);
+    if (prev.step) console.log(`  last step:  ${prev.step}`);
     console.log("Note: session_end did not finish, so its side effects (git scan, decay, calibration,");
     console.log("compression, views regen) were partial. Re-run cairn_session_end to complete.");
 }
@@ -189,7 +191,9 @@ async function runMetrics(ctx: Awaited<ReturnType<typeof createContext>>): Promi
     console.log(`  staged backlog:      ${staged.length}`);
     console.log(`  last session_end:    ${sessionAge}`);
     console.log(`  stage:               ${state.stage.phase} (confidence ${state.stage.confidence.toFixed(2)}, ${state.stage.status})`);
-    if (state.session_in_progress) {
+    if (state.active_session) {
+        console.log(`  active_session:      YES (id ${state.active_session.id}, started ${state.active_session.started_at}, signals ${state.active_session.signals_count})`);
+    } else if (state.session_in_progress) {
         console.log(`  session_in_progress: YES (started ${state.session_in_progress.started_at}, step ${state.session_in_progress.step})`);
     }
 }
