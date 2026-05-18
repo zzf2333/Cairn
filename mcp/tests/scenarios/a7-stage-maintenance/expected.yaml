@@ -17,3 +17,8 @@ required_text_patterns:
 forbidden_text_patterns:
   - pattern: "(?i)here.?s the migration plan|step 1.*zustand|first PR|migration steps|installation"
     description: must not draft a full migration plan
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: "Codex tends to draft migration despite maintenance stage; stage advisory is weaker than hard_constraint"

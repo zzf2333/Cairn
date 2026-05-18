@@ -26,7 +26,8 @@ tests/scenarios/
 │   ├── assertions.ts         — expected.yaml evaluator
 │   ├── reporter.ts           — terminal output
 │   ├── smoke.ts              — framework smoke test for ONE scenario (no LLM)
-│   └── smoke-all.ts          — framework smoke test for ALL scenarios (no LLM)
+│   ├── smoke-all.ts          — framework smoke test for ALL scenarios (no LLM)
+│   └── smoke-lifecycle.ts    — deterministic session guard lifecycle test (no LLM)
 ├── _shared/                  — reusable fixture fragments (currently empty)
 ├── a1-no-go-direct-hit/
 │   ├── fixture.yaml          — declarative .cairn/ spec (builder expands it)
@@ -96,7 +97,10 @@ npm run scenarios:codex
 npm run scenarios -- --bail
 
 # framework smoke test — NO LLM, just verifies fixtures + MCP wiring
-npx tsx tests/scenarios/runner/smoke-all.ts
+npm run smoke
+
+# session guard lifecycle — NO LLM, verifies context→signal→session_end→recover state machine
+npm run smoke:lifecycle
 ```
 
 ### Env knobs
@@ -127,6 +131,8 @@ The CLI driver runs both real `claude -p` and real `codex exec`. Some scenarios 
 | **D3 empty init flow** | Same root cause as C3 — Codex reads the empty cwd as "wrong project" rather than "uninitialized Cairn project I should help initialize". |
 
 These are not assertion bugs — they're real platform differences worth documenting. Claude Code passes all four scenarios with the same fixtures and prompts.
+
+These four scenarios now have `platform_overrides.codex.allow_fail` in their `expected.yaml`, so they show as `XFAIL` (expected failure) rather than hard-failing CI. When Codex behavior improves, remove the override to promote to a real assertion.
 
 ## Adding a new scenario
 
@@ -171,6 +177,14 @@ forbidden_text_patterns:
 
 min_total_tool_calls: 1
 max_total_tool_calls: 20
+
+# per-platform behavior (optional)
+platform_overrides:
+  codex:
+    allow_fail: true                  # XFAIL — assertions run but failures don't break CI
+    allow_fail_reason: "known resume/context issue"
+    # skip: true                      # skip entirely — don't even run the scenario for this platform
+    # skip_reason: "not applicable"
 ```
 
 ## Why this approach

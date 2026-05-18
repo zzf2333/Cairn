@@ -12,3 +12,8 @@ required_text_patterns:
     description: must mention pending staged entries to the user
   - pattern: "(?i)cairn_stage_list|stage.*list|review.*now|review.*later|do you want|是否.*查看"
     description: must invite the user to review them
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: "Codex reads empty cwd as 'wrong project' and ignores staged queue from cairn_context"

@@ -76,6 +76,13 @@ export interface RunRecord {
     error?: string;
 }
 
+export interface PlatformOverride {
+    allow_fail?: boolean;
+    allow_fail_reason?: string;
+    skip?: boolean;
+    skip_reason?: string;
+}
+
 export interface ExpectedSpec {
     description?: string;
     required_tool_calls?: ToolCallAssertion[];
@@ -84,6 +91,7 @@ export interface ExpectedSpec {
     forbidden_text_patterns?: TextPatternAssertion[];
     min_total_tool_calls?: number;
     max_total_tool_calls?: number;
+    platform_overrides?: Record<Platform, PlatformOverride>;
 }
 
 export interface ToolCallAssertion {
@@ -112,4 +120,8 @@ export interface ScenarioResult {
     passed: boolean;
     assertions: AssertionResult[];
     run: RunRecord;
+    allowed_fail?: boolean;
+    allowed_fail_reason?: string;
+    skipped?: boolean;
+    skip_reason?: string;
 }

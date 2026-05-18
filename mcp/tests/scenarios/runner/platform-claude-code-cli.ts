@@ -64,10 +64,11 @@ export async function runClaudeCodeCli({
     const skillPath = resolve(import.meta.dirname, "../../../../skills/claude-code/SKILL.md");
     const skillText = await readFile(skillPath, "utf8");
 
-    // The 14 cairn tools, all behind the mcp__cairn__ prefix Claude Code uses.
+    // All 16 cairn tools, behind the mcp__cairn__ prefix Claude Code uses.
     const cairnToolNames = [
         "cairn_init_status", "cairn_init_commit", "cairn_context", "cairn_signal",
-        "cairn_session_end", "cairn_status", "cairn_plan",
+        "cairn_observe", "cairn_session_end", "cairn_session_recover",
+        "cairn_status", "cairn_plan",
         "cairn_stage_list", "cairn_stage_accept", "cairn_stage_reject",
         "cairn_doctor", "cairn_dna_list", "cairn_dna_accept", "cairn_dna_reject",
     ];

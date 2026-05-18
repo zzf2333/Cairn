@@ -3,6 +3,8 @@ import { parse as yamlParse } from "yaml";
 import type {
     AssertionResult,
     ExpectedSpec,
+    Platform,
+    PlatformOverride,
     RunRecord,
     ToolCallAssertion,
     ToolCallRecord,
@@ -141,6 +143,10 @@ function checkForbiddenText(text: string, a: TextPatternAssertion): AssertionRes
         passed: true,
         detail: "absent",
     };
+}
+
+export function getPlatformOverride(expected: ExpectedSpec, platform: Platform): PlatformOverride | undefined {
+    return expected.platform_overrides?.[platform];
 }
 
 export function evaluate(run: RunRecord, expected: ExpectedSpec): AssertionResult[] {

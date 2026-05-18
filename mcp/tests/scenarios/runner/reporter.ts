@@ -2,14 +2,25 @@ import type { ScenarioResult } from "./types.js";
 
 const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
+const YELLOW = "\x1b[33m";
+const CYAN = "\x1b[36m";
 const DIM = "\x1b[2m";
 const BOLD = "\x1b[1m";
 const RESET = "\x1b[0m";
 
 export function printResult(r: ScenarioResult): void {
-    const tag = r.passed ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`;
+    if (r.skipped) {
+        console.log(`${CYAN}SKIP${RESET} [${r.platform}] ${r.scenarioId} ${DIM}(${r.skip_reason ?? "platform override"})${RESET}`);
+        return;
+    }
+    const tag = r.allowed_fail
+        ? `${YELLOW}XFAIL${RESET}`
+        : r.passed ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`;
     const time = `${r.run.duration_ms}ms`;
     console.log(`${tag} [${r.platform}] ${r.scenarioId} ${DIM}(${r.run.tool_calls.length} tool calls, ${time})${RESET}`);
+    if (r.allowed_fail && r.allowed_fail_reason) {
+        console.log(`  ${YELLOW}expected fail: ${r.allowed_fail_reason}${RESET}`);
+    }
     if (r.run.error) {
         console.log(`  ${RED}error: ${r.run.error}${RESET}`);
     }
@@ -25,15 +36,18 @@ export function printResult(r: ScenarioResult): void {
 
 export function printSummary(results: ScenarioResult[]): void {
     const total = results.length;
-    const passed = results.filter((r) => r.passed).length;
-    const failed = total - passed;
+    const skipped = results.filter((r) => r.skipped).length;
+    const xfail = results.filter((r) => r.allowed_fail).length;
+    const passed = results.filter((r) => r.passed && !r.skipped && !r.allowed_fail).length;
+    const failed = total - passed - xfail - skipped;
     console.log("");
     console.log(`${BOLD}Scenario summary:${RESET}`);
     console.log(`  total:  ${total}`);
     console.log(`  ${GREEN}passed: ${passed}${RESET}`);
+    if (xfail > 0) console.log(`  ${YELLOW}xfail:  ${xfail}${RESET}`);
+    if (skipped > 0) console.log(`  ${CYAN}skipped:${skipped}${RESET}`);
     if (failed > 0) console.log(`  ${RED}failed: ${failed}${RESET}`);
 
-    // group by scenario
     const byScenario = new Map<string, ScenarioResult[]>();
     for (const r of results) {
         const arr = byScenario.get(r.scenarioId) ?? [];
@@ -43,7 +57,11 @@ export function printSummary(results: ScenarioResult[]): void {
     console.log("");
     console.log(`${BOLD}By scenario:${RESET}`);
     for (const [id, rs] of [...byScenario.entries()].sort()) {
-        const platforms = rs.map((r) => `${r.platform}=${r.passed ? GREEN + "✓" + RESET : RED + "✗" + RESET}`).join("  ");
+        const platforms = rs.map((r) => {
+            if (r.skipped) return `${r.platform}=${CYAN}⊘${RESET}`;
+            if (r.allowed_fail) return `${r.platform}=${YELLOW}⚠${RESET}`;
+            return `${r.platform}=${r.passed ? GREEN + "✓" + RESET : RED + "✗" + RESET}`;
+        }).join("  ");
         console.log(`  ${id}  ${platforms}`);
     }
 }

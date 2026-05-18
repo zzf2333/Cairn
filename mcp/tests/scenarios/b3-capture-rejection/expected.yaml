@@ -14,3 +14,8 @@ required_tool_calls:
 required_text_patterns:
   - pattern: "(?i)in-process|in-memory|lru|local|database.*cache|postgres|进程内|本地"
     description: AI must pivot to an alternative recommendation after rejection
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: "Codex exec resume sometimes loses earlier context; turn-2 rejection signal not captured"

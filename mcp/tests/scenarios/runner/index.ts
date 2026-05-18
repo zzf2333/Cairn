@@ -6,7 +6,7 @@ import { existsSync } from "node:fs";
 import { discoverScenarios } from "./discover.js";
 import { buildFixture, loadFixtureSpec } from "./fixture-builder.js";
 import { startMcp } from "./mcp-bridge.js";
-import { loadExpected, evaluate, allPassed } from "./assertions.js";
+import { loadExpected, evaluate, allPassed, getPlatformOverride } from "./assertions.js";
 import { printResult, printSummary } from "./reporter.js";
 import { runClaudeCode } from "./platform-claude-code.js";
 import { runCodex } from "./platform-codex.js";
@@ -69,6 +69,23 @@ async function runOnePlatform(
         const promptRaw = await readFile(scenario.promptPath, "utf8");
         const userTurns = parsePromptTurns(promptRaw);
         const expected = await loadExpected(scenario.expectedPath);
+        const override = getPlatformOverride(expected, platform);
+
+        if (override?.skip) {
+            return {
+                scenarioId: scenario.id,
+                platform,
+                passed: true,
+                skipped: true,
+                skip_reason: override.skip_reason,
+                assertions: [],
+                run: {
+                    scenarioId: scenario.id, platform, model: "(skipped)",
+                    started_at: new Date().toISOString(), finished_at: new Date().toISOString(),
+                    duration_ms: 0, tool_calls: [], assistant_text: "", user_turns: [], raw_messages: [],
+                },
+            };
+        }
 
         let run: RunRecord;
         try {
@@ -119,17 +136,22 @@ async function runOnePlatform(
         }
 
         const assertions = run.error ? [{ name: "driver", passed: false, detail: run.error }] : evaluate(run, expected);
-        const passed = !run.error && allPassed(assertions);
+        const rawPassed = !run.error && allPassed(assertions);
+        const allowedFail = !rawPassed && override?.allow_fail === true;
+        const passed = rawPassed || allowedFail;
 
         if (saveLogs) {
             const logDir = resolve(import.meta.dirname, "../_runs", scenario.id);
             await mkdir(logDir, { recursive: true });
             await writeFile(
                 join(logDir, `${platform}-${driver}.json`),
-                JSON.stringify({ run, assertions, passed, driver }, null, 2),
+                JSON.stringify({ run, assertions, passed, driver, allowed_fail: allowedFail || undefined }, null, 2),
             );
         }
-        return { scenarioId: scenario.id, platform, passed, assertions, run };
+        return {
+            scenarioId: scenario.id, platform, passed, assertions, run,
+            ...(allowedFail ? { allowed_fail: true, allowed_fail_reason: override?.allow_fail_reason } : {}),
+        };
     } finally {
         await rm(tmp, { recursive: true, force: true });
     }
@@ -186,8 +208,8 @@ async function main(): Promise<void> {
     }
 
     printSummary(results);
-    const anyFail = results.some((r) => !r.passed);
-    process.exit(anyFail ? 1 : 0);
+    const anyHardFail = results.some((r) => !r.passed && !r.skipped);
+    process.exit(anyHardFail ? 1 : 0);
 }
 
 main().catch((e) => {

@@ -16,3 +16,8 @@ required_text_patterns:
 forbidden_text_patterns:
   - pattern: "(?i)the team strongly prefers|the codebase is known to|historically the team has"
     description: must not fabricate project history when none exists yet
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: "Codex reads empty cwd as 'wrong project' rather than uninitialized Cairn project"
