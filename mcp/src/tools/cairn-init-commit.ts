@@ -3,16 +3,18 @@ import { toolResult, formatToolError } from "../errors.js";
 import type { EvolutionEvent } from "../schemas/index.js";
 import type { BloodCandidate } from "../schemas/blood-candidate.js";
 import { KNOWN_DNA_TRAITS, VERSION, type GravityLevel, type CognitiveMode, type ProjectPhase } from "../constants.js";
+import { type InitStep, INIT_STEPS, REQUIRED_INIT_STEPS } from "../schemas/state.js";
 
 interface InitCommitArgs {
     dry_run?: boolean;
-    config: {
+    step?: InitStep;
+    config?: {
         project_name: string;
         domains: string[];
         cognitive_mode: CognitiveMode;
         tech_stack?: Array<{ name: string; domain: string; summary: string }>;
     };
-    skeleton: Array<{
+    skeleton?: Array<{
         domain: string;
         role: string;
         owns: string[];
@@ -20,7 +22,7 @@ interface InitCommitArgs {
         causal_keywords: string[];
         dependencies?: string[];
     }>;
-    blood_candidates: BloodCandidate[];
+    blood_candidates?: BloodCandidate[];
     stage?: { phase: ProjectPhase; confidence: number; evidence: string[] };
     dna?: { traits?: Array<{ name: string; level: "low" | "medium" | "high"; confidence: number; reasoning: string }> };
     imprint?: {
@@ -95,153 +97,448 @@ function buildEventFromCandidate(candidate: BloodCandidate, index: number): Evol
     };
 }
 
+function nextStep(completedSteps: readonly string[]): InitStep | null {
+    return INIT_STEPS.find(s => !completedSteps.includes(s)) ?? null;
+}
+
 export async function handleInitCommit(ctx: CairnContext, args: Record<string, unknown>) {
-    // Init intentionally does NOT call gitEar.scan() to backscan git history.
-    // Initial cognition is curated by the AI via the blood_candidates argument
-    // (higher quality than mass-scanning historical commits would produce).
-    // Auto git scanning begins on the first session_end after init, using
-    // state.last_session.commit (set below) as the starting point.
     try {
-        const {
-            dry_run: dryRun,
-            config,
-            skeleton,
-            blood_candidates: bloodCandidates,
-            stage,
-            dna,
-            imprint,
-        } = args as unknown as InitCommitArgs;
-        const now = new Date().toISOString();
+        const parsed = args as unknown as InitCommitArgs;
 
-        if (dryRun) {
-            return await previewInit(ctx, {
-                config, skeleton, bloodCandidates, stage, dna, imprint,
-            });
+        if (!parsed.step) {
+            return await handleLegacyInitCommit(ctx, parsed);
         }
 
-        await ctx.configStore.save({
-            version: "3.0",
-            project: { name: config.project_name, created: now },
-            domains: [...new Set(skeleton.map(s => s.domain))],
-            cognitive_mode: config.cognitive_mode,
-            stage: { override: null },
-            tech_stack: config.tech_stack ?? [],
-            logging: { enabled: true, retention_days: 30 },
-        });
-
-        for (const node of skeleton) {
-            await ctx.skeletonStore.save({
-                domain: node.domain,
-                role: node.role,
-                owns: node.owns,
-                does_not_own: node.does_not_own,
-                stability: "stable",
-                dependencies: node.dependencies ?? [],
-                causal_keywords: node.causal_keywords,
-            });
+        switch (parsed.step) {
+            case "config":
+                return await handleConfigStep(ctx, parsed);
+            case "skeleton":
+                return await handleSkeletonStep(ctx, parsed);
+            case "blood":
+                return await handleBloodStep(ctx, parsed);
+            case "dna":
+                return await handleDnaStep(ctx, parsed);
+            case "stage":
+                return await handleStageStep(ctx, parsed);
+            default:
+                return formatToolError(new Error(`Unknown init step: ${parsed.step}`));
         }
-
-        let autoConfirmed = 0;
-        let staged = 0;
-
-        for (let i = 0; i < bloodCandidates.length; i++) {
-            const candidate = bloodCandidates[i];
-            const event = buildEventFromCandidate(candidate, i);
-
-            const routing = await ctx.trustRouter.route({
-                domain: event.domain,
-                subject_name: event.subject.name,
-                type: event.type,
-                gravity: event.gravity.level as GravityLevel,
-                isTrauma: event.trauma.is_trauma,
-            });
-
-            if (routing.destination === "blood") {
-                event.governance_status = "auto_confirmed";
-                await ctx.bloodEngine.commit(event);
-                autoConfirmed++;
-            } else if (routing.destination === "staged") {
-                event.governance_status = "pending";
-                await ctx.stagedStore.save({
-                    id: event.id,
-                    draft_event: event,
-                    review_status: "pending",
-                    routing_reason: routing.reason,
-                    gravity: routing.gravity as GravityLevel,
-                    governance_required: routing.governance === "human_ratified"
-                        ? "human_ratified"
-                        : "auto_confirmable",
-                    created_at: now,
-                });
-                staged++;
-            }
-        }
-
-        if (stage) {
-            await ctx.stateStore.updateStage({
-                phase: stage.phase,
-                confidence: stage.confidence,
-                status: "advisory",
-                evidence: stage.evidence.map(e => ({ source: "init", signal: e })),
-                guidance: [],
-            });
-        }
-
-        if (dna?.traits && dna.traits.length > 0) {
-            const identity = await ctx.dnaStore.loadIdentity();
-            for (const trait of dna.traits) {
-                identity.traits[trait.name] = {
-                    level: trait.level,
-                    confidence: trait.confidence,
-                    evidence_count: 1,
-                    last_updated: now,
-                    reasoning: trait.reasoning,
-                    drift_warning_count: 0,
-                    last_safety_valve_at: null,
-                };
-            }
-            identity.status = "emerging";
-            await ctx.dnaStore.saveIdentity(identity);
-        }
-
-        if (imprint) {
-            await ctx.dnaStore.saveImprint({
-                inherited_from: imprint.inherited_from,
-                inherited_at: now,
-                inherited_constraints: imprint.inherited_constraints,
-                inherited_warnings: imprint.inherited_warnings,
-                identity_status: "not_yet_emerged",
-            });
-        }
-
-        const state = await ctx.stateStore.load();
-        state.initialization_status = "complete";
-        state.cairn_version = VERSION;
-        await ctx.stateStore.save(state);
-
-        await ctx.viewsEngine.regenerate();
-
-        return toolResult(JSON.stringify({
-            created: true,
-            written: {
-                config: true,
-                skeleton: skeleton.length,
-                blood_auto_confirmed: autoConfirmed,
-                blood_staged: staged,
-                stage: !!stage,
-                views: true,
-            },
-            pending_review: staged,
-            initialization_status: "complete",
-        }));
     } catch (error) {
         return formatToolError(error);
     }
 }
 
+async function requireStepCompleted(ctx: CairnContext, step: InitStep): Promise<string | null> {
+    const progress = await ctx.stateStore.getInitProgress();
+    if (!progress || !progress.completed_steps.includes(step)) {
+        return `Step "${step}" must be completed first`;
+    }
+    return null;
+}
+
+async function handleConfigStep(ctx: CairnContext, args: InitCommitArgs) {
+    if (!args.config) {
+        return formatToolError(new Error("config is required for the config step"));
+    }
+
+    if (args.dry_run) {
+        return toolResult(JSON.stringify({
+            dry_run: true,
+            step: "config",
+            would_write: {
+                project_name: args.config.project_name,
+                domains: args.config.domains,
+                cognitive_mode: args.config.cognitive_mode,
+                tech_stack: args.config.tech_stack ?? [],
+            },
+            next_step: "skeleton",
+        }));
+    }
+
+    const now = new Date().toISOString();
+    await ctx.configStore.save({
+        version: "3.0",
+        project: { name: args.config.project_name, created: now },
+        domains: args.config.domains,
+        cognitive_mode: args.config.cognitive_mode,
+        stage: { override: null },
+        tech_stack: args.config.tech_stack ?? [],
+        logging: { enabled: true, retention_days: 30 },
+    });
+
+    await ctx.stateStore.markInitStep("config");
+    const progress = await ctx.stateStore.getInitProgress();
+
+    return toolResult(JSON.stringify({
+        step: "config",
+        written: true,
+        project_name: args.config.project_name,
+        domains: args.config.domains,
+        cognitive_mode: args.config.cognitive_mode,
+        completed_steps: progress?.completed_steps ?? ["config"],
+        next_step: "skeleton",
+    }));
+}
+
+async function handleSkeletonStep(ctx: CairnContext, args: InitCommitArgs) {
+    const err = await requireStepCompleted(ctx, "config");
+    if (err) return formatToolError(new Error(err));
+
+    if (!args.skeleton || args.skeleton.length === 0) {
+        return formatToolError(new Error("skeleton is required for the skeleton step"));
+    }
+
+    if (args.dry_run) {
+        return toolResult(JSON.stringify({
+            dry_run: true,
+            step: "skeleton",
+            would_write: args.skeleton.map(s => ({ domain: s.domain, role: s.role })),
+            skeleton_nodes: args.skeleton.length,
+            next_step: "blood",
+        }));
+    }
+
+    const config = await ctx.configStore.load();
+    if (!config) {
+        return formatToolError(new Error("Config not found — complete the config step first"));
+    }
+    const domains = [...new Set(args.skeleton.map(s => s.domain))];
+    config.domains = domains;
+    await ctx.configStore.save(config);
+
+    for (const node of args.skeleton) {
+        await ctx.skeletonStore.save({
+            domain: node.domain,
+            role: node.role,
+            owns: node.owns,
+            does_not_own: node.does_not_own,
+            stability: "stable",
+            dependencies: node.dependencies ?? [],
+            causal_keywords: node.causal_keywords,
+        });
+    }
+
+    await ctx.stateStore.markInitStep("skeleton");
+    const progress = await ctx.stateStore.getInitProgress();
+
+    return toolResult(JSON.stringify({
+        step: "skeleton",
+        written: args.skeleton.length,
+        domains,
+        completed_steps: progress?.completed_steps ?? [],
+        next_step: "blood",
+    }));
+}
+
+async function handleBloodStep(ctx: CairnContext, args: InitCommitArgs) {
+    const err = await requireStepCompleted(ctx, "skeleton");
+    if (err) return formatToolError(new Error(err));
+
+    if (!args.blood_candidates || args.blood_candidates.length === 0) {
+        return formatToolError(new Error("blood_candidates is required for the blood step"));
+    }
+
+    if (args.dry_run) {
+        const preview: Array<{ id: string; summary: string; gravity: string; domain: string }> = [];
+        const warnings: string[] = [];
+
+        for (let i = 0; i < args.blood_candidates.length; i++) {
+            const candidate = args.blood_candidates[i];
+            const event = buildEventFromCandidate(candidate, i);
+            preview.push({
+                id: event.id,
+                summary: event.subject.name,
+                gravity: event.gravity.level,
+                domain: event.domain,
+            });
+        }
+
+        if (args.blood_candidates.length > 50) {
+            warnings.push(`${args.blood_candidates.length} blood candidates is unusually high — consider filtering.`);
+        }
+
+        return toolResult(JSON.stringify({
+            dry_run: true,
+            step: "blood",
+            would_write: preview,
+            total: preview.length,
+            note: "All candidates auto-confirm to blood during init (no staging).",
+            warnings,
+            next_step: "dna",
+        }));
+    }
+
+    let confirmed = 0;
+    for (let i = 0; i < args.blood_candidates.length; i++) {
+        const candidate = args.blood_candidates[i];
+        const event = buildEventFromCandidate(candidate, i);
+        event.governance_status = "auto_confirmed";
+        await ctx.bloodEngine.commit(event);
+        confirmed++;
+    }
+
+    await ctx.stateStore.markInitStep("blood");
+
+    const state = await ctx.stateStore.load();
+    if (state.initialization_status === "complete") {
+        state.cairn_version = VERSION;
+        await ctx.stateStore.save(state);
+        await ctx.viewsEngine.regenerate();
+    }
+
+    const progress = await ctx.stateStore.getInitProgress();
+
+    return toolResult(JSON.stringify({
+        step: "blood",
+        auto_confirmed: confirmed,
+        staged: 0,
+        completed_steps: progress?.completed_steps ?? [],
+        initialization_complete: state.initialization_status === "complete",
+        next_step: nextStep(progress?.completed_steps ?? []),
+    }));
+}
+
+async function handleDnaStep(ctx: CairnContext, args: InitCommitArgs) {
+    const err = await requireStepCompleted(ctx, "config");
+    if (err) return formatToolError(new Error(err));
+
+    if (!args.dna?.traits || args.dna.traits.length === 0) {
+        return formatToolError(new Error("dna.traits is required for the dna step"));
+    }
+
+    if (args.dry_run) {
+        const warnings: string[] = [];
+        for (const trait of args.dna.traits) {
+            if (!(KNOWN_DNA_TRAITS as readonly string[]).includes(trait.name)) {
+                warnings.push(`DNA trait "${trait.name}" is not in KNOWN_DNA_TRAITS (${KNOWN_DNA_TRAITS.join(", ")}) — it will not influence routing or challenges.`);
+            }
+        }
+        return toolResult(JSON.stringify({
+            dry_run: true,
+            step: "dna",
+            would_write: args.dna.traits,
+            warnings,
+            next_step: "stage",
+        }));
+    }
+
+    const now = new Date().toISOString();
+    const identity = await ctx.dnaStore.loadIdentity();
+    for (const trait of args.dna.traits) {
+        identity.traits[trait.name] = {
+            level: trait.level,
+            confidence: trait.confidence,
+            evidence_count: 1,
+            last_updated: now,
+            reasoning: trait.reasoning,
+            drift_warning_count: 0,
+            last_safety_valve_at: null,
+        };
+    }
+    identity.status = "emerging";
+    await ctx.dnaStore.saveIdentity(identity);
+
+    await ctx.stateStore.markInitStep("dna");
+    const progress = await ctx.stateStore.getInitProgress();
+
+    if (progress?.completed_steps.includes("blood")) {
+        await ctx.viewsEngine.regenerate();
+    }
+
+    return toolResult(JSON.stringify({
+        step: "dna",
+        traits_written: args.dna.traits.length,
+        completed_steps: progress?.completed_steps ?? [],
+        next_step: nextStep(progress?.completed_steps ?? []),
+    }));
+}
+
+async function handleStageStep(ctx: CairnContext, args: InitCommitArgs) {
+    const err = await requireStepCompleted(ctx, "config");
+    if (err) return formatToolError(new Error(err));
+
+    if (!args.stage) {
+        return formatToolError(new Error("stage is required for the stage step"));
+    }
+
+    if (args.dry_run) {
+        return toolResult(JSON.stringify({
+            dry_run: true,
+            step: "stage",
+            would_write: {
+                phase: args.stage.phase,
+                confidence: args.stage.confidence,
+                evidence: args.stage.evidence,
+            },
+            next_step: null,
+        }));
+    }
+
+    await ctx.stateStore.updateStage({
+        phase: args.stage.phase,
+        confidence: args.stage.confidence,
+        status: "advisory",
+        evidence: args.stage.evidence.map(e => ({ source: "init", signal: e })),
+        guidance: [],
+    });
+
+    await ctx.stateStore.markInitStep("stage");
+    const progress = await ctx.stateStore.getInitProgress();
+
+    if (progress?.completed_steps.includes("blood")) {
+        await ctx.viewsEngine.regenerate();
+    }
+
+    return toolResult(JSON.stringify({
+        step: "stage",
+        phase: args.stage.phase,
+        confidence: args.stage.confidence,
+        completed_steps: progress?.completed_steps ?? [],
+        next_step: null,
+    }));
+}
+
+async function handleLegacyInitCommit(ctx: CairnContext, args: InitCommitArgs) {
+    if (!args.config) {
+        return formatToolError(new Error("config is required"));
+    }
+    if (!args.skeleton) {
+        return formatToolError(new Error("skeleton is required"));
+    }
+    if (!args.blood_candidates) {
+        return formatToolError(new Error("blood_candidates is required"));
+    }
+
+    const { config, skeleton, blood_candidates: bloodCandidates, stage, dna, imprint } = args;
+    const dryRun = args.dry_run;
+    const now = new Date().toISOString();
+
+    if (dryRun) {
+        return await previewInit(ctx, {
+            config, skeleton, bloodCandidates, stage, dna, imprint,
+        });
+    }
+
+    await ctx.configStore.save({
+        version: "3.0",
+        project: { name: config.project_name, created: now },
+        domains: [...new Set(skeleton.map(s => s.domain))],
+        cognitive_mode: config.cognitive_mode,
+        stage: { override: null },
+        tech_stack: config.tech_stack ?? [],
+        logging: { enabled: true, retention_days: 30 },
+    });
+
+    for (const node of skeleton) {
+        await ctx.skeletonStore.save({
+            domain: node.domain,
+            role: node.role,
+            owns: node.owns,
+            does_not_own: node.does_not_own,
+            stability: "stable",
+            dependencies: node.dependencies ?? [],
+            causal_keywords: node.causal_keywords,
+        });
+    }
+
+    let autoConfirmed = 0;
+    let staged = 0;
+
+    for (let i = 0; i < bloodCandidates.length; i++) {
+        const candidate = bloodCandidates[i];
+        const event = buildEventFromCandidate(candidate, i);
+
+        const routing = await ctx.trustRouter.route({
+            domain: event.domain,
+            subject_name: event.subject.name,
+            type: event.type,
+            gravity: event.gravity.level as GravityLevel,
+            isTrauma: event.trauma.is_trauma,
+        });
+
+        if (routing.destination === "blood") {
+            event.governance_status = "auto_confirmed";
+            await ctx.bloodEngine.commit(event);
+            autoConfirmed++;
+        } else if (routing.destination === "staged") {
+            event.governance_status = "pending";
+            await ctx.stagedStore.save({
+                id: event.id,
+                draft_event: event,
+                review_status: "pending",
+                routing_reason: routing.reason,
+                gravity: routing.gravity as GravityLevel,
+                governance_required: routing.governance === "human_ratified"
+                    ? "human_ratified"
+                    : "auto_confirmable",
+                created_at: now,
+            });
+            staged++;
+        }
+    }
+
+    if (stage) {
+        await ctx.stateStore.updateStage({
+            phase: stage.phase,
+            confidence: stage.confidence,
+            status: "advisory",
+            evidence: stage.evidence.map(e => ({ source: "init", signal: e })),
+            guidance: [],
+        });
+    }
+
+    if (dna?.traits && dna.traits.length > 0) {
+        const identity = await ctx.dnaStore.loadIdentity();
+        for (const trait of dna.traits) {
+            identity.traits[trait.name] = {
+                level: trait.level,
+                confidence: trait.confidence,
+                evidence_count: 1,
+                last_updated: now,
+                reasoning: trait.reasoning,
+                drift_warning_count: 0,
+                last_safety_valve_at: null,
+            };
+        }
+        identity.status = "emerging";
+        await ctx.dnaStore.saveIdentity(identity);
+    }
+
+    if (imprint) {
+        await ctx.dnaStore.saveImprint({
+            inherited_from: imprint.inherited_from,
+            inherited_at: now,
+            inherited_constraints: imprint.inherited_constraints,
+            inherited_warnings: imprint.inherited_warnings,
+            identity_status: "not_yet_emerged",
+        });
+    }
+
+    const state = await ctx.stateStore.load();
+    state.initialization_status = "complete";
+    state.cairn_version = VERSION;
+    await ctx.stateStore.save(state);
+
+    await ctx.viewsEngine.regenerate();
+
+    return toolResult(JSON.stringify({
+        created: true,
+        written: {
+            config: true,
+            skeleton: skeleton.length,
+            blood_auto_confirmed: autoConfirmed,
+            blood_staged: staged,
+            stage: !!stage,
+            views: true,
+        },
+        pending_review: staged,
+        initialization_status: "complete",
+    }));
+}
+
 interface PreviewArgs {
-    config: InitCommitArgs["config"];
-    skeleton: InitCommitArgs["skeleton"];
+    config: NonNullable<InitCommitArgs["config"]>;
+    skeleton: NonNullable<InitCommitArgs["skeleton"]>;
     bloodCandidates: BloodCandidate[];
     stage?: InitCommitArgs["stage"];
     dna?: InitCommitArgs["dna"];

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
-import { StateSchema, StageSnapshotSchema, type State, type StageSnapshot } from "../schemas/index.js";
+import { StateSchema, StageSnapshotSchema, type State, type StageSnapshot, REQUIRED_INIT_STEPS, type InitStep } from "../schemas/index.js";
 import { atomicWriteFile } from "../utils/atomic-write.js";
 
 export class StateStore {
@@ -86,5 +86,28 @@ export class StateStore {
         const state = await this.load();
         state.activation_log.recent_hits = {};
         await this.save(state);
+    }
+
+    async markInitStep(step: InitStep): Promise<void> {
+        const state = await this.load();
+        if (!state.init_progress) {
+            state.init_progress = {
+                completed_steps: [],
+                started_at: new Date().toISOString(),
+            };
+        }
+        if (!state.init_progress.completed_steps.includes(step)) {
+            state.init_progress.completed_steps.push(step);
+        }
+        const allDone = REQUIRED_INIT_STEPS.every(
+            s => state.init_progress!.completed_steps.includes(s),
+        );
+        state.initialization_status = allDone ? "complete" : "partial";
+        await this.save(state);
+    }
+
+    async getInitProgress(): Promise<{ completed_steps: InitStep[]; started_at?: string } | undefined> {
+        const state = await this.load();
+        return state.init_progress;
     }
 }

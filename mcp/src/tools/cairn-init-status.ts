@@ -5,7 +5,101 @@ import { checkVersionMismatch } from "../utils/version.js";
 import { EVENT_TYPES } from "../schemas/evolution-event.js";
 import { BEHAVIOR_EFFECT_TYPES, VALIDITY_LEVELS, SOURCE_TYPES, GRAVITY_LEVELS } from "../schemas/shared.js";
 import { COGNITIVE_MODES } from "../schemas/config.js";
-import { PROJECT_PHASES } from "../schemas/state.js";
+import { PROJECT_PHASES, INIT_STEPS, type InitStep } from "../schemas/state.js";
+
+function buildStepGuide(step: InitStep | null) {
+    switch (step) {
+        case "config":
+            return {
+                step: "config",
+                description: "Set project identity and cognitive mode.",
+                analysis_tips: [
+                    "Read README.md for project name and purpose",
+                    "Check package.json / Cargo.toml / go.mod for tech stack",
+                    "Examine directory structure for domain boundaries (src/, lib/, services/)",
+                ],
+                schema_reference: {
+                    cognitive_modes: [...COGNITIVE_MODES],
+                },
+                tips: [
+                    "cognitive_mode controls governance strictness: lightweight (G3-only approval), standard (G2+), institutional (G1+)",
+                    "domains should match major module boundaries — aim for 3-10 domains",
+                    "Include tech_stack for frameworks and libraries: [{name, domain, summary}]",
+                ],
+            };
+        case "skeleton":
+            return {
+                step: "skeleton",
+                description: "Map domain boundaries, ownership, and causal keywords.",
+                analysis_tips: [
+                    "Each domain should own specific directories (owns) and not own others (does_not_own)",
+                    "causal_keywords are terms that activate this domain during cairn_context",
+                    "dependencies track which domains depend on which",
+                ],
+                tips: [
+                    "One skeleton node per domain from the config step",
+                    "owns/does_not_own use relative paths from project root",
+                    "causal_keywords should include module names, key class names, and domain terms",
+                ],
+            };
+        case "blood":
+            return {
+                step: "blood",
+                description: "Capture key decisions, rejections, and constraints as evolution events.",
+                analysis_tips: [
+                    "Run 'git log --oneline -20' for recent history and decisions",
+                    "Look for reverts, dependency changes, and architectural shifts",
+                    "Check for ADRs (ARCHITECTURE.md, docs/adr/)",
+                    "Look for CI/CD config (.github/workflows/, Makefile)",
+                ],
+                schema_reference: {
+                    event_types: [...EVENT_TYPES],
+                    behavior_effect_types: [...BEHAVIOR_EFFECT_TYPES],
+                    validity_levels: [...VALIDITY_LEVELS],
+                    source_types: [...SOURCE_TYPES],
+                    gravity_levels: [...GRAVITY_LEVELS],
+                },
+                tips: [
+                    "Aim for 5-15 blood candidates — only signal-worthy decisions, not every detail",
+                    "All candidates auto-confirm to blood during init (no staging needed)",
+                    "Use 'rejection' type for known anti-patterns, 'architecture_decision' for chosen directions",
+                    "behavior_effect.type: 'avoid_suggestion' creates no-go zones; 'prefer_approach' creates preferences",
+                    "lifecycle.validity: 'identity' for permanent decisions, 'strategic' for long-term, 'tactical' for short-term",
+                    "Use dry_run: true first to preview gravity assignments",
+                ],
+            };
+        case "dna":
+            return {
+                step: "dna",
+                description: "Define emergent personality traits (optional).",
+                schema_reference: {
+                    known_dna_traits: [...KNOWN_DNA_TRAITS],
+                },
+                tips: [
+                    "Only two traits currently influence routing: simplicity_bias and infra_aggressiveness",
+                    "Skip this step if insufficient evidence — DNA traits can emerge later via compression",
+                    "confidence should reflect how strongly the pattern appears (0-1)",
+                ],
+            };
+        case "stage":
+            return {
+                step: "stage",
+                description: "Assess project lifecycle phase (optional).",
+                schema_reference: {
+                    project_phases: [...PROJECT_PHASES],
+                },
+                tips: [
+                    "exploration: new project, many unknowns, rapid changes",
+                    "growth: established direction, adding features, expanding scope",
+                    "maturity: stable, focus on reliability and docs over new features",
+                    "maintenance: minimal changes, bug fixes only",
+                    "Stage can be inferred automatically by session_end if not set here",
+                ],
+            };
+        default:
+            return null;
+    }
+}
 
 export async function handleInitStatus(ctx: CairnContext) {
     try {
@@ -34,13 +128,18 @@ export async function handleInitStatus(ctx: CairnContext) {
             );
         }
 
+        const completedSteps = state.init_progress?.completed_steps ?? [];
+        const currentStep: InitStep | null = INIT_STEPS.find(s => !completedSteps.includes(s)) ?? null;
+
         let nextAction: string;
         if (state.initialization_status === "complete") {
             nextAction = "ready";
+        } else if (completedSteps.length > 0) {
+            nextAction = `continue initialization — next step: ${currentStep}`;
         } else if (hasConfig) {
-            nextAction = "resume initialization — config exists but state incomplete";
+            nextAction = "begin initialization — start with config step";
         } else {
-            nextAction = "run cairn_init_commit to initialize project";
+            nextAction = "run cairn_init_commit({ step: \"config\", config: {...} }) to begin";
         }
 
         const result: Record<string, unknown> = {
@@ -50,41 +149,12 @@ export async function handleInitStatus(ctx: CairnContext) {
             runtime_version: VERSION,
             next_action: nextAction,
             warnings,
+            completed_steps: completedSteps,
+            current_step: currentStep,
         };
 
         if (state.initialization_status !== "complete") {
-            result.guide = {
-                analysis_steps: [
-                    "Read README.md and any docs/ directory for project purpose and conventions",
-                    "Check package.json / Cargo.toml / go.mod / requirements.txt for tech stack and dependencies",
-                    "Run 'git log --oneline -20' to see recent activity and project maturity",
-                    "Examine directory structure for domain boundaries (src/, lib/, services/, etc.)",
-                    "Look for CI/CD config (.github/workflows/, Makefile, docker-compose.yml)",
-                    "Check for existing architectural docs (ADRs, ARCHITECTURE.md, etc.)",
-                ],
-                schema_reference: {
-                    event_types: [...EVENT_TYPES],
-                    behavior_effect_types: [...BEHAVIOR_EFFECT_TYPES],
-                    validity_levels: [...VALIDITY_LEVELS],
-                    source_types: [...SOURCE_TYPES],
-                    gravity_levels: [...GRAVITY_LEVELS],
-                    cognitive_modes: [...COGNITIVE_MODES],
-                    project_phases: [...PROJECT_PHASES],
-                    known_dna_traits: [...KNOWN_DNA_TRAITS],
-                },
-                tips: [
-                    "Always call cairn_init_commit with dry_run: true first to preview TrustRouter routing",
-                    "Aim for 5-15 blood_candidates — only signal-worthy decisions, not every detail",
-                    "G0 events are dropped by TrustRouter — use G1+ for meaningful decisions",
-                    "G2+ events in 'standard' cognitive_mode route to staged (requires human review)",
-                    "Use 'rejection' type for known anti-patterns, 'architecture_decision' for chosen directions",
-                    "behavior_effect.type: 'avoid_suggestion' creates no-go zones; 'prefer_approach' creates preferences",
-                    "lifecycle.validity: 'identity' for permanent decisions, 'strategic' for long-term, 'tactical' for short-term",
-                    "Include tech_stack in config to record frameworks and libraries (e.g. [{name: 'Express', domain: 'api', summary: 'HTTP framework'}])",
-                    "Use decision/reasoning fields in blood_candidates for richer events — summary alone repeats across subject/decision/reasoning",
-                    "For constraint_added events, populate constraints_added[] so constraints sync to domain capillaries",
-                ],
-            };
+            result.guide = buildStepGuide(currentStep);
         }
 
         return toolResult(JSON.stringify(result));

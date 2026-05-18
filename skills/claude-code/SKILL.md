@@ -32,7 +32,7 @@ On first encounter with a project, check whether Cairn is initialized:
 
 ```
 cairn_init_status()
-→ { status, has_cairn_dir, next_action }
+→ { status, completed_steps, current_step, next_action, guide }
 ```
 
 > **Optional pre-step** — the user may have run `cairn init` (CLI) ahead of time to
@@ -41,65 +41,89 @@ cairn_init_status()
 > `"empty_scaffold"` exactly like `"not_initialized"` — proceed with AI-native
 > initialization below; `cairn_init_commit` will populate the existing scaffold.
 
-If `status` is `"not_initialized"` or `"empty_scaffold"`, perform **AI-native initialization**:
+If `status` is `"not_initialized"`, `"empty_scaffold"`, or `"partial"`, perform
+**step-by-step AI-native initialization**. There are 5 steps, executed in order.
+The `guide` field in the response provides focused analysis tips and schema
+references for the current step.
 
-1. Analyze the project using your own capabilities:
-   - Read `README.md`, docs, `CLAUDE.md` / `.cursorrules` for constraints
-   - Read `git log` for evolution history (reverts, migrations, dependency changes)
-   - Read dependency files (`package.json`, `go.mod`, etc.)
-   - Read source directory structure
-2. Generate structured cognition candidates:
-   - **Skeleton**: module boundaries, ownership, causal keywords
-   - **Blood candidates**: decisions, rejections, transitions, constraints
-   - **Stage advisory**: project lifecycle phase estimate
-   - **DNA traits**: personality patterns (optional, if enough evidence)
-3. **Recommended two-step write flow** (dry-run first):
+### Step 1 — Config
 
-   **Step 3a** — preview routing:
+Analyze the project to determine name, domain boundaries, and cognitive mode.
 
-   ```
-   cairn_init_commit({
-     dry_run: true,
-     config: { project_name, domains, cognitive_mode },
-     skeleton: [...],
-     blood_candidates: [...],
-     stage?, dna?
-   })
-   ```
+```
+cairn_init_commit({
+  step: "config",
+  config: { project_name, domains, cognitive_mode, tech_stack? }
+})
+```
 
-   Returns a preview report:
-   ```json
-   {
-     "dry_run": true,
-     "would_write": {
-       "config": { ... },
-       "skeleton": [{ "domain", "role" }],
-       "blood_auto_confirm": [{ "id", "summary", "gravity", "domain" }],
-       "blood_staged": [{ "id", "summary", "gravity", "routing_reason" }],
-       "blood_dropped": [{ "id", "summary", "reason" }],
-       "stage": { "phase", "confidence" },
-       "dna_traits": [...]
-     },
-     "summary": { "skeleton_nodes", "blood_auto_confirm", "blood_staged", ... },
-     "warnings": [...]
-   }
-   ```
+Present the result to the user — confirm project name, domains, and mode.
 
-   **Step 3b** — present the report to the user. They should see:
-   - How many entries will land in blood (auto-confirmed) vs. staged (require review)
-   - Any warnings (unknown DNA trait names, too many candidates, missing skeleton/stage)
-   - What will be dropped
+### Step 2 — Skeleton
 
-4. **Step 4** — after user confirmation, call again without `dry_run`:
+Map each domain to its owned paths, causal keywords, and dependencies.
 
-   ```
-   cairn_init_commit({
-     config, skeleton, blood_candidates, stage?, dna?, imprint?
-   })
-   ```
+```
+cairn_init_commit({
+  step: "skeleton",
+  skeleton: [{ domain, role, owns, does_not_own, causal_keywords, dependencies? }]
+})
+```
 
-   All candidates pass through the Trust Router — G2+ items enter `staged/`
-   and require human ratification. Do not bypass this.
+### Step 3 — Blood
+
+Capture key architectural decisions, rejections, and constraints as evolution
+events. **Use `dry_run: true` first** to preview gravity assignments:
+
+```
+cairn_init_commit({
+  step: "blood",
+  blood_candidates: [...],
+  dry_run: true
+})
+```
+
+Present the preview to the user. After confirmation, write:
+
+```
+cairn_init_commit({
+  step: "blood",
+  blood_candidates: [...]
+})
+```
+
+All candidates **auto-confirm to blood** during init — no staging, no
+double-review. The user is already reviewing them in this step.
+
+Completing the blood step marks initialization as **complete**.
+
+### Step 4 — DNA (optional)
+
+If the project shows clear personality patterns, capture them:
+
+```
+cairn_init_commit({
+  step: "dna",
+  dna: { traits: [{ name, level, confidence, reasoning }] }
+})
+```
+
+Only two traits currently influence routing: `simplicity_bias` and
+`infra_aggressiveness`. Skip if insufficient evidence — traits can emerge
+later via compression.
+
+### Step 5 — Stage (optional)
+
+Assess the project lifecycle phase:
+
+```
+cairn_init_commit({
+  step: "stage",
+  stage: { phase, confidence, evidence }
+})
+```
+
+Stage can also be inferred automatically by `cairn_session_end` if not set here.
 
 ### Blood candidate schema
 
@@ -112,6 +136,12 @@ blood_candidates: [{
   rejected_paths?, revisit?, trauma?
 }]
 ```
+
+### Legacy batch init
+
+You can still call `cairn_init_commit` without `step` to write everything at
+once (backward compat). In legacy mode, blood candidates pass through the
+Trust Router and G2+ items enter `staged/` for human ratification.
 
 ---
 

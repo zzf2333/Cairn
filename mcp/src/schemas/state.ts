@@ -17,6 +17,15 @@ export type StageSnapshot = z.infer<typeof StageSnapshotSchema>;
 
 export const INIT_STATUSES = ["not_initialized", "partial", "complete"] as const;
 
+export const INIT_STEPS = ["config", "skeleton", "blood", "dna", "stage"] as const;
+export type InitStep = typeof INIT_STEPS[number];
+export const REQUIRED_INIT_STEPS: readonly InitStep[] = ["config", "skeleton", "blood"];
+
+export const InitProgressSchema = z.object({
+    completed_steps: z.array(z.enum(INIT_STEPS)).default([]),
+    started_at: z.string().optional(),
+});
+
 export const StateSchema = z.object({
     cairn_version: z.string().optional(),
     initialization_status: z.enum(INIT_STATUSES).default("not_initialized"),
@@ -28,6 +37,7 @@ export const StateSchema = z.object({
     activation_log: z.object({
         recent_hits: z.record(z.string(), z.number()).default({}),
     }).default({}),
+    init_progress: InitProgressSchema.optional(),
     session_in_progress: z.object({
         started_at: z.string(),
         step: z.string(),

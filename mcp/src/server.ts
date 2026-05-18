@@ -6,7 +6,7 @@ import { summarizeArgs } from "./observability/logger.js";
 import { z } from "zod";
 import { BloodCandidateSchema } from "./schemas/blood-candidate.js";
 import { COGNITIVE_MODES } from "./schemas/config.js";
-import { PROJECT_PHASES } from "./schemas/state.js";
+import { PROJECT_PHASES, INIT_STEPS } from "./schemas/state.js";
 import { DNA_TRAIT_LEVELS } from "./schemas/dna.js";
 
 async function wrap<A>(
@@ -51,12 +51,18 @@ import { handleDnaReject } from "./tools/cairn-dna-reject.js";
 const CAIRN_INSTRUCTIONS = [
     "Cairn is a project memory engine. 14 MCP tools across 4 phases.",
     "",
-    "INIT (once per project):",
-    "1. cairn_init_status() — if not_initialized, response contains a structured guide with",
-    "   analysis steps, all valid enum values, and tips. Follow the guide to analyze the project.",
-    "2. cairn_init_commit({ ..., dry_run: true }) — preview TrustRouter routing, review with user.",
-    "3. cairn_init_commit({ ... }) — write after user confirms the preview.",
-    "If cairn_init_status returns not_initialized or cairn_context returns interaction_hint=needs_init,",
+    "INIT (once per project, step-by-step):",
+    "1. cairn_init_status() — returns current step and per-step guide.",
+    "2. For each step (config → skeleton → blood → dna → stage):",
+    "   a. Analyze what the current step needs (follow the guide).",
+    "   b. cairn_init_commit({ step: '<step>', ..., dry_run: true }) — preview.",
+    "   c. Present preview to user for confirmation.",
+    "   d. cairn_init_commit({ step: '<step>', ... }) — write after user confirms.",
+    "   e. cairn_init_status() — check next step.",
+    "3. Blood candidates auto-confirm during init (no double-staging).",
+    "4. DNA and stage steps are optional but recommended.",
+    "Legacy: omit step for batch init (cairn_init_commit with all fields at once).",
+    "If cairn_init_status returns not_initialized/partial or cairn_context returns interaction_hint=needs_init,",
     "you MUST complete initialization before proceeding with the user's task.",
     "",
     "SESSION START: Call cairn_context({ task?, files? }) BEFORE responding to any user request.",
@@ -107,9 +113,10 @@ export function createServer(ctx: CairnContext): McpServer {
 
     server.tool(
         "cairn_init_commit",
-        "Batch write initial cognition after project analysis. Pass dry_run: true to preview TrustRouter routing without writing.",
+        "Write initial cognition. Use step for progressive init (config → skeleton → blood → dna → stage), or omit for batch write.",
         {
             dry_run: z.boolean().optional(),
+            step: z.enum(INIT_STEPS).optional(),
             config: z.object({
                 project_name: z.string(),
                 domains: z.array(z.string()),
@@ -119,7 +126,7 @@ export function createServer(ctx: CairnContext): McpServer {
                     domain: z.string(),
                     summary: z.string(),
                 })).optional(),
-            }),
+            }).optional(),
             skeleton: z.array(z.object({
                 domain: z.string(),
                 role: z.string(),
@@ -127,8 +134,8 @@ export function createServer(ctx: CairnContext): McpServer {
                 does_not_own: z.array(z.string()),
                 causal_keywords: z.array(z.string()),
                 dependencies: z.array(z.string()).optional(),
-            })),
-            blood_candidates: z.array(BloodCandidateSchema),
+            })).optional(),
+            blood_candidates: z.array(BloodCandidateSchema).optional(),
             stage: z.object({
                 phase: z.enum(PROJECT_PHASES),
                 confidence: z.number(),
