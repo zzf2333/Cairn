@@ -5,6 +5,19 @@ import type { DnaStore } from "../stores/dna-store.js";
 import type { StateStore } from "../stores/state-store.js";
 import { RESURRECTION_THRESHOLD } from "../constants.js";
 
+const SIMPLICITY_KEYWORDS = ["simple", "minimal", "lightweight", "restrict", "reduce", "fewer", "less", "small", "focused"];
+
+export function contradictsSimplicityBias(e: EvolutionEvent): boolean {
+    if (!(e.type === "transition" || e.type === "architecture_decision")) return false;
+    if (e.behavior_effect.type === "avoid_suggestion") return false;
+    const text = [
+        e.behavior_effect.instruction,
+        e.decision_or_change,
+        ...e.rejected_paths.map(p => p.reason),
+    ].join(" ").toLowerCase();
+    return !SIMPLICITY_KEYWORDS.some(kw => text.includes(kw));
+}
+
 export interface ConsistencyViolation {
     rule: string;
     description: string;
@@ -82,7 +95,7 @@ export class ConsistencyEngine {
 
             const contradicting = recentHighGravity.filter(e => {
                 if (traitName === "simplicity_bias") {
-                    return e.type === "transition" || e.type === "architecture_decision";
+                    return contradictsSimplicityBias(e);
                 }
                 return false;
             });

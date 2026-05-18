@@ -466,6 +466,66 @@ describe("ConsistencyEngine", () => {
         const result = await engine.checkArchivedReactivation();
         expect(result.passed).toBe(false);
     });
+
+    it("does not flag simplicity-supporting architecture decisions as drift", async () => {
+        await dnaStore.saveIdentity(makeDNA({
+            status: "emerged",
+            traits: {
+                simplicity_bias: { level: "high", confidence: 0.8, evidence_count: 5, last_updated: "2026-05", reasoning: "test", drift_warning_count: 0 },
+            },
+        }));
+        for (let i = 0; i < 5; i++) {
+            await bloodStore.save(makeEvolutionEvent(`evt_simple_${i}`, {
+                type: "architecture_decision",
+                gravity: { level: "G2" },
+                behavior_effect: { type: "prefer_approach", instruction: "Keep it simple and minimal" },
+                decision_or_change: "Chose lightweight approach over complex alternative",
+                rejected_paths: [{ path: "Complex framework", reason: "Over-engineered for this scope" }],
+            }));
+        }
+        const result = await engine.checkDNAConsistency();
+        expect(result.passed).toBe(true);
+    });
+
+    it("does not flag avoid_suggestion events as contradicting simplicity_bias", async () => {
+        await dnaStore.saveIdentity(makeDNA({
+            status: "emerged",
+            traits: {
+                simplicity_bias: { level: "high", confidence: 0.8, evidence_count: 5, last_updated: "2026-05", reasoning: "test", drift_warning_count: 0 },
+            },
+        }));
+        for (let i = 0; i < 5; i++) {
+            await bloodStore.save(makeEvolutionEvent(`evt_avoid_${i}`, {
+                type: "architecture_decision",
+                gravity: { level: "G2" },
+                behavior_effect: { type: "avoid_suggestion", instruction: "Do not use this complex pattern" },
+                decision_or_change: "Rejected heavy framework adoption",
+            }));
+        }
+        const result = await engine.checkDNAConsistency();
+        expect(result.passed).toBe(true);
+    });
+
+    it("flags truly complexity-introducing decisions as drift", async () => {
+        await dnaStore.saveIdentity(makeDNA({
+            status: "emerged",
+            traits: {
+                simplicity_bias: { level: "high", confidence: 0.8, evidence_count: 5, last_updated: "2026-05", reasoning: "test", drift_warning_count: 0 },
+            },
+        }));
+        for (let i = 0; i < 5; i++) {
+            await bloodStore.save(makeEvolutionEvent(`evt_complex_${i}`, {
+                type: "architecture_decision",
+                gravity: { level: "G2" },
+                behavior_effect: { type: "prefer_approach", instruction: "Adopt distributed event sourcing pipeline" },
+                decision_or_change: "Introduced CQRS with Kafka message bus",
+                rejected_paths: [],
+            }));
+        }
+        const result = await engine.checkDNAConsistency();
+        expect(result.passed).toBe(false);
+        expect(result.violations[0].rule).toBe("dna_event_consistency");
+    });
 });
 
 describe("CalibrationEar — safety valve", () => {

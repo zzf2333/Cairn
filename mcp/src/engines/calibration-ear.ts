@@ -2,6 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { CalibrationSignal } from "../schemas/index.js";
 import type { BloodStore, SkeletonStore, DomainStore, DnaStore } from "../stores/index.js";
+import { contradictsSimplicityBias } from "./consistency-engine.js";
 
 export interface CalibrationResult {
     signals: CalibrationSignal[];
@@ -269,7 +270,7 @@ export class CalibrationEar {
 
             const contradicting = recentHighGravity.filter(e => {
                 if (traitName === "simplicity_bias") {
-                    return e.type === "transition" || e.type === "architecture_decision";
+                    return contradictsSimplicityBias(e);
                 }
                 if (traitName === "infra_aggressiveness") {
                     return e.type === "transition" && e.subject.type === "dependency";
