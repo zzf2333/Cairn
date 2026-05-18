@@ -10,8 +10,7 @@ export async function handleStageReject(
         return formatToolError(new Error(`Staged entry "${args.id}" not found`));
     }
 
-    entry.review_status = "rejected";
-    await ctx.stagedStore.save(entry);
+    await ctx.stagedStore.remove(entry.id);
 
     await ctx.governanceEngine.logAudit({
         time: new Date().toISOString(),

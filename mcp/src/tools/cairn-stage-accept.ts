@@ -44,8 +44,7 @@ export async function handleStageAccept(
         }
     }
 
-    entry.review_status = "accepted";
-    await ctx.stagedStore.save(entry);
+    await ctx.stagedStore.remove(entry.id);
 
     await ctx.governanceEngine.logAudit({
         time: now,

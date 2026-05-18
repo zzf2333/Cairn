@@ -122,8 +122,8 @@ describe("cairn_init_status", () => {
         const result = await handleInitStatus(ctx);
         const data = parseResult(result);
         expect(data.status).toBe("not_initialized");
-        // config exists from global beforeEach, so next_action says "resume"
-        expect(data.next_action).toContain("resume");
+        expect(data.current_step).toBe("config");
+        expect(data.completed_steps).toEqual([]);
     });
 
     it("returns 'complete' for initialized state", async () => {
@@ -133,26 +133,37 @@ describe("cairn_init_status", () => {
         expect(data.next_action).toBe("ready");
     });
 
-    it("returns resume hint when config exists but state incomplete", async () => {
+    it("returns step progress when partially initialized", async () => {
         await ctx.stateStore.save(makeState({ initialization_status: "not_initialized" }));
-        await ctx.configStore.save(makeConfig());
+        await ctx.stateStore.markInitStep("config");
         const result = await handleInitStatus(ctx);
         const data = parseResult(result);
-        expect(data.has_cairn_dir).toBe(true);
-        expect(data.next_action).toContain("resume");
+        expect(data.status).toBe("partial");
+        expect(data.completed_steps).toContain("config");
+        expect(data.current_step).toBe("skeleton");
+        expect(data.next_action).toContain("skeleton");
     });
 
-    it("includes guide with schema_reference when not initialized", async () => {
+    it("includes per-step guide when not initialized", async () => {
         await ctx.stateStore.save(makeState({ initialization_status: "not_initialized" }));
         const result = await handleInitStatus(ctx);
         const data = parseResult(result);
         expect(data.guide).toBeDefined();
-        expect(data.guide.analysis_steps.length).toBeGreaterThan(0);
+        expect(data.guide.step).toBe("config");
+        expect(data.guide.analysis_tips.length).toBeGreaterThan(0);
+        expect(data.guide.tips.length).toBeGreaterThan(0);
+    });
+
+    it("returns blood step guide with schema_reference", async () => {
+        await ctx.stateStore.save(makeState({ initialization_status: "not_initialized" }));
+        await ctx.stateStore.markInitStep("config");
+        await ctx.stateStore.markInitStep("skeleton");
+        const result = await handleInitStatus(ctx);
+        const data = parseResult(result);
+        expect(data.guide.step).toBe("blood");
         expect(data.guide.schema_reference.event_types).toContain("architecture_decision");
         expect(data.guide.schema_reference.behavior_effect_types).toContain("avoid_suggestion");
-        expect(data.guide.schema_reference.validity_levels).toContain("identity");
         expect(data.guide.schema_reference.gravity_levels).toEqual(["G0", "G1", "G2", "G3"]);
-        expect(data.guide.tips.length).toBeGreaterThan(0);
     });
 
     it("does not include guide when fully initialized", async () => {
@@ -482,6 +493,181 @@ describe("cairn_init_commit", () => {
             expect(data.warnings.some((w: string) => w.includes("skeleton"))).toBe(true);
             expect(data.warnings.some((w: string) => w.includes("stage"))).toBe(true);
         });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// cairn_init_commit — step-based
+// ---------------------------------------------------------------------------
+
+describe("cairn_init_commit — step-based", () => {
+    beforeEach(async () => {
+        await ctx.stateStore.save(makeState({ initialization_status: "not_initialized" }));
+    });
+
+    it("config step writes config and marks progress", async () => {
+        const result = await handleInitCommit(ctx, {
+            step: "config",
+            config: { project_name: "step-app", domains: ["api", "db"], cognitive_mode: "standard" },
+        });
+        const data = parseResult(result);
+        expect(data.step).toBe("config");
+        expect(data.written).toBe(true);
+        expect(data.next_step).toBe("skeleton");
+        expect(data.completed_steps).toContain("config");
+
+        const state = await ctx.stateStore.load();
+        expect(state.initialization_status).toBe("partial");
+    });
+
+    it("config step dry_run previews without writing", async () => {
+        const result = await handleInitCommit(ctx, {
+            step: "config",
+            config: { project_name: "step-app", domains: ["api"], cognitive_mode: "lightweight" },
+            dry_run: true,
+        });
+        const data = parseResult(result);
+        expect(data.dry_run).toBe(true);
+        expect(data.would_write.project_name).toBe("step-app");
+
+        const state = await ctx.stateStore.load();
+        expect(state.initialization_status).toBe("not_initialized");
+    });
+
+    it("skeleton step requires config step first", async () => {
+        const result = await handleInitCommit(ctx, {
+            step: "skeleton",
+            skeleton: [{ domain: "api", role: "API", owns: [], does_not_own: [], causal_keywords: ["api"] }],
+        });
+        expect(result.isError).toBe(true);
+    });
+
+    it("skeleton step writes skeleton and marks progress", async () => {
+        await handleInitCommit(ctx, {
+            step: "config",
+            config: { project_name: "step-app", domains: ["api"], cognitive_mode: "standard" },
+        });
+        const result = await handleInitCommit(ctx, {
+            step: "skeleton",
+            skeleton: [{ domain: "api", role: "API layer", owns: ["src/api"], does_not_own: ["src/db"], causal_keywords: ["api", "route"] }],
+        });
+        const data = parseResult(result);
+        expect(data.step).toBe("skeleton");
+        expect(data.written).toBe(1);
+        expect(data.next_step).toBe("blood");
+        expect(data.completed_steps).toContain("skeleton");
+    });
+
+    it("blood step auto-confirms all candidates to blood (no staging)", async () => {
+        await handleInitCommit(ctx, {
+            step: "config",
+            config: { project_name: "step-app", domains: ["api"], cognitive_mode: "standard" },
+        });
+        await handleInitCommit(ctx, {
+            step: "skeleton",
+            skeleton: [{ domain: "api", role: "API", owns: [], does_not_own: [], causal_keywords: ["api"] }],
+        });
+
+        const result = await handleInitCommit(ctx, {
+            step: "blood",
+            blood_candidates: [{
+                type: "architecture_decision",
+                domain: "api",
+                gravity: { level: "G3" },
+                summary: "REST over GraphQL",
+                behavior_effect: { type: "prefer_approach", instruction: "Use REST" },
+                source: { type: "agent_inferred", confidence: 0.9 },
+                lifecycle: { validity: "strategic" },
+            }],
+        });
+        const data = parseResult(result);
+        expect(data.step).toBe("blood");
+        expect(data.auto_confirmed).toBe(1);
+        expect(data.staged).toBe(0);
+        expect(data.initialization_complete).toBe(true);
+
+        const bloodEvents = await ctx.bloodStore.loadAll();
+        expect(bloodEvents.length).toBe(1);
+        const staged = await ctx.stagedStore.loadAll();
+        expect(staged.length).toBe(0);
+
+        const state = await ctx.stateStore.load();
+        expect(state.initialization_status).toBe("complete");
+        expect(state.cairn_version).toBeDefined();
+    });
+
+    it("blood step dry_run previews without writing", async () => {
+        await handleInitCommit(ctx, {
+            step: "config",
+            config: { project_name: "step-app", domains: ["api"], cognitive_mode: "standard" },
+        });
+        await handleInitCommit(ctx, {
+            step: "skeleton",
+            skeleton: [{ domain: "api", role: "API", owns: [], does_not_own: [], causal_keywords: ["api"] }],
+        });
+        const result = await handleInitCommit(ctx, {
+            step: "blood",
+            blood_candidates: [{
+                type: "rejection",
+                domain: "api",
+                gravity: { level: "G2" },
+                summary: "Rejected GraphQL",
+                behavior_effect: { type: "avoid_suggestion", instruction: "No GraphQL" },
+                source: { type: "agent_inferred", confidence: 0.8 },
+                lifecycle: { validity: "strategic" },
+            }],
+            dry_run: true,
+        });
+        const data = parseResult(result);
+        expect(data.dry_run).toBe(true);
+        expect(data.would_write.length).toBe(1);
+        expect(data.note).toContain("auto-confirm");
+
+        const bloodEvents = await ctx.bloodStore.loadAll();
+        expect(bloodEvents.length).toBe(0);
+    });
+
+    it("dna step writes traits", async () => {
+        await handleInitCommit(ctx, {
+            step: "config",
+            config: { project_name: "step-app", domains: ["api"], cognitive_mode: "standard" },
+        });
+        const result = await handleInitCommit(ctx, {
+            step: "dna",
+            dna: { traits: [{ name: "simplicity_bias", level: "medium", confidence: 0.7, reasoning: "Flat architecture" }] },
+        });
+        const data = parseResult(result);
+        expect(data.step).toBe("dna");
+        expect(data.traits_written).toBe(1);
+        expect(data.completed_steps).toContain("dna");
+    });
+
+    it("stage step writes phase", async () => {
+        await handleInitCommit(ctx, {
+            step: "config",
+            config: { project_name: "step-app", domains: ["api"], cognitive_mode: "standard" },
+        });
+        const result = await handleInitCommit(ctx, {
+            step: "stage",
+            stage: { phase: "growth", confidence: 0.8, evidence: ["active development"] },
+        });
+        const data = parseResult(result);
+        expect(data.step).toBe("stage");
+        expect(data.phase).toBe("growth");
+
+        const state = await ctx.stateStore.load();
+        expect(state.stage.phase).toBe("growth");
+    });
+
+    it("legacy path still works without step parameter", async () => {
+        const result = await handleInitCommit(ctx, {
+            config: { project_name: "legacy-app", domains: ["api"], cognitive_mode: "standard" },
+            skeleton: [{ domain: "api", role: "API", owns: [], does_not_own: [], causal_keywords: ["api"] }],
+            blood_candidates: [],
+        });
+        const data = parseResult(result);
+        expect(data.created).toBe(true);
+        expect(data.initialization_status).toBe("complete");
     });
 });
 
@@ -960,12 +1146,12 @@ describe("cairn_stage_accept", () => {
         expect(auditLog[0].actor).toBe("human");
     });
 
-    it("marks entry as accepted", async () => {
+    it("removes entry from staged after acceptance", async () => {
         await ctx.stagedStore.save(makeStagedEntry("staged_mark_test"));
         await handleStageAccept(ctx, { id: "staged_mark_test" });
 
         const updated = await ctx.stagedStore.load("staged_mark_test");
-        expect(updated!.review_status).toBe("accepted");
+        expect(updated).toBeNull();
     });
 
     it("returns error for non-existent entry", async () => {
@@ -979,7 +1165,7 @@ describe("cairn_stage_accept", () => {
 // ---------------------------------------------------------------------------
 
 describe("cairn_stage_reject", () => {
-    it("marks entry as rejected", async () => {
+    it("removes entry from staged after rejection", async () => {
         await ctx.stagedStore.save(makeStagedEntry("staged_reject_test"));
         const result = await handleStageReject(ctx, {
             id: "staged_reject_test",
@@ -989,7 +1175,7 @@ describe("cairn_stage_reject", () => {
         expect(data.success).toBe(true);
 
         const updated = await ctx.stagedStore.load("staged_reject_test");
-        expect(updated!.review_status).toBe("rejected");
+        expect(updated).toBeNull();
     });
 
     it("logs audit entry", async () => {

@@ -140,7 +140,7 @@ describe("Governance flow integration", () => {
         expect(bloodEvent!.governance_status).toBe("ratified");
 
         const updatedEntry = await ctx.stagedStore.load("staged_gov_002");
-        expect(updatedEntry!.review_status).toBe("accepted");
+        expect(updatedEntry).toBeNull();
 
         const auditLog = await ctx.governanceStore.loadAuditLog();
         expect(auditLog.length).toBeGreaterThanOrEqual(1);
@@ -168,7 +168,7 @@ describe("Governance flow integration", () => {
         expect(rejectResult.governance_logged).toBe(true);
 
         const updatedEntry = await ctx.stagedStore.load("staged_gov_003");
-        expect(updatedEntry!.review_status).toBe("rejected");
+        expect(updatedEntry).toBeNull();
 
         const bloodEvent = await ctx.bloodStore.load(entry.draft_event.id);
         expect(bloodEvent).toBeNull();
