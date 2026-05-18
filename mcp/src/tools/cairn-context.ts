@@ -15,25 +15,20 @@ export async function handleContext(ctx: CairnContext, args: Record<string, unkn
                 (Date.now() - new Date(existing.last_touched_at).getTime()) / 60_000;
 
             if (minutesSinceTouch >= SESSION_STALE_AFTER_MINUTES) {
-                const result = await ctx.activationEngine.activate({ task, files });
-                const hint = await deriveInteractionHint(ctx, result);
-                const payload: Record<string, unknown> = hint
-                    ? { ...result, interaction_hint: hint }
-                    : { ...result };
-
-                payload.session = {
-                    id: existing.id,
-                    status: "blocked_by_unclosed_session",
-                    recovery_required: true,
-                    required_action: "call cairn_session_recover before continuing",
-                    unclosed_session: {
+                return toolResult(JSON.stringify({
+                    session: {
                         id: existing.id,
-                        started_at: existing.started_at,
-                        signals_count: existing.signals_count,
-                        last_touched_at: existing.last_touched_at,
+                        status: "blocked_by_unclosed_session",
+                        recovery_required: true,
+                        required_action: "call cairn_session_recover before continuing",
+                        unclosed_session: {
+                            id: existing.id,
+                            started_at: existing.started_at,
+                            signals_count: existing.signals_count,
+                            last_touched_at: existing.last_touched_at,
+                        },
                     },
-                };
-                return toolResult(JSON.stringify(payload));
+                }));
             }
 
             await ctx.stateStore.touchSession({ task, files });

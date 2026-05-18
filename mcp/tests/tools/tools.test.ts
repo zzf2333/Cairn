@@ -1509,6 +1509,43 @@ describe("cairn_context session guard", () => {
         expect(data.session.status).toBe("active");
         expect(data.session.recovery_required).toBeUndefined();
     });
+
+    it("blocked response does not include activation data", async () => {
+        await handleContext(ctx, { task: "old task" });
+        await ctx.stateStore.incrementSignalCount(false);
+        const state = await ctx.stateStore.load();
+        state.active_session!.last_touched_at = new Date(Date.now() - 3 * 60 * 60_000).toISOString();
+        await ctx.stateStore.save(state);
+
+        const result = await handleContext(ctx, { task: "new task" });
+        const data = parseResult(result);
+        expect(data.session.recovery_required).toBe(true);
+        expect(data.constraints).toBeUndefined();
+        expect(data.challenges).toBeUndefined();
+        expect(data.meta).toBeUndefined();
+    });
+
+    it("full chain: blocked → recover → context succeeds", async () => {
+        initTestRepo(tmpDir);
+        await handleContext(ctx, { task: "abandoned task" });
+        await ctx.stateStore.incrementSignalCount(false);
+        const state = await ctx.stateStore.load();
+        state.active_session!.last_touched_at = new Date(Date.now() - 3 * 60 * 60_000).toISOString();
+        await ctx.stateStore.save(state);
+
+        const blocked = await handleContext(ctx, { task: "new task" });
+        const blockedData = parseResult(blocked);
+        expect(blockedData.session.status).toBe("blocked_by_unclosed_session");
+
+        const recovered = await handleSessionRecover(ctx);
+        const recoveredData = parseResult(recovered);
+        expect(recoveredData.recovered).toBe(true);
+
+        const active = await handleContext(ctx, { task: "new task" });
+        const activeData = parseResult(active);
+        expect(activeData.session.status).toBe("active");
+        expect(activeData.constraints).toBeDefined();
+    });
 });
 
 // ---------------------------------------------------------------------------
