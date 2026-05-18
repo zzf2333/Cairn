@@ -1,24 +1,12 @@
 import type { CairnContext } from "../context.js";
 import { toolResult, formatToolError } from "../errors.js";
 import type { EvolutionEvent } from "../schemas/index.js";
-import { KNOWN_DNA_TRAITS, VERSION, type GravityLevel } from "../constants.js";
-
-interface BloodCandidate {
-    type: string;
-    domain: string;
-    gravity: { level: string };
-    summary: string;
-    rejected_paths?: Array<{ path: string; reason: string }>;
-    behavior_effect: { type: string; instruction: string };
-    revisit?: { when: string[] };
-    trauma?: { is_trauma: boolean; sensitivity_multiplier?: number };
-    source: { type: string; confidence: number; refs?: any[] };
-    lifecycle: { validity: string; review_after?: string };
-}
+import type { BloodCandidate } from "../schemas/blood-candidate.js";
+import { KNOWN_DNA_TRAITS, VERSION, type GravityLevel, type CognitiveMode, type ProjectPhase } from "../constants.js";
 
 interface InitCommitArgs {
     dry_run?: boolean;
-    config: { project_name: string; domains: string[]; cognitive_mode: string };
+    config: { project_name: string; domains: string[]; cognitive_mode: CognitiveMode };
     skeleton: Array<{
         domain: string;
         role: string;
@@ -28,8 +16,8 @@ interface InitCommitArgs {
         dependencies?: string[];
     }>;
     blood_candidates: BloodCandidate[];
-    stage?: { phase: string; confidence: number; evidence: string[] };
-    dna?: { traits?: Array<{ name: string; level: string; confidence: number; reasoning: string }> };
+    stage?: { phase: ProjectPhase; confidence: number; evidence: string[] };
+    dna?: { traits?: Array<{ name: string; level: "low" | "medium" | "high"; confidence: number; reasoning: string }> };
     imprint?: {
         inherited_from: string;
         inherited_constraints: string[];
@@ -46,12 +34,12 @@ function buildEventFromCandidate(candidate: BloodCandidate, index: number): Evol
         id,
         time: now,
         domain,
-        type: candidate.type as EvolutionEvent["type"],
+        type: candidate.type,
         gravity: {
-            level: candidate.gravity.level as GravityLevel,
+            level: candidate.gravity.level,
         },
         source: {
-            type: candidate.source.type as EvolutionEvent["source"]["type"],
+            type: candidate.source.type,
             confidence: candidate.source.confidence,
             verified: false,
             refs: candidate.source.refs ?? [],
@@ -68,7 +56,7 @@ function buildEventFromCandidate(candidate: BloodCandidate, index: number): Evol
         constraints_removed: [],
         accepted_debt: [],
         behavior_effect: {
-            type: candidate.behavior_effect.type as EvolutionEvent["behavior_effect"]["type"],
+            type: candidate.behavior_effect.type,
             instruction: candidate.behavior_effect.instruction,
         },
         affects: {
@@ -77,7 +65,7 @@ function buildEventFromCandidate(candidate: BloodCandidate, index: number): Evol
             domains: [domain],
         },
         lifecycle: {
-            validity: candidate.lifecycle.validity as EvolutionEvent["lifecycle"]["validity"],
+            validity: candidate.lifecycle.validity,
             review_after: candidate.lifecycle.review_after,
             decay_policy: "downgrade",
             resurrection_count: 0,
@@ -130,7 +118,7 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
             version: "3.0",
             project: { name: config.project_name, created: now },
             domains: config.domains,
-            cognitive_mode: config.cognitive_mode as "lightweight" | "standard" | "institutional",
+            cognitive_mode: config.cognitive_mode,
             stage: { override: null },
             tech_stack: [],
             logging: { enabled: true, retention_days: 30 },
@@ -186,7 +174,7 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
 
         if (stage) {
             await ctx.stateStore.updateStage({
-                phase: stage.phase as "exploration" | "growth" | "maturity" | "maintenance",
+                phase: stage.phase,
                 confidence: stage.confidence,
                 status: "advisory",
                 evidence: stage.evidence.map(e => ({ source: "init", signal: e })),
@@ -198,7 +186,7 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
             const identity = await ctx.dnaStore.loadIdentity();
             for (const trait of dna.traits) {
                 identity.traits[trait.name] = {
-                    level: trait.level as "low" | "medium" | "high",
+                    level: trait.level,
                     confidence: trait.confidence,
                     evidence_count: 1,
                     last_updated: now,

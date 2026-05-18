@@ -12,14 +12,18 @@ export async function runInit(args: string[]): Promise<void> {
 
     console.log("Cairn initialized — .cairn/ scaffold created.");
     console.log("");
+    console.log("Note: the MCP server auto-bootstraps on startup if .cairn/ is missing,");
+    console.log("so this step is optional. It is useful for pre-creating the directory");
+    console.log("structure before configuring your AI tool.");
+    console.log("");
     console.log("Next: configure cairn-mcp-server in your AI tool's MCP settings:");
     console.log("");
     console.log('  { "mcpServers": { "cairn": { "command": "cairn-mcp-server" } } }');
     console.log("");
-    console.log("  Claude Code  — ~/.claude/mcp.json");
+    console.log("  Claude Code  — .claude/mcp.json");
     console.log("  Cursor       — .cursor/mcp.json");
-    console.log("  Codex CLI    — ~/.codex/config.toml");
+    console.log("  Codex CLI    — codex --mcp-server cairn=cairn-mcp-server");
     console.log("");
-    console.log("Then open your AI tool — it will call cairn_init_status() and begin");
-    console.log("AI-native initialization automatically.");
+    console.log("On first use, the AI will call cairn_init_status() to get a structured");
+    console.log("initialization guide with analysis steps and valid enum values.");
 }

@@ -24,6 +24,7 @@ import {
     BehaviorEffectSchema,
     RevisitSchema,
     SubjectSchema,
+    BloodCandidateSchema,
 } from "../../src/schemas/index.js";
 import {
     makeEvolutionEvent,
@@ -322,6 +323,74 @@ describe("SessionRecord schema", () => {
         expect(parsed.signals_captured).toBe(0);
         expect(parsed.signals_routed).toEqual({ G0: 0, G1: 0, G2: 0, G3: 0 });
         expect(parsed.domains_touched).toEqual([]);
+    });
+});
+
+describe("BloodCandidate schema", () => {
+    const validCandidate = {
+        type: "architecture_decision",
+        domain: "backend",
+        gravity: { level: "G2" },
+        summary: "Chose REST over GraphQL",
+        behavior_effect: { type: "prefer_approach", instruction: "Use REST for all APIs" },
+        source: { type: "conversation", confidence: 0.9 },
+        lifecycle: { validity: "strategic" },
+    };
+
+    it("validates a valid blood candidate", () => {
+        const parsed = BloodCandidateSchema.parse(validCandidate);
+        expect(parsed.type).toBe("architecture_decision");
+        expect(parsed.behavior_effect.type).toBe("prefer_approach");
+        expect(parsed.lifecycle.validity).toBe("strategic");
+    });
+
+    it("validates with optional fields", () => {
+        const full = {
+            ...validCandidate,
+            rejected_paths: [{ path: "GraphQL", reason: "too complex" }],
+            revisit: { when: ["team grows past 10"] },
+            trauma: { is_trauma: true, sensitivity_multiplier: 2.0 },
+            source: { ...validCandidate.source, refs: [{ type: "commit", id: "abc123" }] },
+            lifecycle: { ...validCandidate.lifecycle, review_after: "2026-12-01" },
+        };
+        const parsed = BloodCandidateSchema.parse(full);
+        expect(parsed.rejected_paths).toHaveLength(1);
+        expect(parsed.trauma?.is_trauma).toBe(true);
+    });
+
+    it("rejects invalid behavior_effect.type", () => {
+        expect(() => BloodCandidateSchema.parse({
+            ...validCandidate,
+            behavior_effect: { type: "no_go", instruction: "test" },
+        })).toThrow();
+    });
+
+    it("rejects invalid lifecycle.validity", () => {
+        expect(() => BloodCandidateSchema.parse({
+            ...validCandidate,
+            lifecycle: { validity: "permanent" },
+        })).toThrow();
+    });
+
+    it("rejects invalid event type", () => {
+        expect(() => BloodCandidateSchema.parse({
+            ...validCandidate,
+            type: "invalid_type",
+        })).toThrow();
+    });
+
+    it("rejects invalid source.type", () => {
+        expect(() => BloodCandidateSchema.parse({
+            ...validCandidate,
+            source: { type: "hallucinated", confidence: 0.5 },
+        })).toThrow();
+    });
+
+    it("rejects invalid gravity.level", () => {
+        expect(() => BloodCandidateSchema.parse({
+            ...validCandidate,
+            gravity: { level: "G5" },
+        })).toThrow();
     });
 });
 

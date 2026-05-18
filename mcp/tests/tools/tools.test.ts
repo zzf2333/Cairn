@@ -141,6 +141,26 @@ describe("cairn_init_status", () => {
         expect(data.has_cairn_dir).toBe(true);
         expect(data.next_action).toContain("resume");
     });
+
+    it("includes guide with schema_reference when not initialized", async () => {
+        await ctx.stateStore.save(makeState({ initialization_status: "not_initialized" }));
+        const result = await handleInitStatus(ctx);
+        const data = parseResult(result);
+        expect(data.guide).toBeDefined();
+        expect(data.guide.analysis_steps.length).toBeGreaterThan(0);
+        expect(data.guide.schema_reference.event_types).toContain("architecture_decision");
+        expect(data.guide.schema_reference.behavior_effect_types).toContain("avoid_suggestion");
+        expect(data.guide.schema_reference.validity_levels).toContain("identity");
+        expect(data.guide.schema_reference.gravity_levels).toEqual(["G0", "G1", "G2", "G3"]);
+        expect(data.guide.tips.length).toBeGreaterThan(0);
+    });
+
+    it("does not include guide when fully initialized", async () => {
+        const result = await handleInitStatus(ctx);
+        const data = parseResult(result);
+        expect(data.status).toBe("complete");
+        expect(data.guide).toBeUndefined();
+    });
 });
 
 // ---------------------------------------------------------------------------

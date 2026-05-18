@@ -10,3 +10,4 @@ export * from "./staged-entry.js";
 export * from "./dna-staged.js";
 export * from "./signal.js";
 export * from "./session-record.js";
+export * from "./blood-candidate.js";

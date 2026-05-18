@@ -4,6 +4,10 @@ import { type CairnContext } from "./context.js";
 import { formatToolError } from "./errors.js";
 import { summarizeArgs } from "./observability/logger.js";
 import { z } from "zod";
+import { BloodCandidateSchema } from "./schemas/blood-candidate.js";
+import { COGNITIVE_MODES } from "./schemas/config.js";
+import { PROJECT_PHASES } from "./schemas/state.js";
+import { DNA_TRAIT_LEVELS } from "./schemas/dna.js";
 
 async function wrap<A>(
     ctx: CairnContext,
@@ -48,8 +52,12 @@ const CAIRN_INSTRUCTIONS = [
     "Cairn is a project memory engine. 14 MCP tools across 4 phases.",
     "",
     "INIT (once per project):",
-    "1. cairn_init_status() — if not_initialized, analyze project (README/docs/git/deps), then",
-    "2. cairn_init_commit({ config, skeleton, blood_candidates, stage?, dna?, imprint? })",
+    "1. cairn_init_status() — if not_initialized, response contains a structured guide with",
+    "   analysis steps, all valid enum values, and tips. Follow the guide to analyze the project.",
+    "2. cairn_init_commit({ ..., dry_run: true }) — preview TrustRouter routing, review with user.",
+    "3. cairn_init_commit({ ... }) — write after user confirms the preview.",
+    "If cairn_init_status returns not_initialized or cairn_context returns interaction_hint=needs_init,",
+    "you MUST complete initialization before proceeding with the user's task.",
     "",
     "SESSION START: Call cairn_context({ task?, files? }) BEFORE responding to any user request.",
     "Respect ALL returned constraints for the entire session:",
@@ -105,7 +113,7 @@ export function createServer(ctx: CairnContext): McpServer {
             config: z.object({
                 project_name: z.string(),
                 domains: z.array(z.string()),
-                cognitive_mode: z.string(),
+                cognitive_mode: z.enum(COGNITIVE_MODES),
             }),
             skeleton: z.array(z.object({
                 domain: z.string(),
@@ -115,16 +123,16 @@ export function createServer(ctx: CairnContext): McpServer {
                 causal_keywords: z.array(z.string()),
                 dependencies: z.array(z.string()).optional(),
             })),
-            blood_candidates: z.array(z.any()),
+            blood_candidates: z.array(BloodCandidateSchema),
             stage: z.object({
-                phase: z.string(),
+                phase: z.enum(PROJECT_PHASES),
                 confidence: z.number(),
                 evidence: z.array(z.string()),
             }).optional(),
             dna: z.object({
                 traits: z.array(z.object({
                     name: z.string(),
-                    level: z.string(),
+                    level: z.enum(DNA_TRAIT_LEVELS),
                     confidence: z.number(),
                     reasoning: z.string(),
                 })).optional(),
