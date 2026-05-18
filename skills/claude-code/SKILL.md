@@ -73,7 +73,15 @@ cairn_init_commit({
 ### Step 3 — Blood
 
 Capture key architectural decisions, rejections, and constraints as evolution
-events. **Use `dry_run: true` first** to preview gravity assignments:
+events. **Cross-reference all four sources** before drafting candidates:
+
+1. **Git history** — `git log`, reverts, dependency changes, major transitions
+2. **Code structure** — architecture constants, schema invariants, CI config
+3. **Team memory** — user auto-memory files, lessons-learned docs, incident records
+4. **Project instructions** — CLAUDE.md, .cursorrules, README philosophy, ADRs
+
+Sources 3–4 often contain trauma and constraints invisible in git — prioritize
+them for rejection and trauma events. **Use `dry_run: true` first** to preview gravity assignments:
 
 ```
 cairn_init_commit({

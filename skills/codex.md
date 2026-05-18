@@ -47,7 +47,7 @@ If this project has `.cairn/` and the `cairn` MCP server is available, follow th
 
 Call `cairn_init_status()`. If `status: not_initialized`:
 
-1. Analyze the project (README, git log, deps, source structure)
+1. Analyze the project from **four sources**: git history, code structure, team memory/lessons, AND project instructions (CLAUDE.md, ADRs)
 2. **First** call `cairn_init_commit({ dry_run: true, ... })` to preview routing
 3. Present the dry-run report (auto-confirmed vs staged blood candidates, skeleton, DNA) to the user
 4. After confirmation, call `cairn_init_commit({ ... })` (without `dry_run`) to write

@@ -47,10 +47,12 @@ function buildStepGuide(step: InitStep | null) {
                 step: "blood",
                 description: "Capture key decisions, rejections, and constraints as evolution events.",
                 analysis_tips: [
-                    "Run 'git log --oneline -20' for recent history and decisions",
-                    "Look for reverts, dependency changes, and architectural shifts",
-                    "Check for ADRs (ARCHITECTURE.md, docs/adr/)",
-                    "Look for CI/CD config (.github/workflows/, Makefile)",
+                    "Cross-reference ALL FOUR sources — missing any one produces blind spots:",
+                    "① Git history: 'git log --oneline -30', reverts, dependency changes, major version transitions",
+                    "② Code structure: architecture constants, key abstractions, schema invariants, CI/CD config",
+                    "③ Team memory: user auto-memory files, lessons-learned docs, past incident records, feedback logs",
+                    "④ Project instructions: CLAUDE.md, .cursorrules, README philosophy sections, ADRs (docs/adr/)",
+                    "Sources ③④ often contain trauma and constraints invisible in git — prioritize them for rejection and trauma events",
                 ],
                 schema_reference: {
                     event_types: [...EVENT_TYPES],
@@ -60,7 +62,7 @@ function buildStepGuide(step: InitStep | null) {
                     gravity_levels: [...GRAVITY_LEVELS],
                 },
                 tips: [
-                    "Aim for 5-15 blood candidates — only signal-worthy decisions, not every detail",
+                    "Aim for 5-15 blood candidates covering: constraints, historical lessons (trauma), decision boundaries, and architecture philosophy",
                     "All candidates auto-confirm to blood during init (no staging needed)",
                     "Use 'rejection' type for known anti-patterns, 'architecture_decision' for chosen directions",
                     "behavior_effect.type: 'avoid_suggestion' creates no-go zones; 'prefer_approach' creates preferences",

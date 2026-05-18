@@ -54,7 +54,7 @@ const CAIRN_INSTRUCTIONS = [
     "INIT (once per project, step-by-step):",
     "1. cairn_init_status() — returns current step and per-step guide.",
     "2. For each step (config → skeleton → blood → dna → stage):",
-    "   a. Analyze what the current step needs (follow the guide).",
+    "   a. Analyze what the current step needs (follow the guide). For blood: cross-reference git history, code structure, team memory/lessons, AND project instructions (CLAUDE.md, ADRs).",
     "   b. cairn_init_commit({ step: '<step>', ..., dry_run: true }) — preview.",
     "   c. Present preview to user for confirmation.",
     "   d. cairn_init_commit({ step: '<step>', ... }) — write after user confirms.",
