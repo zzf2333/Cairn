@@ -151,6 +151,9 @@ export async function handleSignal(ctx: CairnContext, args: Record<string, unkno
             level: c.level,
             conflict_with: c.conflict_with,
             description: c.description,
+            required_response: c.required_response,
+            archived: c.archived,
+            trauma: c.trauma,
         }));
 
         return toolResult(JSON.stringify({
