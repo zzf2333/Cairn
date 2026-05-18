@@ -137,6 +137,7 @@ describe("Governance flow integration", () => {
 
         const bloodEvent = await ctx.bloodStore.load(entry.draft_event.id);
         expect(bloodEvent).not.toBeNull();
+        expect(bloodEvent!.governance_status).toBe("ratified");
 
         const updatedEntry = await ctx.stagedStore.load("staged_gov_002");
         expect(updatedEntry!.review_status).toBe("accepted");

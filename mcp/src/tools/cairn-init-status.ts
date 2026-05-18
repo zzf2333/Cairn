@@ -80,6 +80,9 @@ export async function handleInitStatus(ctx: CairnContext) {
                     "Use 'rejection' type for known anti-patterns, 'architecture_decision' for chosen directions",
                     "behavior_effect.type: 'avoid_suggestion' creates no-go zones; 'prefer_approach' creates preferences",
                     "lifecycle.validity: 'identity' for permanent decisions, 'strategic' for long-term, 'tactical' for short-term",
+                    "Include tech_stack in config to record frameworks and libraries (e.g. [{name: 'Express', domain: 'api', summary: 'HTTP framework'}])",
+                    "Use decision/reasoning fields in blood_candidates for richer events — summary alone repeats across subject/decision/reasoning",
+                    "For constraint_added events, populate constraints_added[] so constraints sync to domain capillaries",
                 ],
             };
         }

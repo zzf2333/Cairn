@@ -24,6 +24,7 @@ export async function handleStageAccept(
 
     const now = new Date().toISOString();
 
+    entry.draft_event.governance_status = "ratified";
     await ctx.bloodEngine.commit(entry.draft_event);
 
     let stageApplied = false;

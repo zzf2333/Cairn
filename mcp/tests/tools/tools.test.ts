@@ -280,6 +280,127 @@ describe("cairn_init_commit", () => {
         expect(state.initialization_status).toBe("complete");
     });
 
+    it("uses decision and reasoning fields from blood candidate", async () => {
+        const args = {
+            ...baseArgs,
+            blood_candidates: [
+                {
+                    type: "architecture_decision",
+                    domain: "api",
+                    gravity: { level: "G1" },
+                    summary: "Use Express over Koa",
+                    decision: "Chose Express for its mature ecosystem",
+                    reasoning: "Koa lacks middleware coverage for our auth needs",
+                    behavior_effect: { type: "prefer_approach", instruction: "Use Express" },
+                    source: { type: "conversation", confidence: 0.9 },
+                    lifecycle: { validity: "strategic" },
+                },
+            ],
+        };
+        const result = await handleInitCommit(ctx, args);
+        const data = parseResult(result);
+        expect(data.written.blood_auto_confirmed + data.written.blood_staged).toBe(1);
+
+        const pending = await ctx.stagedStore.loadAll();
+        const entry = pending.find(e => e.draft_event.subject.name === "Use Express over Koa");
+        expect(entry).toBeDefined();
+        expect(entry!.draft_event.decision_or_change).toBe("Chose Express for its mature ecosystem");
+        expect(entry!.draft_event.reasoning).toBe("Koa lacks middleware coverage for our auth needs");
+    });
+
+    it("falls back reasoning to behavior_effect.instruction when not provided", async () => {
+        const args = {
+            ...baseArgs,
+            blood_candidates: [
+                {
+                    type: "architecture_decision",
+                    domain: "api",
+                    gravity: { level: "G1" },
+                    summary: "Use REST",
+                    behavior_effect: { type: "prefer_approach", instruction: "REST is simpler to maintain" },
+                    source: { type: "conversation", confidence: 0.9 },
+                    lifecycle: { validity: "strategic" },
+                },
+            ],
+        };
+        await handleInitCommit(ctx, args);
+
+        const pending = await ctx.stagedStore.loadAll();
+        const entry = pending.find(e => e.draft_event.subject.name === "Use REST");
+        expect(entry).toBeDefined();
+        expect(entry!.draft_event.reasoning).toBe("REST is simpler to maintain");
+        expect(entry!.draft_event.decision_or_change).toBe("Use REST");
+    });
+
+    it("populates constraints_added from blood candidate", async () => {
+        const args = {
+            ...baseArgs,
+            blood_candidates: [
+                {
+                    type: "constraint_added",
+                    domain: "api",
+                    gravity: { level: "G1" },
+                    summary: "No ORM usage",
+                    constraints_added: ["No ORM in API layer"],
+                    behavior_effect: { type: "avoid_suggestion", instruction: "Do not use ORMs" },
+                    source: { type: "conversation", confidence: 0.9 },
+                    lifecycle: { validity: "strategic" },
+                },
+            ],
+        };
+        await handleInitCommit(ctx, args);
+
+        const pending = await ctx.stagedStore.loadAll();
+        const entry = pending.find(e => e.draft_event.subject.name === "No ORM usage");
+        expect(entry).toBeDefined();
+        expect(entry!.draft_event.constraints_added).toEqual(["No ORM in API layer"]);
+    });
+
+    it("derives config.domains from skeleton nodes", async () => {
+        const args = {
+            config: { project_name: "test-app", domains: ["api", "auth", "observability"], cognitive_mode: "standard" as const },
+            skeleton: [
+                {
+                    domain: "api",
+                    role: "API layer",
+                    owns: ["routes"],
+                    does_not_own: [],
+                    causal_keywords: ["api"],
+                },
+                {
+                    domain: "auth",
+                    role: "Auth module",
+                    owns: ["login"],
+                    does_not_own: [],
+                    causal_keywords: ["auth"],
+                },
+            ],
+            blood_candidates: [],
+        };
+        await handleInitCommit(ctx, args);
+
+        const config = await ctx.configStore.load();
+        expect(config!.domains).toEqual(["api", "auth"]);
+        expect(config!.domains).not.toContain("observability");
+    });
+
+    it("saves tech_stack when provided in config", async () => {
+        const args = {
+            ...baseArgs,
+            config: {
+                ...baseArgs.config,
+                tech_stack: [
+                    { name: "Express", domain: "api", summary: "HTTP framework" },
+                ],
+            },
+        };
+        await handleInitCommit(ctx, args);
+
+        const config = await ctx.configStore.load();
+        expect(config!.tech_stack).toHaveLength(1);
+        expect(config!.tech_stack[0].name).toBe("Express");
+    });
+
     describe("dry_run preview", () => {
         it("returns preview without writing config or skeleton", async () => {
             const args = {
@@ -326,6 +447,27 @@ describe("cairn_init_commit", () => {
             const result = await handleInitCommit(ctx, args);
             const data = parseResult(result);
             expect(data.warnings.some((w: string) => w.includes("unknown_trait"))).toBe(true);
+        });
+
+        it("warns when config.domains differs from skeleton domains", async () => {
+            const args = {
+                dry_run: true,
+                config: { project_name: "test-app", domains: ["api", "observability"], cognitive_mode: "standard" },
+                skeleton: [
+                    {
+                        domain: "api",
+                        role: "API layer",
+                        owns: ["routes"],
+                        does_not_own: [],
+                        causal_keywords: ["api"],
+                    },
+                ],
+                blood_candidates: [],
+            };
+            const result = await handleInitCommit(ctx, args);
+            const data = parseResult(result);
+            expect(data.warnings.some((w: string) => w.includes("observability"))).toBe(true);
+            expect(data.would_write.config.domains).toEqual(["api"]);
         });
 
         it("warns when no skeleton or stage is provided", async () => {
@@ -794,7 +936,7 @@ describe("cairn_stage_list", () => {
 // ---------------------------------------------------------------------------
 
 describe("cairn_stage_accept", () => {
-    it("moves staged entry to blood", async () => {
+    it("moves staged entry to blood with ratified governance_status", async () => {
         const entry = makeStagedEntry("staged_accept_test");
         await ctx.stagedStore.save(entry);
 
@@ -805,6 +947,7 @@ describe("cairn_stage_accept", () => {
 
         const bloodEvent = await ctx.bloodStore.load(entry.draft_event.id);
         expect(bloodEvent).not.toBeNull();
+        expect(bloodEvent!.governance_status).toBe("ratified");
     });
 
     it("logs audit entry", async () => {

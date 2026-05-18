@@ -114,6 +114,11 @@ export function createServer(ctx: CairnContext): McpServer {
                 project_name: z.string(),
                 domains: z.array(z.string()),
                 cognitive_mode: z.enum(COGNITIVE_MODES),
+                tech_stack: z.array(z.object({
+                    name: z.string(),
+                    domain: z.string(),
+                    summary: z.string(),
+                })).optional(),
             }),
             skeleton: z.array(z.object({
                 domain: z.string(),

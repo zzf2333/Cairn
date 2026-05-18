@@ -9,6 +9,9 @@ export const BloodCandidateSchema = z.object({
     domain: z.string(),
     gravity: z.object({ level: z.enum(GRAVITY_LEVELS) }),
     summary: z.string(),
+    decision: z.string().optional(),
+    reasoning: z.string().optional(),
+    constraints_added: z.array(z.string()).optional(),
     rejected_paths: z.array(z.object({
         path: z.string(),
         reason: z.string(),

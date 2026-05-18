@@ -6,7 +6,12 @@ import { KNOWN_DNA_TRAITS, VERSION, type GravityLevel, type CognitiveMode, type 
 
 interface InitCommitArgs {
     dry_run?: boolean;
-    config: { project_name: string; domains: string[]; cognitive_mode: CognitiveMode };
+    config: {
+        project_name: string;
+        domains: string[];
+        cognitive_mode: CognitiveMode;
+        tech_stack?: Array<{ name: string; domain: string; summary: string }>;
+    };
     skeleton: Array<{
         domain: string;
         role: string;
@@ -49,10 +54,10 @@ function buildEventFromCandidate(candidate: BloodCandidate, index: number): Evol
             aliases: [],
         },
         trigger: "initialization",
-        decision_or_change: candidate.summary,
+        decision_or_change: candidate.decision ?? candidate.summary,
         rejected_paths: candidate.rejected_paths ?? [],
-        reasoning: candidate.summary,
-        constraints_added: [],
+        reasoning: candidate.reasoning ?? candidate.behavior_effect.instruction,
+        constraints_added: candidate.constraints_added ?? [],
         constraints_removed: [],
         accepted_debt: [],
         behavior_effect: {
@@ -117,10 +122,10 @@ export async function handleInitCommit(ctx: CairnContext, args: Record<string, u
         await ctx.configStore.save({
             version: "3.0",
             project: { name: config.project_name, created: now },
-            domains: config.domains,
+            domains: [...new Set(skeleton.map(s => s.domain))],
             cognitive_mode: config.cognitive_mode,
             stage: { override: null },
-            tech_stack: [],
+            tech_stack: config.tech_stack ?? [],
             logging: { enabled: true, retention_days: 30 },
         });
 
@@ -273,6 +278,18 @@ async function previewInit(ctx: CairnContext, args: PreviewArgs) {
     }
 
     const warnings: string[] = [];
+    const skeletonDomains = new Set(skeleton.map(s => s.domain));
+    const configDomains = new Set(config.domains);
+    const inConfigOnly = config.domains.filter(d => !skeletonDomains.has(d));
+    const inSkeletonOnly = [...skeletonDomains].filter(d => !configDomains.has(d));
+    if (inConfigOnly.length > 0 || inSkeletonOnly.length > 0) {
+        warnings.push(
+            `config.domains and skeleton domains differ — ` +
+            (inConfigOnly.length > 0 ? `config-only: [${inConfigOnly.join(", ")}] ` : "") +
+            (inSkeletonOnly.length > 0 ? `skeleton-only: [${inSkeletonOnly.join(", ")}]` : "") +
+            `. On commit, domains will be derived from skeleton.`
+        );
+    }
     if (dna?.traits) {
         for (const trait of dna.traits) {
             if (!(KNOWN_DNA_TRAITS as readonly string[]).includes(trait.name)) {
@@ -295,8 +312,9 @@ async function previewInit(ctx: CairnContext, args: PreviewArgs) {
         would_write: {
             config: {
                 project_name: config.project_name,
-                domains: config.domains,
+                domains: [...new Set(skeleton.map(s => s.domain))],
                 cognitive_mode: config.cognitive_mode,
+                tech_stack: config.tech_stack ?? [],
             },
             skeleton: skeleton.map(s => ({ domain: s.domain, role: s.role })),
             blood_auto_confirm: autoConfirm,
