@@ -47,9 +47,10 @@ import { handleDoctor } from "./tools/cairn-doctor.js";
 import { handleDnaList } from "./tools/cairn-dna-list.js";
 import { handleDnaAccept } from "./tools/cairn-dna-accept.js";
 import { handleDnaReject } from "./tools/cairn-dna-reject.js";
+import { handleObserve } from "./tools/cairn-observe.js";
 
 const CAIRN_INSTRUCTIONS = [
-    "Cairn is a project memory engine. 14 MCP tools across 4 phases.",
+    "Cairn is a project memory engine. 15 MCP tools across 4 phases.",
     "",
     "INIT (once per project, step-by-step):",
     "1. cairn_init_status() — returns current step and per-step guide.",
@@ -81,6 +82,12 @@ const CAIRN_INSTRUCTIONS = [
     "- stage_constraint — phase-related constraint declared",
     "Include details.aliases for subjects with common synonyms (e.g. what='MongoDB', aliases=['document store','nosql']).",
     "Do NOT signal routine fixes, formatting, or duplicates.",
+    "",
+    "",
+    "PRE-COMMIT CHECKPOINT: Call cairn_observe({ summary, candidates }) BEFORE every git commit.",
+    "Extract candidate signals from work done since last observe/commit. Each gets recommendation (capture/skip) with reasoning.",
+    "Captured candidates route through TrustRouter to blood/staged; skipped ones are reported for human override.",
+    "If any candidates are staged, present them to the user before proceeding with commit.",
     "",
     "BEFORE DESIGN TASKS: Call cairn_plan({ task }) for historical constraints + DNA guidance.",
     "",
@@ -194,6 +201,36 @@ export function createServer(ctx: CairnContext): McpServer {
             }).default({}),
         },
         async (args) => wrap(ctx, "cairn_signal", args, () => handleSignal(ctx, args)),
+    );
+
+    server.tool(
+        "cairn_observe",
+        "Pre-commit checkpoint: extract and route candidate signals from recent work",
+        {
+            summary: z.string().describe("What was done in the work chunk leading to this commit"),
+            candidates: z.array(z.object({
+                signal_type: z.string(),
+                domain: z.string().optional(),
+                details: z.object({
+                    what: z.string(),
+                    aliases: z.array(z.string()).optional(),
+                    reason: z.string().optional(),
+                    rejected_alternatives: z.array(z.object({
+                        path: z.string(),
+                        reason: z.string(),
+                    })).optional(),
+                    revisit_when: z.array(z.string()).optional(),
+                }),
+                evidence: z.object({
+                    user_said: z.string().optional(),
+                    files: z.array(z.string()).optional(),
+                    commit_ref: z.string().optional(),
+                }).default({}),
+                recommendation: z.enum(["capture", "skip"]),
+                recommendation_reason: z.string(),
+            })),
+        },
+        async (args) => wrap(ctx, "cairn_observe", args, () => handleObserve(ctx, args)),
     );
 
     server.tool(

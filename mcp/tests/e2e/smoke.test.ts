@@ -29,7 +29,7 @@ describe("E2E smoke", () => {
         expect(typeof server.connect).toBe("function");
     });
 
-    it("createServer registers all 11 tools without throwing", async () => {
+    it("createServer registers all 15 tools without throwing", async () => {
         await bootstrapEmpty(tmpDir);
         const ctx = await createContext(tmpDir);
         await ensureCairnDirs(ctx.paths);

@@ -34,8 +34,10 @@ import { CalibrationEar } from "../../src/engines/calibration-ear.js";
 import type { CairnContext } from "../../src/context.js";
 
 import { handleSignal } from "../../src/tools/cairn-signal.js";
+import { handleObserve } from "../../src/tools/cairn-observe.js";
 import { handleSessionEnd } from "../../src/tools/cairn-session-end.js";
 import { handleStageAccept } from "../../src/tools/cairn-stage-accept.js";
+import { handleContext } from "../../src/tools/cairn-context.js";
 
 function parseResult(result: { content: Array<{ type: string; text: string }>; isError?: boolean }) {
     return JSON.parse(result.content[0].text);
@@ -277,5 +279,46 @@ describe("Trauma lifecycle pipeline", () => {
         const actions = await ctx.decayEngine.checkDecay("standard");
         const traumaAction = actions.find(a => a.event_id === "evt_trauma_nodecay");
         expect(traumaAction).toBeUndefined();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Pipeline test 5: observe → staged → accept → blood → context activation
+// ---------------------------------------------------------------------------
+
+describe("Observe to context pipeline", () => {
+    it("observe capture flows through staged → accept → blood → context constraint", async () => {
+        const observeResult = await handleObserve(ctx, {
+            summary: "Decided against MongoDB",
+            candidates: [{
+                signal_type: "user_rejection",
+                domain: "api-layer",
+                details: { what: "MongoDB", reason: "Operational complexity too high" },
+                evidence: { user_said: "No MongoDB" },
+                recommendation: "capture",
+                recommendation_reason: "explicit user rejection",
+            }],
+        });
+        const observeData = parseResult(observeResult);
+        expect(observeData.captured).toBe(1);
+        expect(observeData.staged).toBe(1);
+
+        const staged = await ctx.stagedStore.findPending();
+        expect(staged.length).toBe(1);
+        expect(staged[0].draft_event.subject.name).toBe("MongoDB");
+
+        await handleStageAccept(ctx, { id: staged[0].id });
+
+        const blood = await ctx.bloodStore.findActive();
+        const mongoEvent = blood.find(e => e.subject.name === "MongoDB");
+        expect(mongoEvent).toBeDefined();
+        expect(mongoEvent!.behavior_effect.type).toBe("avoid_suggestion");
+
+        const contextResult = await handleContext(ctx, { task: "choose a database" });
+        const contextData = parseResult(contextResult);
+        expect(contextData.constraints.no_go.some(
+            (ng: { what: string }) => ng.what === "MongoDB",
+        )).toBe(true);
+        expect(contextData.observe_reminder).toBeDefined();
     });
 });

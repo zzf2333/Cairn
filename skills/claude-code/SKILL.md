@@ -13,6 +13,7 @@ or write `.cairn/` files directly (except `views/` in degraded mode).
 | `cairn_init_commit` | Write initial cognition (config, skeleton, blood, stage, DNA) |
 | `cairn_context` | Activate constraints before any task |
 | `cairn_signal` | Capture real-time constraint signals |
+| `cairn_observe` | Pre-commit checkpoint: batch-extract and route candidate signals |
 | `cairn_plan` | Get history-aware planning guidance (read-only) |
 | `cairn_session_end` | Close session, run automated maintenance pipeline |
 | `cairn_stage_list` | List staged EvolutionEvent entries pending review |
@@ -256,6 +257,55 @@ cairn_signal({
 
 If `challenges` is non-empty, the new signal conflicts with existing
 cognition. Present the conflict to the user.
+
+---
+
+## 2.5. PRE-COMMIT — cairn_observe
+
+**Call before every `git commit`.** This is the structural checkpoint that
+captures decisions, rejections, and constraints that real-time `cairn_signal`
+may have missed during complex work.
+
+```
+cairn_observe({
+  summary: "1-3 sentences: what was done, key decisions",
+  candidates: [{
+    signal_type: "user_rejection" | "decision" | "constraint_declaration" | ...,
+    domain?: "domain-name",
+    details: { what, aliases?, reason?, rejected_alternatives?, revisit_when? },
+    evidence: { user_said?, files?, commit_ref? },
+    recommendation: "capture" | "skip",
+    recommendation_reason: "why this candidate matters or doesn't"
+  }]
+})
+```
+
+### How to extract candidates
+
+Review the conversation since the last `cairn_observe` or session start:
+
+| Pattern | signal_type |
+|---------|-------------|
+| User rejected a suggestion with reasons | `user_rejection` |
+| A significant technical decision was made | `decision` |
+| User stated a constraint ("never", "always", "we don't") | `constraint_declaration` |
+| Technical debt explicitly accepted | `debt_acceptance` |
+| User referenced past attempts | `historical_reference` |
+| Phase/timing constraint mentioned | `stage_constraint` |
+
+For each, recommend `capture` (meaningful for future sessions) or `skip`
+(routine, already captured, or not constraint-relevant).
+
+### Response handling
+
+- If `staged > 0`: present staged candidates to the user before committing
+- If `instruction` says safe to proceed: commit immediately
+- The user can override any recommendation via `cairn_stage_reject`
+
+### When NOT to call
+
+- Empty commits, merge commits with no conversation context
+- Amend commits that only fix typos or formatting
 
 ---
 

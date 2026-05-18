@@ -115,6 +115,24 @@ Pass `details.aliases` for subjects with synonyms (e.g. `what: "MongoDB"`, `alia
 
 If `challenges[]` returned by signal is non-empty, present the conflict to the user before continuing.
 
+### 2.5. Before commit — cairn_observe
+
+**Call `cairn_observe()` before every `git commit`.** This is a structural checkpoint that batch-captures signals that `cairn_signal` may have missed during complex work.
+
+```
+cairn_observe({
+  summary: "what was done, key decisions",
+  candidates: [{
+    signal_type, domain?, details: { what, reason?, ... },
+    evidence: { user_said?, ... },
+    recommendation: "capture" | "skip",
+    recommendation_reason: "why"
+  }]
+})
+```
+
+Extract candidates by reviewing the conversation since last observe/commit: rejections, decisions, constraints, accepted debt. Each gets `capture` (meaningful) or `skip` (routine). If `staged > 0` in response, present to user before committing. Skip for empty/merge/typo-only commits.
+
 ### 3. Planning — cairn_plan
 
 Before architecture / technology / module-boundary decisions: `cairn_plan({ task })`. Read-only. Returns historical constraints, DNA guidance, recommended direction, warnings, open questions. Do not use for routine fixes.

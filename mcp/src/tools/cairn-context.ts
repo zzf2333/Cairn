@@ -9,7 +9,12 @@ export async function handleContext(ctx: CairnContext, args: Record<string, unkn
         const result = await ctx.activationEngine.activate({ task, files });
 
         const hint = await deriveInteractionHint(ctx, result);
-        const payload = hint ? { ...result, interaction_hint: hint } : result;
+        const payload: Record<string, unknown> = hint ? { ...result, interaction_hint: hint } : { ...result };
+
+        const hasConfig = await ctx.configStore.exists();
+        if (hasConfig) {
+            payload.observe_reminder = "Call cairn_observe before every git commit";
+        }
 
         return toolResult(JSON.stringify(payload));
     } catch (error) {
