@@ -54,6 +54,16 @@ function main() {
     console.log("");
     console.log(`  Then open your AI tool in a project — it will auto-initialize on first use.`);
     console.log("");
+    console.log(`${BOLD}Optional:${RESET} Install the Cairn protocol into your project instructions:`);
+    console.log("");
+    console.log(`  cairn skill install              ${DIM}# auto-detect platform${RESET}`);
+    console.log(`  cairn skill install claude-code   ${DIM}# → CLAUDE.md${RESET}`);
+    console.log(`  cairn skill install codex          ${DIM}# → AGENTS.md${RESET}`);
+    console.log(`  cairn skill install cursor         ${DIM}# → .cursorrules${RESET}`);
+    console.log("");
+    console.log(`  This installs the Cognitive Runtime Protocol — the rules that make`);
+    console.log(`  your AI tool actively use Cairn instead of ignoring it.`);
+    console.log("");
 }
 
 main();

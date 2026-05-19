@@ -25,6 +25,8 @@
     "files": [
         "dist/**/*.js",
         "dist/**/*.d.ts",
+        "skills/**/*.md",
+        "skills/**/*.json",
         "README.md"
     ],
     "publishConfig": {
@@ -35,6 +37,7 @@
         "cairn-mcp-server": "dist/index.js"
     },
     "scripts": {
+        "prebuild": "node scripts/copy-skills.js",
         "build": "tsc",
         "postinstall": "node dist/postinstall.js 2>/dev/null || true",
         "dev": "tsx src/index.ts",

@@ -10,6 +10,7 @@ import { runSkeleton } from "./skeleton.js";
 import { runBlood } from "./blood.js";
 import { runStage } from "./stage.js";
 import { runMigrate } from "./migrate.js";
+import { runSkill } from "./skill.js";
 
 const USAGE = `cairn v${VERSION}
 
@@ -37,6 +38,10 @@ Commands:
   stage accept <id>             Accept a stage transition (applies new phase)
   stage reject <id> <reason>    Reject a stage transition
   migrate                       Stamp .cairn/state.yaml with current cairn_version, apply pending migrations
+  skill install [platform]      Install Cairn protocol into CLAUDE.md / AGENTS.md / .cursorrules
+  skill status                  Check installed protocol version
+  skill update                  Update installed protocol to current version
+  skill show [platform]         Print assembled protocol to stdout
 
 Options:
   --version                     Show version
@@ -87,6 +92,9 @@ async function main() {
                 break;
             case "migrate":
                 await runMigrate();
+                break;
+            case "skill":
+                await runSkill(args.slice(1));
                 break;
             default:
                 console.error(`Unknown command: ${command}`);

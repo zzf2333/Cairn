@@ -1,0 +1,22 @@
+{
+    "protocol": [
+        "protocol/lifecycle.md",
+        "protocol/tool-contracts.md",
+        "protocol/escalation-model.md",
+        "protocol/runtime-rules.md"
+    ],
+    "platforms": {
+        "claude-code": {
+            "adapter": "adapters/claude-code.md",
+            "target": "CLAUDE.md"
+        },
+        "codex": {
+            "adapter": "adapters/codex.md",
+            "target": "AGENTS.md"
+        },
+        "cursor": {
+            "adapter": "adapters/cursor.md",
+            "target": ".cursorrules"
+        }
+    }
+}
