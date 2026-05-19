@@ -30,7 +30,7 @@ required_final_decision:
   prefer:
     - "(?i)evaluat|consider|weigh|tradeoff|条件|评估|权衡"
   avoid:
-    - "(?i)(hard.?constraint|cannot|must not|forbidden)"
+    - "(?i)(hard.?constraint|cannot.*proceed|must not.*use|absolutely not|forbidden)"
 
 platform_overrides:
   codex:
