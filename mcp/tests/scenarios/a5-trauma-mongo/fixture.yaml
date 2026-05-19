@@ -17,7 +17,7 @@ blood:
     time: "2025-09-05"
     domain: data
     type: incident
-    gravity: { level: G3, architectural: high, psychological: high }
+    gravity: { level: G3, architectural: high }
     source: { type: human_explicit, confidence: 1.0, verified: true, refs: [{ type: postmortem, id: "2025-Q3-mongo" }] }
     subject:
       name: MongoDB

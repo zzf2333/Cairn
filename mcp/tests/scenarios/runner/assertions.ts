@@ -187,14 +187,15 @@ function checkToolResultPattern(calls: ToolCallRecord[], a: ToolResultPatternAss
 
 function checkFinalDecision(text: string, a: FinalDecisionAssertion): AssertionResult[] {
     const results: AssertionResult[] = [];
-    for (let i = 0; i < (a.prefer ?? []).length; i++) {
-        const pattern = a.prefer![i];
-        const matched = makeRegex(pattern).test(text);
+    if (a.prefer && a.prefer.length > 0) {
+        const hits = a.prefer.filter((p) => makeRegex(p).test(text));
         results.push({
-            id: a.id ? `${a.id}/prefer/${i}` : undefined,
-            name: `final_decision prefer: ${pattern}`,
-            passed: matched,
-            detail: matched ? "matched" : "pattern not found",
+            id: a.id ? `${a.id}/prefer` : undefined,
+            name: `final_decision prefer (any of ${a.prefer.length})`,
+            passed: hits.length > 0,
+            detail: hits.length > 0
+                ? `matched: ${hits.join(", ")}`
+                : `none matched: ${a.prefer.join(", ")}`,
         });
     }
     for (let i = 0; i < (a.avoid ?? []).length; i++) {

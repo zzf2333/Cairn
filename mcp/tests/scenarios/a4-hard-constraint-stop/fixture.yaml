@@ -17,7 +17,7 @@ blood:
     time: "2025-08-20"
     domain: auth
     type: rejection
-    gravity: { level: G3, architectural: high, psychological: high }
+    gravity: { level: G3, architectural: high }
     source: { type: human_explicit, confidence: 1.0, verified: true, refs: [{ type: incident, id: "2025-Q2-rust-stall" }] }
     subject:
       name: Rewriting auth in Rust

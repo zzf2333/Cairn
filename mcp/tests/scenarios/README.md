@@ -214,10 +214,10 @@ required_tool_result_patterns:
 
 # verify the AI's final recommendation direction
 required_final_decision:
-  id: e1_decision                     # sub-results get derived ids: e1_decision/prefer/0, e1_decision/avoid/0
-  prefer:                             # at least one must match assistant text
+  id: e1_decision                     # derived ids: e1_decision/prefer, e1_decision/avoid/0
+  prefer:                             # at least one must match assistant text (OR semantics)
     - "(?i)REST|OpenAPI"
-  avoid:                              # none may match assistant text
+  avoid:                              # each must be absent from assistant text (AND semantics)
     - "(?i)(recommend|suggest|use)\\s+tRPC"
 
 # verify tool calls appear in this relative order (more flexible than fixed order: N)
@@ -262,8 +262,8 @@ const ov = (a.id && overrides[a.id]) || overrides[a.name];
 
 | Parent `id` | Sub-result `id` |
 |-------------|-----------------|
-| `e1_decision` | `e1_decision/prefer/0`, `e1_decision/prefer/1`, ... |
-| `e1_decision` | `e1_decision/avoid/0`, `e1_decision/avoid/1`, ... |
+| `e1_decision` | `e1_decision/prefer` (one result for the entire prefer list) |
+| `e1_decision` | `e1_decision/avoid/0`, `e1_decision/avoid/1`, ... (one per avoid entry) |
 | _(omitted)_ | _(no id on sub-results — name-based matching only)_ |
 
 **When to add `id`:** add one when a scenario uses `assertion_overrides` that target individual assertions. If all assertions share the same platform-level `allow_fail`, `id` is optional.

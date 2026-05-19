@@ -36,7 +36,6 @@ blood:
     gravity:
       level: G3
       architectural: high
-      psychological: high
     source:
       type: human_explicit
       confidence: 1.0

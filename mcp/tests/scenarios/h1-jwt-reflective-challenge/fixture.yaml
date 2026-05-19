@@ -34,7 +34,6 @@ blood:
     gravity:
       level: G2
       architectural: medium
-      psychological: medium
     source:
       type: conversation
       confidence: 0.9
