@@ -701,7 +701,7 @@ describe("T6: Trauma × DNA Cross-System Interaction", () => {
         expect(routing.governance).toBe("human_ratified");
     });
 
-    it("Step 6: trauma challenge still fires during reevaluation_mode", async () => {
+    it("Step 6: trauma challenge still fires; DNA challenge downgrades to advisory", async () => {
         const challenges = await ctx.challengeEngine.detectConflicts({
             domain: "api-layer",
             task: "change api-layer routing",
@@ -711,10 +711,11 @@ describe("T6: Trauma × DNA Cross-System Interaction", () => {
         const traumaChallenge = challenges.find(c => c.trauma === true);
         expect(traumaChallenge).toBeDefined();
 
-        // ChallengeEngine does NOT check reevaluation_mode — only TrustRouter does.
-        // So DNA challenges still fire even in reevaluation mode.
         const dnaChallenge = challenges.find(c => c.conflict_with === "dna:simplicity_bias");
         expect(dnaChallenge).toBeDefined();
+        expect(dnaChallenge!.level).toBe("suggestion");
+        expect(dnaChallenge!.description).toContain("reevaluation");
+        expect(dnaChallenge!.description).toContain("advisory");
     });
 });
 

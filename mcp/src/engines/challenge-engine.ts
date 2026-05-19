@@ -133,13 +133,17 @@ export class ChallengeEngine {
         const identity = await this.dnaStore.loadIdentity();
         if (identity.status === "not_yet_emerged") return;
 
+        const reevalSuffix = identity.reevaluation_mode
+            ? " (DNA is under reevaluation; treat as advisory, not constraint.)"
+            : "";
+
         if (input.involves_complex_framework) {
             const simplicityTrait = identity.traits["simplicity_bias"];
             if (simplicityTrait && simplicityTrait.level === "high") {
                 challenges.push({
                     level: "suggestion",
                     conflict_with: "dna:simplicity_bias",
-                    description: "This project has a strong simplicity bias. Complex frameworks conflict with established patterns.",
+                    description: `This project has a strong simplicity bias. Complex frameworks conflict with established patterns.${reevalSuffix}`,
                 });
             }
         }
@@ -150,7 +154,7 @@ export class ChallengeEngine {
                 challenges.push({
                     level: "suggestion",
                     conflict_with: "dna:infra_aggressiveness",
-                    description: "This project is conservative with infrastructure. New infrastructure should be well-justified.",
+                    description: `This project is conservative with infrastructure. New infrastructure should be well-justified.${reevalSuffix}`,
                 });
             }
         }
