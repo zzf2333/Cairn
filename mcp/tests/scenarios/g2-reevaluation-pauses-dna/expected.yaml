@@ -14,8 +14,8 @@ required_tool_result_patterns:
     description: cairn_context must surface the reevaluation state
 
 required_text_patterns:
-  - pattern: "(?i)reevaluat|drift|paused|under.*review|重新.*评估|暂停|漂移"
-    description: must acknowledge the trait is under reevaluation
+  - pattern: "(?i)reevaluat|drift|paused|under.*review|重新.*评估|暂停|漂移|tradeoff|trade.?off|depends|change.*my.*answer|consider.*both|either.*work"
+    description: must show balanced analysis (explicit reevaluation mention OR balanced tradeoff language)
 
 forbidden_text_patterns:
   - pattern: "(?i)(definitely|clearly|obviously|must|without.*doubt)\\s+(use|choose|go with)\\s+REST"
