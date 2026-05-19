@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-05-19 (evolution breakthrough tests + trauma recovery)
+
+0.4.3 completed the cognitive maintenance test suite (T1–T7). 0.4.4 adds the missing counterpart: **cognitive breakthrough** — tests that verify Cairn can evolve past its own historical constraints rather than becoming a conservatism engine. Also introduces `BloodEngine.downgradeTrauma()`, the first mechanism for trauma recovery.
+
+### Added
+
+- **T8: Successful Paradigm Shift** — 11-step timeline verifying the full breakthrough flow: historical rejections → DNA drift detection → reevaluation_mode → old events decay → challenges weaken to advisory → new direction routes without DNA modulation.
+- **T9: False Trauma Recovery** — 9-step timeline verifying trauma can be correctly downgraded when root cause is re-attributed. Tests the complete arc: trauma persists permanently → root cause discovered → `downgradeTrauma()` → routing normalizes → event becomes eligible for normal decay.
+- **T10: Anti-Dogma Test** — 12-step timeline composing all breakthrough mechanisms: ConsistencyEngine detects DNA-event contradiction, CalibrationEar requires 3 drift rounds to overcome 0.9-confidence strong bias, old rejections decay and weaken, final "bookend" assertion proves the exact routing input blocked at step 1 is allowed at step 12.
+- **`BloodEngine.downgradeTrauma(eventId, reason)`** — inverse of `markTrauma()`. Resets `is_trauma`, `decay_override`, `sensitivity_multiplier`, and restores normal `decay_policy`. Keeps the event as historical record.
+
+### Changed
+
+- **Session guard lifecycle tests** — full coverage for context → signal → observe → session_end chain, stale recovery, and degraded mode.
+- **L2 cognitive behavior scenarios** — 10 new acceptance scenarios (E1–E2, F1–F2, G1–G3, H1–H3) with 3 new assertion types (`required_tool_result_patterns`, `required_final_decision`, `required_sequence`).
+- **Assertion ID system** — stable `id` field on all assertion types for reliable `platform_overrides` targeting.
+
+### Fixed
+
+- DNA challenges now correctly downgrade to advisory during `reevaluation_mode`.
+- `prefer` assertions use OR semantics (any pattern match satisfies).
+- Removed non-schema `gravity.psychological` from fixtures.
+- Narrowed G3 avoid pattern to prevent false positives on common words.
+- Wired `assertion_overrides` into scenario runner evaluation.
+
 ## [0.4.3] - 2026-05-18 (README operational layer + diagram polish)
 
 Docs-only release. No engine, store, or tool behavior changed; 274 unit tests pass unchanged.
