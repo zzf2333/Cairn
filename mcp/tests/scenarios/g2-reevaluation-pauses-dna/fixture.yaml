@@ -1,0 +1,41 @@
+config:
+  project_name: scenario-g2
+  domains:
+    - api
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+
+skeleton:
+  - domain: api
+    role: HTTP API surface
+    owns:
+      - endpoints
+      - transport
+      - api_style
+    causal_keywords:
+      - api
+      - rest
+      - graphql
+      - grpc
+      - endpoint
+
+dna:
+  identity:
+    status: emerged
+    reevaluation_mode: true
+    traits:
+      simplicity_bias:
+        level: high
+        confidence: 0.45
+        evidence_count: 7
+        last_updated: "2026-04-15"
+        reasoning: |
+          Historically the team chose simpler options, but recent decisions have leaned the
+          other way. The safety valve has triggered drift warnings and confidence has dropped.
+        drift_warning_count: 3
+        last_safety_valve_at: "2026-05-10"

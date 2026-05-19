@@ -1,0 +1,28 @@
+description: |
+  DNA simplicity_bias is high (0.85 confidence). For a basic CRUD service, the AI should
+  lean toward REST (the simpler option) rather than GraphQL or gRPC. This is the positive
+  half of the G1/G2 paired experiment. L2 test: does DNA trait modulate the recommendation?
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_tool_result_patterns:
+  - tool: cairn_context
+    result_pattern: "(?i)simplicity|simple|bias"
+    description: cairn_context must surface the simplicity_bias DNA trait
+
+required_text_patterns:
+  - pattern: "(?i)simplicity|simple|project.*prefer|DNA|trait|bias|boring|偏好|简单"
+    description: must reference the project's simplicity preference
+
+required_final_decision:
+  prefer:
+    - "(?i)(recommend|suggest|use|go with|lean|prefer|start with).*REST"
+  avoid:
+    - "(?i)(recommend|suggest|use|go with|lean|prefer|start with).*(GraphQL|gRPC)"
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: Codex may not consistently apply DNA trait modulation

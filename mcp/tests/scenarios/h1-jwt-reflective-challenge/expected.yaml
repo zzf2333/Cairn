@@ -1,0 +1,44 @@
+description: |
+  JWT in localStorage was rejected (G2) due to XSS risk. The user wants to do it anyway.
+  The AI must raise a reflective challenge -- surface the security concern, explain why
+  it was rejected, and ask the user to justify before proceeding. NOT a hard block.
+  L2 test: does the challenge system actually intervene in the user's request?
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_tool_result_patterns:
+  - tool: cairn_context
+    result_pattern: "(?i)JWT|localStorage|XSS"
+    description: cairn_context must surface the JWT localStorage rejection
+
+required_text_patterns:
+  - pattern: "(?i)XSS|cross.?site|security|安全|漏洞"
+    description: must surface the XSS security concern
+  - pattern: "(?i)previously.*rejected|security.*review|HttpOnly|cookie|之前.*拒绝|安全.*审查"
+    description: must reference the historical rejection and the recommended alternative
+  - pattern: "(?i)before.*proceed|justify|explain|reconsider|why.*change|confirm|are you sure|确认|为什么"
+    description: must ask user to justify overriding the decision
+
+forbidden_text_patterns:
+  - pattern: "(?i)(here.?s|let.?s|sure|no problem|absolutely).*localStorage.*(implementation|setup|code)"
+    description: must not immediately implement localStorage storage
+  - pattern: "(?i)(hard.?constraint|cannot|must not|forbidden|absolutely not)"
+    description: must not hard-block -- this is reflective challenge, not hard constraint
+
+required_final_decision:
+  prefer:
+    - "(?i)XSS|security|HttpOnly|cookie|challenge|reconsider|justify"
+  avoid:
+    - "(?i)(sure|no problem|here.?s).*localStorage.*(setup|implementation|code)"
+
+required_sequence:
+  - steps:
+      - tool: cairn_context
+    description: must consult context before responding
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: Codex may not implement reflective challenge pattern

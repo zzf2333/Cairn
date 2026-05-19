@@ -1,6 +1,6 @@
 # Reverse-Regression Scenarios
 
-A 25-scenario harness that turns Cairn's core promise — "AI does not walk into the same wall twice" — into CI-assertable evidence.
+A 35-scenario harness that turns Cairn's core promise — "AI does not walk into the same wall twice" — into CI-assertable evidence.
 
 Each scenario boots a fresh `.cairn/` fixture, spawns a real Cairn MCP server, drives a real LLM through a controlled prompt, and asserts the resulting tool-call trace and assistant text against `expected.yaml`.
 
@@ -38,11 +38,13 @@ tests/scenarios/
 └── _runs/                    — saved JSON logs from real LLM runs (gitignored)
 ```
 
-Naming convention: `<category-letter><index>-<kebab-case-title>/`. Category letters: A core / B capture / C protocol / D robustness.
+Naming convention: `<category-letter><index>-<kebab-case-title>/`. Category letters: A core / B capture / C protocol / D robustness / E cognition-avoidance / F cognition-debt-trauma / G cognition-dna / H cognition-capture-challenge.
 
 ## Coverage
 
-25 scenarios across 4 categories, 50 runs per full pass (×2 platforms):
+35 scenarios across 8 categories, 70 runs per full pass (×2 platforms):
+
+### L1: Protocol Tests (A–D)
 
 | ID  | Category    | Tests |
 |-----|-------------|-------|
@@ -72,6 +74,23 @@ Naming convention: `<category-letter><index>-<kebab-case-title>/`. Category lett
 | D3  | robustness  | empty project triggers AI-native init flow |
 | D4  | robustness  | scale: 1000 blood events still responsive |
 
+### L2: Cognitive Behavior Tests (E–H)
+
+These test whether Cairn's returned cognition **actually changes AI decision-making**, not just whether tools are called correctly.
+
+| ID  | Category             | Tests |
+|-----|----------------------|-------|
+| E1  | cognition-avoidance  | tRPC rejected (G3) → AI recommends REST, not tRPC |
+| E2  | cognition-avoidance  | Redis no-go → AI recommends in-process cache, not Redis |
+| F1  | cognition-debt       | accepted N+1 debt → AI defers refactoring, surfaces conditions |
+| F2  | cognition-trauma     | Kafka trauma (G3) → AI refuses casual adoption, requires sign-off |
+| G1  | cognition-dna        | simplicity_bias high → AI leans toward REST over GraphQL/gRPC |
+| G2  | cognition-dna        | reevaluation_mode pauses DNA → AI gives balanced analysis (control for G1) |
+| G3  | cognition-dna        | archived rejection with high reactivation → reflective challenge, not hard block |
+| H1  | cognition-challenge  | JWT localStorage rejected → AI raises reflective challenge, not hard block |
+| H2  | cognition-capture    | user declares "no ORMs" → captured via cairn_signal + respected |
+| H3  | cognition-capture    | noise (CSS rename) → NOT signaled (inverse test) |
+
 ## Run
 
 ```bash
@@ -83,7 +102,7 @@ npm install
 export ANTHROPIC_API_KEY=...
 export OPENAI_API_KEY=...
 
-# run everything (both platforms × 25 scenarios)
+# run everything (both platforms × 35 scenarios)
 npm run scenarios
 
 # filter by id substring
@@ -178,6 +197,32 @@ forbidden_text_patterns:
 min_total_tool_calls: 1
 max_total_tool_calls: 20
 
+# L2 assertions — verify cognition changes AI decisions
+
+# verify tool result text contains expected patterns (proves AI saw the cognition)
+required_tool_result_patterns:
+  - tool: cairn_context
+    result_pattern: "(?i)trpc|rejected"
+    args_match:                       # optional — narrow to specific call
+      task: "(?i)api"
+    description: cairn_context must surface the tRPC rejection
+
+# verify the AI's final recommendation direction
+required_final_decision:
+  prefer:                             # at least one must match assistant text
+    - "(?i)REST|OpenAPI"
+  avoid:                              # none may match assistant text
+    - "(?i)(recommend|suggest|use)\\s+tRPC"
+
+# verify tool calls appear in this relative order (more flexible than fixed order: N)
+required_sequence:
+  - steps:
+      - tool: cairn_context
+      - tool: cairn_signal
+        args_match:
+          signal_type: "constraint_declaration"
+    description: context before signal
+
 # per-platform behavior (optional)
 platform_overrides:
   codex:
@@ -185,6 +230,10 @@ platform_overrides:
     allow_fail_reason: "known resume/context issue"
     # skip: true                      # skip entirely — don't even run the scenario for this platform
     # skip_reason: "not applicable"
+    assertion_overrides:              # per-assertion granularity (optional)
+      "required tool_call: cairn_signal":
+        allow_fail: true
+        allow_fail_reason: "Codex resume loses turn context"
 ```
 
 ## Why this approach

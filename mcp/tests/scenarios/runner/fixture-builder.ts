@@ -88,9 +88,13 @@ export async function buildFixture(projectRoot: string, specIn: FixtureSpec): Pr
               },
           }
         : {};
+    const activationLogOverrides = spec.state?.activation_log
+        ? { activation_log: { recent_hits: spec.state.activation_log.recent_hits ?? {} } }
+        : {};
     const state = makeState({
         initialization_status: "complete",
         ...stageOverrides,
+        ...activationLogOverrides,
     } as never);
     await writeYaml(paths.state, state);
 

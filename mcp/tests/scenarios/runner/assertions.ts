@@ -3,11 +3,14 @@ import { parse as yamlParse } from "yaml";
 import type {
     AssertionResult,
     ExpectedSpec,
+    FinalDecisionAssertion,
     Platform,
     PlatformOverride,
     RunRecord,
+    SequenceAssertion,
     ToolCallAssertion,
     ToolCallRecord,
+    ToolResultPatternAssertion,
     TextPatternAssertion,
 } from "./types.js";
 
@@ -149,6 +152,70 @@ export function getPlatformOverride(expected: ExpectedSpec, platform: Platform):
     return expected.platform_overrides?.[platform];
 }
 
+function checkToolResultPattern(calls: ToolCallRecord[], a: ToolResultPatternAssertion): AssertionResult {
+    const matches = findMatchingCalls(calls, { tool: a.tool, args_match: a.args_match });
+    if (matches.length === 0) {
+        return {
+            name: `tool_result_pattern: ${a.tool}${a.description ? ` (${a.description})` : ""}`,
+            passed: false,
+            detail: "no matching tool call found",
+        };
+    }
+    const re = makeRegex(a.result_pattern);
+    const hit = matches.some((c) => re.test(c.result_text));
+    return {
+        name: `tool_result_pattern: ${a.tool}${a.description ? ` (${a.description})` : ""}`,
+        passed: hit,
+        detail: hit
+            ? "matched"
+            : `pattern '${a.result_pattern}' not found in result_text of ${matches.length} call(s)`,
+    };
+}
+
+function checkFinalDecision(text: string, a: FinalDecisionAssertion): AssertionResult[] {
+    const results: AssertionResult[] = [];
+    for (const pattern of a.prefer ?? []) {
+        const matched = makeRegex(pattern).test(text);
+        results.push({
+            name: `final_decision prefer: ${pattern}`,
+            passed: matched,
+            detail: matched ? "matched" : "pattern not found",
+        });
+    }
+    for (const pattern of a.avoid ?? []) {
+        const matched = makeRegex(pattern).test(text);
+        results.push({
+            name: `final_decision avoid: ${pattern}`,
+            passed: !matched,
+            detail: matched ? "pattern matched (should not appear)" : "absent",
+        });
+    }
+    return results;
+}
+
+function checkSequence(calls: ToolCallRecord[], a: SequenceAssertion): AssertionResult {
+    let minOrder = -1;
+    for (let i = 0; i < a.steps.length; i++) {
+        const step = a.steps[i];
+        const candidates = findMatchingCalls(calls, { tool: step.tool, args_match: step.args_match }).filter(
+            (c) => c.order > minOrder,
+        );
+        if (candidates.length === 0) {
+            return {
+                name: `sequence${a.description ? ` (${a.description})` : ""}`,
+                passed: false,
+                detail: `step ${i + 1} (${step.tool}) not found after order ${minOrder}`,
+            };
+        }
+        minOrder = Math.min(...candidates.map((c) => c.order));
+    }
+    return {
+        name: `sequence${a.description ? ` (${a.description})` : ""}`,
+        passed: true,
+        detail: "all steps matched in order",
+    };
+}
+
 export function evaluate(run: RunRecord, expected: ExpectedSpec): AssertionResult[] {
     const out: AssertionResult[] = [];
 
@@ -177,6 +244,15 @@ export function evaluate(run: RunRecord, expected: ExpectedSpec): AssertionResul
     }
     for (const a of expected.forbidden_text_patterns ?? []) {
         out.push(checkForbiddenText(run.assistant_text, a));
+    }
+    for (const a of expected.required_tool_result_patterns ?? []) {
+        out.push(checkToolResultPattern(run.tool_calls, a));
+    }
+    if (expected.required_final_decision) {
+        out.push(...checkFinalDecision(run.assistant_text, expected.required_final_decision));
+    }
+    for (const a of expected.required_sequence ?? []) {
+        out.push(checkSequence(run.tool_calls, a));
     }
 
     return out;

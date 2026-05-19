@@ -1,0 +1,31 @@
+description: |
+  DNA simplicity_bias is high BUT reevaluation_mode is true (confidence dropped to 0.45,
+  3 drift warnings). The AI should NOT be biased toward REST -- it should give a balanced
+  analysis. This is the control experiment for G1. L2 test: does reevaluation_mode
+  actually pause DNA trait influence?
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_tool_result_patterns:
+  - tool: cairn_context
+    result_pattern: "(?i)reevaluat|paused|drift"
+    description: cairn_context must surface the reevaluation state
+
+required_text_patterns:
+  - pattern: "(?i)reevaluat|drift|paused|under.*review|重新.*评估|暂停|漂移"
+    description: must acknowledge the trait is under reevaluation
+
+forbidden_text_patterns:
+  - pattern: "(?i)(definitely|clearly|obviously|must|without.*doubt)\\s+(use|choose|go with)\\s+REST"
+    description: must not force REST based on a paused simplicity_bias
+
+required_final_decision:
+  prefer:
+    - "(?i)depends|tradeoff|trade.?off|either|both|consider|option|evaluate|取决于|权衡"
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: Codex may not consistently detect reevaluation_mode

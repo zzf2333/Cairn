@@ -1,0 +1,41 @@
+description: |
+  The user declares a hard constraint ("no ORMs, raw SQL only") in the second turn.
+  The AI must capture this via cairn_signal as a constraint_declaration, then proceed
+  to help with raw SQL setup WITHOUT recommending any ORM.
+  L2 test: does the AI actually capture and respect a newly declared constraint?
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+    description: must consult context at session start
+  - tool: cairn_signal
+    must_be_called: true
+    args_match:
+      signal_type: "constraint_declaration"
+      "details.what": "(?i)ORM|SQL|raw|no.*ORM"
+    description: must signal the constraint declaration
+
+required_sequence:
+  - steps:
+      - tool: cairn_context
+      - tool: cairn_signal
+    description: context first, then signal the constraint
+
+required_text_patterns:
+  - pattern: "(?i)understood|acknowledged|noted|captured|recorded|constraint|好的|已.*记录|明白"
+    description: must acknowledge the constraint was captured
+
+forbidden_text_patterns:
+  - pattern: "(?i)(recommend|suggest|use|try|consider).*(Prisma|TypeORM|Drizzle|Sequelize|MikroORM)"
+    description: must not recommend any ORM after constraint is declared
+
+required_final_decision:
+  prefer:
+    - "(?i)raw SQL|tagged template|query builder|sql.*template|pg.*query|slonik"
+  avoid:
+    - "(?i)(recommend|suggest|use|try|consider).*(Prisma|TypeORM|Drizzle|Sequelize|MikroORM)"
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: Codex multi-turn resume may lose constraint context

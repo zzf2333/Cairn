@@ -1,0 +1,29 @@
+description: |
+  The user requests a trivial CSS rename and formatting fix. This is routine noise --
+  the AI must NOT emit cairn_signal for this. Only architectural decisions, constraints,
+  and rejections should be signaled.
+  L2 test (inverse): does the AI correctly identify noise and NOT over-signal?
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+    description: still must consult context at session start
+
+forbidden_tool_calls:
+  - tool: cairn_signal
+    description: must not signal routine formatting/rename changes
+  - tool: cairn_plan
+    description: a CSS rename does not warrant a cairn_plan
+
+required_text_patterns:
+  - pattern: "(?i)rename|class|btn|button|indent|format|重命名|类名"
+    description: must acknowledge the actual task
+
+required_final_decision:
+  prefer:
+    - "(?i)rename|replace|class|btn.*button|indent|format"
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: Codex may over-signal in some contexts

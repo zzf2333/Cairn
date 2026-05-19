@@ -1,0 +1,38 @@
+description: |
+  An archived GraphQL rejection has high reactivation count (7 hits, above RESURRECTION_THRESHOLD=5).
+  The AI should surface this as a reflective challenge -- acknowledge the old decision but
+  NOT hard-block. It should note conditions may have changed and offer balanced evaluation.
+  L2 test: does archived + reactivating cognition produce the right middle-ground response?
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_tool_result_patterns:
+  - tool: cairn_context
+    result_pattern: "(?i)graphql|archived"
+    description: cairn_context must surface the archived GraphQL decision
+
+required_text_patterns:
+  - pattern: "(?i)GraphQL"
+    near_pattern: "(?i)archived|previous|2025|rolled.?back|rejected|set aside|之前|归档|曾经"
+    description: must surface the historical context
+  - pattern: "(?i)condition|changed|reevaluat|mature|evolved|justify|reconsider|重新.*评估|条件.*变"
+    description: must acknowledge conditions may have changed
+
+forbidden_text_patterns:
+  - pattern: "(?i)(hard.?constraint|cannot.*proceed|must not|absolutely not|forbidden|禁止|不可以)"
+    description: must NOT hard-block -- this is archived, not active
+  - pattern: "(?i)GraphQL.*(clearly|obviously|definitely).*right"
+    description: must NOT blindly endorse either
+
+required_final_decision:
+  prefer:
+    - "(?i)evaluat|consider|weigh|tradeoff|条件|评估|权衡"
+  avoid:
+    - "(?i)(hard.?constraint|cannot|must not|forbidden)"
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: Codex may not distinguish archived from active rejections

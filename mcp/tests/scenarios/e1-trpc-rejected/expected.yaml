@@ -1,0 +1,41 @@
+description: |
+  tRPC is permanently rejected (G3). When asked about API frameworks with type safety,
+  the AI must NOT recommend tRPC. It should recommend alternatives (REST + OpenAPI, etc.)
+  and reference the historical rejection. This is an L2 cognitive behavior test: does
+  the rejection actually change the AI's recommendation?
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+    description: must consult project memory before recommending frameworks
+
+required_tool_result_patterns:
+  - tool: cairn_context
+    result_pattern: "(?i)trpc|tRPC"
+    description: cairn_context must surface the tRPC rejection
+
+required_text_patterns:
+  - pattern: "(?i)rejected|previously|history|avoid|no-?go|blocked|cairn|已.*拒|历史"
+    description: must acknowledge the historical rejection
+  - pattern: "(?i)deploy|coupling|edge|runtime|multi.?team"
+    description: must reference the specific reason for rejection
+
+forbidden_text_patterns:
+  - pattern: "(?i)(recommend|suggest|use|go with|let.?s use|choose|adopt)\\s+(tRPC|trpc)"
+    description: must not recommend tRPC as the solution
+
+required_final_decision:
+  prefer:
+    - "(?i)REST|OpenAPI|express|fastify|hono|koa|HTTP"
+  avoid:
+    - "(?i)(recommend|suggest|use|go with|let.?s use|choose|adopt)\\s+(tRPC|trpc)"
+
+required_sequence:
+  - steps:
+      - tool: cairn_context
+    description: cairn_context must be called before responding
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: Codex may not consistently reference rejection reasoning

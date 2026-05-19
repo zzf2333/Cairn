@@ -1,0 +1,80 @@
+config:
+  project_name: scenario-f1
+  domains:
+    - api
+    - feed
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+
+skeleton:
+  - domain: feed
+    role: social feed and timeline aggregation
+    owns:
+      - feed_query
+      - timeline
+      - aggregation
+    causal_keywords:
+      - feed
+      - timeline
+      - dashboard
+      - query
+      - n+1
+    dependencies:
+      - api
+
+blood:
+  - id: blood_feed_nplus1_accepted
+    time: "2026-03-01"
+    domain: feed
+    type: debt_acceptance
+    gravity:
+      level: G2
+      architectural: medium
+      psychological: low
+    source:
+      type: human_explicit
+      confidence: 0.9
+      verified: true
+      refs: []
+    subject:
+      name: N+1 query in feed endpoint
+      aliases:
+        - feed n+1
+        - dashboard query
+    trigger: Team accepted N+1 as tolerable debt at current scale.
+    decision_or_change: Keep N+1 in /api/feed until customer count exceeds 100.
+    reasoning: |
+      The N+1 query in /api/feed adds ~80ms at current scale (12 customers).
+      A proper join-based refactor would take 2 sprints and risks breaking the feed
+      ranking algorithm. Accepted as debt until customer count > 100.
+    behavior_effect:
+      type: warn_before
+      instruction: Do not refactor feed query unless revisit condition is met.
+    affects:
+      skeleton: false
+      dna: false
+      domains:
+        - feed
+    lifecycle:
+      validity: tactical
+      decay_policy: downgrade
+      resurrection_count: 0
+    health:
+      state: ok
+      reason: null
+    governance_status: ratified
+
+domains:
+  feed:
+    accepted_debt:
+      - what: N+1 query in /api/feed endpoint
+        reason: Tolerable at current scale (12 customers, ~80ms overhead)
+        source_event: blood_feed_nplus1_accepted
+        revisit_when:
+          - customer count exceeds 100
+          - p95 latency exceeds 500ms

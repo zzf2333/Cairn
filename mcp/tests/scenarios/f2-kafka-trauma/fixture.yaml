@@ -1,0 +1,95 @@
+config:
+  project_name: scenario-f2
+  domains:
+    - data
+    - infra
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+
+skeleton:
+  - domain: data
+    role: data pipeline and event streaming
+    owns:
+      - event_pipeline
+      - streaming
+      - message_queue
+    causal_keywords:
+      - data
+      - kafka
+      - event
+      - stream
+      - queue
+      - message
+    dependencies:
+      - infra
+
+blood:
+  - id: blood_kafka_data_loss
+    time: "2025-06-15"
+    domain: data
+    type: incident
+    gravity:
+      level: G3
+      architectural: high
+      psychological: high
+    source:
+      type: human_explicit
+      confidence: 1.0
+      verified: true
+      refs:
+        - type: document
+          id: postmortem-2025-Q2-kafka
+    subject:
+      name: Kafka
+      aliases:
+        - event streaming
+        - distributed log
+        - kafka cluster
+    trigger: Production Kafka cluster failure during broker rebalance.
+    decision_or_change: Kafka removed from production. Do not reintroduce without executive sign-off.
+    rejected_paths:
+      - path: Re-adopt Kafka for event streaming
+        reason: 2025-Q2 data loss incident — 48 hours of order events lost during broker rebalance.
+    reasoning: |
+      In June 2025, a Kafka broker rebalance triggered by a routine upgrade caused
+      48 hours of order events to be lost. The consumer group offset management
+      failed silently. Recovery took 2 weeks. This is a trauma-level event.
+    constraints_added:
+      - "data: no Kafka without executive sign-off"
+    behavior_effect:
+      type: avoid_suggestion
+      instruction: Do not introduce Kafka without explicit human ratification.
+    affects:
+      skeleton: false
+      dna: false
+      domains:
+        - data
+    lifecycle:
+      validity: strategic
+      decay_policy: permanent
+      resurrection_count: 0
+    health:
+      state: ok
+      reason: null
+    governance_status: ratified
+    trauma:
+      is_trauma: true
+      sensitivity_multiplier: 2.5
+      decay_override: permanent
+
+domains:
+  data:
+    rejected_paths:
+      - path: Kafka
+        reason: "2025-Q2 production incident: 48h order event loss during broker rebalance"
+        source_event: blood_kafka_data_loss
+    constraints:
+      no_go:
+        - path: Kafka
+          reason: Trauma-level incident. Requires executive sign-off to reconsider.
+          source_event: blood_kafka_data_loss

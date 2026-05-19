@@ -1,0 +1,81 @@
+config:
+  project_name: scenario-e1
+  domains:
+    - api
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+
+skeleton:
+  - domain: api
+    role: HTTP API surface and framework selection
+    owns:
+      - endpoints
+      - transport
+      - framework
+    causal_keywords:
+      - api
+      - rpc
+      - rest
+      - trpc
+      - transport
+      - framework
+
+blood:
+  - id: blood_trpc_rejected
+    time: "2026-01-15"
+    domain: api
+    type: rejection
+    gravity:
+      level: G3
+      architectural: high
+      psychological: medium
+    source:
+      type: conversation
+      confidence: 0.95
+      verified: true
+      refs: []
+    subject:
+      name: tRPC
+      aliases:
+        - typesafe rpc
+        - trpc framework
+    trigger: Team evaluated tRPC and rejected it after prototype phase.
+    decision_or_change: Do not use tRPC. Stick with REST + OpenAPI for type-safe APIs.
+    rejected_paths:
+      - path: tRPC
+        reason: Tight client/server coupling breaks multi-team deploy cadence. Edge runtime incompatibility.
+    reasoning: |
+      We prototyped tRPC in January and found two blockers: (1) the router/client coupling
+      forces synchronized deploys across frontend and backend teams, and (2) edge runtime
+      compatibility is fragile. REST + OpenAPI code-gen gives us the same type safety without
+      the coupling. Permanent rejection.
+    constraints_added:
+      - "api: no tRPC"
+    behavior_effect:
+      type: avoid_suggestion
+      instruction: Do not recommend tRPC for this project.
+    affects:
+      skeleton: false
+      dna: false
+      domains:
+        - api
+    lifecycle:
+      validity: strategic
+      decay_policy: permanent
+      resurrection_count: 0
+    health:
+      state: ok
+      reason: null
+    governance_status: ratified
+
+domains:
+  api:
+    rejected_paths:
+      - path: tRPC
+        reason: Client/server coupling breaks multi-team deploy; edge runtime incompatibility.
+        source_event: blood_trpc_rejected

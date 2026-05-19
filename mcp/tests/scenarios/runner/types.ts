@@ -5,7 +5,7 @@ export type Platform = "claude-code" | "codex";
 export interface ScenarioSpec {
     id: string;
     title: string;
-    category: "A" | "B" | "C" | "D";
+    category: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H";
     fixtureDir: string;
     promptPath: string;
     expectedPath: string;
@@ -23,6 +23,7 @@ export interface FixtureSpec {
     state?: {
         stage?: { phase: string; confidence: number; status?: string; last_updated?: string };
         last_session?: string;
+        activation_log?: { recent_hits?: Record<string, number> };
     };
     skeleton?: Array<{
         domain: string;
@@ -81,6 +82,7 @@ export interface PlatformOverride {
     allow_fail_reason?: string;
     skip?: boolean;
     skip_reason?: string;
+    assertion_overrides?: Record<string, { allow_fail?: boolean; allow_fail_reason?: string }>;
 }
 
 export interface ExpectedSpec {
@@ -89,6 +91,9 @@ export interface ExpectedSpec {
     forbidden_tool_calls?: ToolCallAssertion[];
     required_text_patterns?: TextPatternAssertion[];
     forbidden_text_patterns?: TextPatternAssertion[];
+    required_tool_result_patterns?: ToolResultPatternAssertion[];
+    required_final_decision?: FinalDecisionAssertion;
+    required_sequence?: SequenceAssertion[];
     min_total_tool_calls?: number;
     max_total_tool_calls?: number;
     platform_overrides?: Record<Platform, PlatformOverride>;
@@ -108,10 +113,30 @@ export interface TextPatternAssertion {
     description?: string;
 }
 
+export interface ToolResultPatternAssertion {
+    tool: string;
+    args_match?: Record<string, string>;
+    result_pattern: string;
+    description?: string;
+}
+
+export interface FinalDecisionAssertion {
+    prefer?: string[];
+    avoid?: string[];
+    description?: string;
+}
+
+export interface SequenceAssertion {
+    steps: Array<{ tool: string; args_match?: Record<string, string> }>;
+    description?: string;
+}
+
 export interface AssertionResult {
     name: string;
     passed: boolean;
     detail: string;
+    allowed_fail?: boolean;
+    allowed_fail_reason?: string;
 }
 
 export interface ScenarioResult {

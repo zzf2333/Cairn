@@ -1,0 +1,81 @@
+config:
+  project_name: scenario-e2
+  domains:
+    - api
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+
+skeleton:
+  - domain: api
+    role: HTTP API and caching layer
+    owns:
+      - endpoints
+      - caching
+      - performance
+    causal_keywords:
+      - api
+      - cache
+      - redis
+      - caching
+      - performance
+
+blood:
+  - id: blood_redis_nogo
+    time: "2026-02-20"
+    domain: api
+    type: rejection
+    gravity:
+      level: G2
+      architectural: medium
+      psychological: low
+    source:
+      type: human_explicit
+      confidence: 0.95
+      verified: true
+      refs: []
+    subject:
+      name: Redis
+      aliases:
+        - redis cache
+        - redis server
+        - key-value store
+    trigger: Team declared Redis off-limits due to operational overhead.
+    decision_or_change: No Redis. Use in-process caching or database-level caching only.
+    rejected_paths:
+      - path: Redis
+        reason: 2-person ops team cannot absorb another stateful service.
+    reasoning: |
+      Our ops team is 2 people. Adding Redis means another stateful service to monitor,
+      patch, and failover. In-process LRU or Postgres materialized views cover our
+      current caching needs without the operational burden.
+    constraints_added:
+      - "api: no Redis"
+    behavior_effect:
+      type: avoid_suggestion
+      instruction: Do not recommend Redis for this project.
+    affects:
+      skeleton: false
+      dna: false
+      domains:
+        - api
+    lifecycle:
+      validity: strategic
+      decay_policy: downgrade
+      resurrection_count: 0
+    health:
+      state: ok
+      reason: null
+    governance_status: ratified
+
+domains:
+  api:
+    constraints:
+      no_go:
+        - path: Redis
+          reason: 2-person ops team cannot absorb another stateful service.
+          source_event: blood_redis_nogo

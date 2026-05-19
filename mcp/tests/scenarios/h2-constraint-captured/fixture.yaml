@@ -1,0 +1,26 @@
+config:
+  project_name: scenario-h2
+  domains:
+    - data
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+
+skeleton:
+  - domain: data
+    role: database and persistence layer
+    owns:
+      - schema
+      - queries
+      - migrations
+    causal_keywords:
+      - data
+      - database
+      - orm
+      - sql
+      - query
+      - persistence

@@ -1,0 +1,81 @@
+config:
+  project_name: scenario-h1
+  domains:
+    - auth
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+
+skeleton:
+  - domain: auth
+    role: authentication and session management
+    owns:
+      - login
+      - session_token
+      - jwt
+      - storage
+    causal_keywords:
+      - auth
+      - jwt
+      - token
+      - session
+      - localStorage
+      - cookie
+
+blood:
+  - id: blood_jwt_localstorage_rejected
+    time: "2026-01-20"
+    domain: auth
+    type: rejection
+    gravity:
+      level: G2
+      architectural: medium
+      psychological: medium
+    source:
+      type: conversation
+      confidence: 0.9
+      verified: true
+      refs: []
+    subject:
+      name: JWT in localStorage
+      aliases:
+        - localStorage jwt
+        - client-side token storage
+    trigger: Security review rejected storing JWT in localStorage.
+    decision_or_change: Use HttpOnly cookies for JWT storage. localStorage is rejected.
+    rejected_paths:
+      - path: JWT in localStorage
+        reason: XSS exposure risk. Security review mandated HttpOnly cookies.
+    reasoning: |
+      Our security review in January 2026 determined that storing JWT in localStorage
+      exposes tokens to XSS attacks. Any injected script can read localStorage.
+      HttpOnly cookies were chosen as the standard — they are not accessible via JavaScript.
+    constraints_added:
+      - "auth: no JWT in localStorage"
+    behavior_effect:
+      type: avoid_suggestion
+      instruction: Avoid storing JWT in localStorage. Use HttpOnly cookies.
+    affects:
+      skeleton: false
+      dna: false
+      domains:
+        - auth
+    lifecycle:
+      validity: strategic
+      decay_policy: downgrade
+      resurrection_count: 0
+    health:
+      state: ok
+      reason: null
+    governance_status: ratified
+
+domains:
+  auth:
+    rejected_paths:
+      - path: JWT in localStorage
+        reason: XSS exposure risk per security review
+        source_event: blood_jwt_localstorage_rejected

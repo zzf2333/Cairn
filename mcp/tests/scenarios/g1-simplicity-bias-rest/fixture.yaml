@@ -1,0 +1,41 @@
+config:
+  project_name: scenario-g1
+  domains:
+    - api
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+
+skeleton:
+  - domain: api
+    role: HTTP API surface
+    owns:
+      - endpoints
+      - transport
+      - api_style
+    causal_keywords:
+      - api
+      - rest
+      - graphql
+      - grpc
+      - endpoint
+
+dna:
+  identity:
+    status: emerged
+    reevaluation_mode: false
+    traits:
+      simplicity_bias:
+        level: high
+        confidence: 0.85
+        evidence_count: 7
+        last_updated: "2026-04-15"
+        reasoning: |
+          Over 7 decisions in the past 5 months the team has consistently chosen the simpler option
+          (Express over Fastify, fetch over axios, plain SQL over ORM, REST over GraphQL).
+        drift_warning_count: 0
+        last_safety_valve_at: null

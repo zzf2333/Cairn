@@ -1,0 +1,34 @@
+description: |
+  The N+1 query in /api/feed is accepted debt with clear revisit conditions.
+  When asked to optimize, the AI must surface the accepted debt and its conditions,
+  NOT immediately refactor the N+1. L2 test: does accepted_debt prevent premature refactoring?
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_tool_result_patterns:
+  - tool: cairn_context
+    result_pattern: "(?i)N\\+1|accepted.*debt|feed"
+    description: cairn_context must surface the accepted debt
+
+required_text_patterns:
+  - pattern: "(?i)accepted.*debt|technical.*debt|known.*debt|已.*接受|已知.*债"
+    description: must acknowledge this is accepted debt
+  - pattern: "(?i)customer.*count|100|revisit|condition|p95|latency|触发.*条件|重新.*评估"
+    description: must surface the revisit conditions
+
+forbidden_text_patterns:
+  - pattern: "(?i)(here.?s|let.?s|I.?ll).*refactor.*N\\+1|eager.*load.*fix|join.*replace.*N\\+1|rewrite.*feed.*query"
+    description: must not immediately refactor the accepted debt
+
+required_final_decision:
+  prefer:
+    - "(?i)accepted.*debt|leave|defer|revisit.*when|condition.*not.*met|not.*refactor|other.*cleanup"
+  avoid:
+    - "(?i)(here.?s|let.?s|I.?ll).*(refactor|rewrite|fix).*N\\+1"
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: Codex may not consistently honor accepted debt constraints

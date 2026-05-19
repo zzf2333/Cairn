@@ -1,0 +1,35 @@
+description: |
+  Redis is a no-go constraint (G2). When asked about caching, the AI must recommend
+  alternatives (in-process LRU, CDN, database cache, etc.) without recommending Redis.
+  L2 test: does the no-go constraint actually change the caching recommendation?
+
+required_tool_calls:
+  - tool: cairn_context
+    must_be_called: true
+
+required_tool_result_patterns:
+  - tool: cairn_context
+    result_pattern: "(?i)redis"
+    description: cairn_context must surface the Redis constraint
+
+required_text_patterns:
+  - pattern: "(?i)redis"
+    near_pattern: "(?i)no-?go|constraint|avoid|off.?limit|not.*use|cannot|已.*禁|不.*用"
+    description: must mention Redis is constrained
+  - pattern: "(?i)ops|operational|team.?size|2.?person|stateful"
+    description: must reference the reason
+
+forbidden_text_patterns:
+  - pattern: "(?i)(recommend|suggest|use|go with|let.?s use|deploy|set up)\\s+Redis"
+    description: must not recommend Redis
+
+required_final_decision:
+  prefer:
+    - "(?i)in-?process|in-?memory|LRU|local.*cache|CDN|materialized.*view|database.*cache|node-cache|lru-cache"
+  avoid:
+    - "(?i)(recommend|suggest|use|go with|let.?s use|deploy|set up)\\s+Redis"
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: Codex may not consistently reference constraint reasoning

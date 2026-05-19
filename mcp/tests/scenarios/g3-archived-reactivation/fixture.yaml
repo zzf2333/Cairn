@@ -1,0 +1,70 @@
+config:
+  project_name: scenario-g3
+  domains:
+    - api
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+  activation_log:
+    recent_hits:
+      blood_graphql_archived: 7
+
+skeleton:
+  - domain: api
+    role: HTTP API surface
+    owns:
+      - endpoints
+      - transport
+      - api_style
+    causal_keywords:
+      - api
+      - graphql
+      - rest
+      - transport
+
+blood:
+  - id: blood_graphql_archived
+    time: "2025-03-10"
+    domain: api
+    type: rejection
+    gravity:
+      level: G2
+      architectural: medium
+    source:
+      type: conversation
+      confidence: 0.85
+      verified: true
+      refs: []
+    subject:
+      name: GraphQL
+      aliases:
+        - graphql api
+        - gql
+    trigger: Early GraphQL exploration rolled back due to tooling immaturity at the time.
+    decision_or_change: REST remains the API style; GraphQL set aside.
+    rejected_paths:
+      - path: GraphQL API
+        reason: Tooling immaturity (debugging, IDE support) at the time; team unfamiliar.
+    reasoning: |
+      We tried GraphQL in early 2025 and rolled it back because debugging tools were immature
+      and the team had no experience. This was over a year ago and conditions may have changed.
+    behavior_effect:
+      type: avoid_suggestion
+      instruction: Avoid recommending GraphQL.
+    affects:
+      skeleton: false
+      dna: false
+      domains:
+        - api
+    lifecycle:
+      validity: tactical
+      decay_policy: downgrade
+      resurrection_count: 0
+    health:
+      state: archived
+      reason: aged out of active relevance per decay policy
+    governance_status: ratified

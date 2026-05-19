@@ -1,0 +1,25 @@
+config:
+  project_name: scenario-h3
+  domains:
+    - web
+  cognitive_mode: standard
+
+state:
+  stage:
+    phase: growth
+    confidence: 0.7
+    status: advisory
+
+skeleton:
+  - domain: web
+    role: frontend web application
+    owns:
+      - components
+      - styles
+      - layout
+    causal_keywords:
+      - web
+      - frontend
+      - css
+      - style
+      - component
