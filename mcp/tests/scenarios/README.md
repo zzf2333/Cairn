@@ -172,7 +172,8 @@ description: |
 
 # at least one of `must_be_called` calls must match
 required_tool_calls:
-  - tool: cairn_context
+  - id: ctx_call                    # optional — stable key for assertion_overrides (see below)
+    tool: cairn_context
     must_be_called: true
     order: 1                        # optional — earliest matching call must be at this 1-indexed order
     args_match:                     # optional — dot-path regex match against arguments
@@ -181,18 +182,21 @@ required_tool_calls:
 
 # none of these may match
 forbidden_tool_calls:
-  - tool: cairn_signal
+  - id: no_re_signal
+    tool: cairn_signal
     args_match:
       signal_type: "user_rejection"
     description: must not re-signal an existing rejection
 
 # regex case-insensitive against the cumulative assistant text
 required_text_patterns:
-  - pattern: "(?i)previously rejected"
+  - id: mention_rejection
+    pattern: "(?i)previously rejected"
     near_pattern: "(?i)team size"    # optional — must appear within ±400 chars
 
 forbidden_text_patterns:
-  - pattern: "```\\s*rust"           # ban a fenced rust code block
+  - id: no_rust_code
+    pattern: "```\\s*rust"           # ban a fenced rust code block
 
 min_total_tool_calls: 1
 max_total_tool_calls: 20
@@ -201,7 +205,8 @@ max_total_tool_calls: 20
 
 # verify tool result text contains expected patterns (proves AI saw the cognition)
 required_tool_result_patterns:
-  - tool: cairn_context
+  - id: ctx_surfaces_trpc
+    tool: cairn_context
     result_pattern: "(?i)trpc|rejected"
     args_match:                       # optional — narrow to specific call
       task: "(?i)api"
@@ -209,6 +214,7 @@ required_tool_result_patterns:
 
 # verify the AI's final recommendation direction
 required_final_decision:
+  id: e1_decision                     # sub-results get derived ids: e1_decision/prefer/0, e1_decision/avoid/0
   prefer:                             # at least one must match assistant text
     - "(?i)REST|OpenAPI"
   avoid:                              # none may match assistant text
@@ -216,7 +222,8 @@ required_final_decision:
 
 # verify tool calls appear in this relative order (more flexible than fixed order: N)
 required_sequence:
-  - steps:
+  - id: ctx_before_signal
+    steps:
       - tool: cairn_context
       - tool: cairn_signal
         args_match:
@@ -230,11 +237,36 @@ platform_overrides:
     allow_fail_reason: "known resume/context issue"
     # skip: true                      # skip entirely — don't even run the scenario for this platform
     # skip_reason: "not applicable"
-    assertion_overrides:              # per-assertion granularity (optional)
-      "required tool_call: cairn_signal":
+    assertion_overrides:              # per-assertion granularity (see "Assertion IDs" below)
+      ctx_surfaces_trpc:              # ← match by stable id (preferred)
         allow_fail: true
         allow_fail_reason: "Codex resume loses turn context"
+      "required tool_call: cairn_signal":   # ← fallback: match by auto-generated name
+        allow_fail: true
+        allow_fail_reason: "legacy name-based override"
 ```
+
+## Assertion IDs
+
+Every assertion type accepts an optional `id` field — a short, stable, kebab-case key that decouples `assertion_overrides` from auto-generated names.
+
+**Why?** Without `id`, overrides must key on auto-generated names like `"required tool_call: cairn_context (consult context)"`. These names are derived from tool names, patterns, and descriptions — any edit to those fields silently breaks the override. An `id` is an explicit contract.
+
+**How matching works:** the runner tries `id` first, then falls back to `name`:
+
+```typescript
+const ov = (a.id && overrides[a.id]) || overrides[a.name];
+```
+
+**`required_final_decision` derived IDs:** since one `required_final_decision` generates multiple sub-results (one per prefer/avoid entry), the `id` is used as a prefix:
+
+| Parent `id` | Sub-result `id` |
+|-------------|-----------------|
+| `e1_decision` | `e1_decision/prefer/0`, `e1_decision/prefer/1`, ... |
+| `e1_decision` | `e1_decision/avoid/0`, `e1_decision/avoid/1`, ... |
+| _(omitted)_ | _(no id on sub-results — name-based matching only)_ |
+
+**When to add `id`:** add one when a scenario uses `assertion_overrides` that target individual assertions. If all assertions share the same platform-level `allow_fail`, `id` is optional.
 
 ## Why this approach
 
