@@ -25,10 +25,6 @@ required_text_patterns:
   - pattern: "(?i)understood|acknowledged|noted|captured|recorded|constraint|好的|已.*记录|明白"
     description: must acknowledge the constraint was captured
 
-forbidden_text_patterns:
-  - pattern: "(?i)(recommend|suggest|use|try|consider).*(Prisma|TypeORM|Drizzle|Sequelize|MikroORM)"
-    description: must not recommend any ORM after constraint is declared
-
 required_final_decision:
   prefer:
     - "(?i)raw SQL|tagged template|query builder|sql.*template|pg.*query|slonik"

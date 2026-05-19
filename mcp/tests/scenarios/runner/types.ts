@@ -99,11 +99,14 @@ export interface ExpectedSpec {
     platform_overrides?: Record<Platform, PlatformOverride>;
 }
 
-export interface ToolCallAssertion {
+export interface ToolMatchSpec {
     tool: string;
+    args_match?: Record<string, string>;
+}
+
+export interface ToolCallAssertion extends ToolMatchSpec {
     must_be_called?: boolean;
     order?: number;
-    args_match?: Record<string, string>;
     description?: string;
 }
 
@@ -113,9 +116,7 @@ export interface TextPatternAssertion {
     description?: string;
 }
 
-export interface ToolResultPatternAssertion {
-    tool: string;
-    args_match?: Record<string, string>;
+export interface ToolResultPatternAssertion extends ToolMatchSpec {
     result_pattern: string;
     description?: string;
 }
@@ -127,7 +128,7 @@ export interface FinalDecisionAssertion {
 }
 
 export interface SequenceAssertion {
-    steps: Array<{ tool: string; args_match?: Record<string, string> }>;
+    steps: ToolMatchSpec[];
     description?: string;
 }
 

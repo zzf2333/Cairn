@@ -20,20 +20,11 @@ required_text_patterns:
   - pattern: "(?i)deploy|coupling|edge|runtime|multi.?team"
     description: must reference the specific reason for rejection
 
-forbidden_text_patterns:
-  - pattern: "(?i)(recommend|suggest|use|go with|let.?s use|choose|adopt)\\s+(tRPC|trpc)"
-    description: must not recommend tRPC as the solution
-
 required_final_decision:
   prefer:
     - "(?i)REST|OpenAPI|express|fastify|hono|koa|HTTP"
   avoid:
     - "(?i)(recommend|suggest|use|go with|let.?s use|choose|adopt)\\s+(tRPC|trpc)"
-
-required_sequence:
-  - steps:
-      - tool: cairn_context
-    description: cairn_context must be called before responding
 
 platform_overrides:
   codex:

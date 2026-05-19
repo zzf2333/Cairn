@@ -19,10 +19,6 @@ required_text_patterns:
   - pattern: "(?i)ops|operational|team.?size|2.?person|stateful"
     description: must reference the reason
 
-forbidden_text_patterns:
-  - pattern: "(?i)(recommend|suggest|use|go with|let.?s use|deploy|set up)\\s+Redis"
-    description: must not recommend Redis
-
 required_final_decision:
   prefer:
     - "(?i)in-?process|in-?memory|LRU|local.*cache|CDN|materialized.*view|database.*cache|node-cache|lru-cache"

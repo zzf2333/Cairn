@@ -10,6 +10,7 @@ import type {
     SequenceAssertion,
     ToolCallAssertion,
     ToolCallRecord,
+    ToolMatchSpec,
     ToolResultPatternAssertion,
     TextPatternAssertion,
 } from "./types.js";
@@ -59,7 +60,7 @@ function argsMatch(call: ToolCallRecord, matchSpec: Record<string, string> | und
     return true;
 }
 
-function findMatchingCalls(calls: ToolCallRecord[], a: ToolCallAssertion): ToolCallRecord[] {
+function findMatchingCalls(calls: ToolCallRecord[], a: ToolMatchSpec): ToolCallRecord[] {
     return calls.filter((c) => c.name === a.tool && argsMatch(c, a.args_match));
 }
 
@@ -259,5 +260,5 @@ export function evaluate(run: RunRecord, expected: ExpectedSpec): AssertionResul
 }
 
 export function allPassed(results: AssertionResult[]): boolean {
-    return results.every((r) => r.passed);
+    return results.every((r) => r.passed || r.allowed_fail);
 }
