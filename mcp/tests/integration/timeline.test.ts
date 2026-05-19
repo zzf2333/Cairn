@@ -858,3 +858,620 @@ describe("T7: DNA Full Lifecycle", () => {
         )).toBe(true);
     });
 });
+
+// ---------------------------------------------------------------------------
+// T8: Successful Paradigm Shift
+// ---------------------------------------------------------------------------
+
+describe("T8: Successful Paradigm Shift", () => {
+    let tmpDir: string;
+    let ctx: CairnContext;
+
+    beforeAll(async () => {
+        tmpDir = await createTmpDir();
+        ctx = await buildTimelineContext(tmpDir);
+    });
+
+    afterAll(async () => {
+        await cleanTmpDir(tmpDir);
+    });
+
+    it("Step 1: historical simplicity rejections established", async () => {
+        await ctx.dnaStore.saveIdentity(makeDNA({
+            status: "emerged",
+            reevaluation_mode: false,
+            traits: {
+                simplicity_bias: {
+                    level: "high",
+                    confidence: 0.85,
+                    evidence_count: 10,
+                    last_updated: "2026-01",
+                    reasoning: "consistently rejects complex solutions",
+                    drift_warning_count: 0,
+                    last_safety_valve_at: null,
+                },
+            },
+        }));
+
+        const rejections = [
+            { id: "evt_t8_reject_kafka", subject: "kafka" },
+            { id: "evt_t8_reject_graphql", subject: "graphql" },
+            { id: "evt_t8_reject_eventsourcing", subject: "event-sourcing" },
+            { id: "evt_t8_reject_microservices", subject: "microservices" },
+        ];
+        for (const r of rejections) {
+            await ctx.bloodEngine.commit(makeEvolutionEvent(r.id, {
+                domain: "api-layer",
+                type: "rejection",
+                gravity: { level: "G2" },
+                subject: { name: r.subject },
+                behavior_effect: { type: "avoid_suggestion", instruction: `Do not adopt ${r.subject}` },
+                reasoning: "Team too small, unnecessary complexity",
+            }));
+        }
+
+        const active = await ctx.bloodStore.findActive();
+        const rejects = active.filter(e => e.id.startsWith("evt_t8_reject_"));
+        expect(rejects.length).toBe(4);
+    });
+
+    it("Step 2: DNA modulation active — complex framework upgraded", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "distributed-framework",
+            type: "architecture_decision",
+            gravity: "G1",
+            involves_complex_framework: true,
+        });
+
+        expect(routing.gravity).toBe("G2");
+        expect(routing.governance).toBe("human_ratified");
+    });
+
+    it("Step 3: ChallengeEngine emits DNA challenge without reevaluation marker", async () => {
+        const challenges = await ctx.challengeEngine.detectConflicts({
+            domain: "api-layer",
+            task: "adopt kafka streaming",
+            involves_complex_framework: true,
+        });
+
+        const dnaChallenge = challenges.find(c => c.conflict_with === "dna:simplicity_bias");
+        expect(dnaChallenge).toBeDefined();
+        expect(dnaChallenge!.description).not.toContain("reevaluation");
+    });
+
+    it("Step 4: new context events arrive — team growth and scaling", async () => {
+        const subjects = [
+            "kafka-adoption", "graphql-gateway", "event-driven-refactor",
+            "microservice-split", "cqrs-implementation",
+        ];
+        for (let i = 0; i < subjects.length; i++) {
+            await ctx.bloodStore.save(makeEvolutionEvent(`evt_t8_shift_${i}`, {
+                domain: "api-layer",
+                type: "architecture_decision",
+                gravity: { level: "G2" },
+                subject: { name: subjects[i] },
+                behavior_effect: { type: "prefer_approach", instruction: `Adopt ${subjects[i]} for horizontal scaling` },
+                decision_or_change: `Introduced ${subjects[i]} — team grew to 30 engineers`,
+                reasoning: "needed for multi-region scaling after team expansion",
+            }));
+        }
+
+        const active = await ctx.bloodStore.findActive();
+        const shifts = active.filter(e => e.id.startsWith("evt_t8_shift_"));
+        expect(shifts.length).toBe(5);
+    });
+
+    it("Step 5: CalibrationEar detects DNA drift warning", async () => {
+        const result = await ctx.calibrationEar.calibrate();
+        const driftSignal = result.signals.find(
+            s => s.signal_type === "dna_drift_warning" && s.affected_trait === "simplicity_bias",
+        );
+
+        expect(driftSignal).toBeDefined();
+        expect(driftSignal!.description).toContain("simplicity_bias");
+    });
+
+    it("Step 6: first safety valve — confidence drops, no reevaluation yet", async () => {
+        const cal = await ctx.calibrationEar.calibrate();
+        const drift = cal.signals.filter(s => s.signal_type === "dna_drift_warning");
+        const valve = await ctx.calibrationEar.applySafetyValve(drift);
+
+        expect(valve.triggered_traits).toContain("simplicity_bias");
+        expect(valve.confidence_reduced["simplicity_bias"].from).toBe(0.85);
+        expect(valve.confidence_reduced["simplicity_bias"].to).toBeCloseTo(0.765, 3);
+        expect(valve.entered_reevaluation).toBe(false);
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.traits["simplicity_bias"].drift_warning_count).toBe(1);
+    });
+
+    it("Step 7: second drift round → reevaluation_mode triggers", async () => {
+        for (let i = 5; i < 10; i++) {
+            await ctx.bloodStore.save(makeEvolutionEvent(`evt_t8_shift_${i}`, {
+                domain: "api-layer",
+                type: "architecture_decision",
+                gravity: { level: "G2" },
+                subject: { name: `distributed-system-${i}` },
+                behavior_effect: { type: "prefer_approach", instruction: "Adopt service mesh" },
+                decision_or_change: "Added Istio service mesh for observability",
+                reasoning: "needed for cross-service tracing at scale",
+            }));
+        }
+
+        const cal = await ctx.calibrationEar.calibrate();
+        const drift = cal.signals.filter(s => s.signal_type === "dna_drift_warning");
+        const valve = await ctx.calibrationEar.applySafetyValve(drift);
+
+        expect(valve.entered_reevaluation).toBe(true);
+        expect(valve.confidence_reduced["simplicity_bias"].to).toBeCloseTo(0.6885, 3);
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.reevaluation_mode).toBe(true);
+    });
+
+    it("Step 8: old rejection events begin to decay", async () => {
+        const rejectionIds = [
+            "evt_t8_reject_kafka", "evt_t8_reject_graphql",
+            "evt_t8_reject_eventsourcing", "evt_t8_reject_microservices",
+        ];
+        for (const id of rejectionIds) {
+            const event = await ctx.bloodStore.load(id);
+            event!.updated_at = daysAgo(150);
+            await ctx.bloodStore.save(event!);
+        }
+
+        const actions = await ctx.decayEngine.checkDecay("standard");
+        const decayingRejections = actions.filter(a =>
+            rejectionIds.includes(a.event_id),
+        );
+
+        expect(decayingRejections.length).toBe(4);
+        for (const action of decayingRejections) {
+            expect(action.action).toBe("mark_stale");
+        }
+    });
+
+    it("Step 9: challenges downgrade — archived events weaken, DNA becomes advisory", async () => {
+        await ctx.bloodEngine.markStale("evt_t8_reject_kafka", "no activation for 150 days");
+        await ctx.bloodEngine.archive("evt_t8_reject_kafka", "aged out");
+
+        const challenges = await ctx.challengeEngine.detectConflicts({
+            domain: "api-layer",
+            task: "adopt kafka streaming",
+            involves_complex_framework: true,
+        });
+
+        const kafkaChallenge = challenges.find(c => c.conflict_with === "evt_t8_reject_kafka");
+        expect(kafkaChallenge).toBeDefined();
+        expect(kafkaChallenge!.archived).toBe(true);
+        expect(kafkaChallenge!.level).toBe("suggestion");
+
+        const dnaChallenge = challenges.find(c => c.conflict_with === "dna:simplicity_bias");
+        expect(dnaChallenge).toBeDefined();
+        expect(dnaChallenge!.description).toContain("reevaluation");
+        expect(dnaChallenge!.description).toContain("advisory");
+    });
+
+    it("Step 10: new adoption events route normally — no DNA modulation", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "kafka-streams-platform",
+            type: "architecture_decision",
+            gravity: "G1",
+            involves_complex_framework: true,
+        });
+
+        expect(routing.gravity).toBe("G1");
+        expect(routing.destination).toBe("blood");
+        expect(routing.governance).toBe("system_validated");
+    });
+
+    it("Step 11: system allows new direction — activation reflects reevaluation", async () => {
+        const result = await ctx.activationEngine.activate({ task: "implement kafka event pipeline" });
+
+        expect(result.dna.reevaluation_mode).toBe(true);
+        expect(result.dna.relevant_traits).toEqual([]);
+        expect(result.dna.paused_traits).toBeDefined();
+        expect(result.dna.paused_traits!.some(
+            t => t.name === "simplicity_bias" && t.level === "high",
+        )).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T9: False Trauma Recovery
+// ---------------------------------------------------------------------------
+
+describe("T9: False Trauma Recovery", () => {
+    let tmpDir: string;
+    let ctx: CairnContext;
+
+    beforeAll(async () => {
+        tmpDir = await createTmpDir();
+        ctx = await buildTimelineContext(tmpDir);
+    });
+
+    afterAll(async () => {
+        await cleanTmpDir(tmpDir);
+    });
+
+    it("Step 1: Kafka trauma event created — production data loss", async () => {
+        const event = makeEvolutionEvent("evt_t9_kafka_trauma", {
+            domain: "api-layer",
+            type: "incident",
+            gravity: { level: "G1" },
+            subject: { name: "kafka", aliases: ["kafka-streams", "message-bus"] },
+            trigger: "Kafka cluster failure caused production data loss",
+            decision_or_change: "Production outage: 4 hours downtime, partial data loss",
+        });
+        await ctx.bloodStore.save(event);
+        await ctx.bloodEngine.markTrauma("evt_t9_kafka_trauma");
+
+        const loaded = await ctx.bloodStore.load("evt_t9_kafka_trauma");
+        expect(loaded!.trauma.is_trauma).toBe(true);
+        expect(loaded!.trauma.decay_override).toBe("permanent");
+        expect(loaded!.trauma.sensitivity_multiplier).toBe(2.0);
+        expect(loaded!.gravity.level).toBe("G2");
+        expect(loaded!.lifecycle.decay_policy).toBe("permanent");
+    });
+
+    it("Step 2: trauma persists after 200 days — no decay", async () => {
+        const event = await ctx.bloodStore.load("evt_t9_kafka_trauma");
+        event!.updated_at = daysAgo(200);
+        await ctx.bloodStore.save(event!);
+
+        const actions = await ctx.decayEngine.checkDecay("standard");
+        const traumaAction = actions.find(a => a.event_id === "evt_t9_kafka_trauma");
+        expect(traumaAction).toBeUndefined();
+    });
+
+    it("Step 3: TrustRouter escalates gravity due to trauma", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "kafka-connect",
+            type: "architecture_decision",
+            gravity: "G1",
+        });
+
+        expect(routing.gravity).toBe("G3");
+        expect(routing.governance).toBe("human_ratified");
+    });
+
+    it("Step 4: ChallengeEngine emits trauma challenge at hard_constraint", async () => {
+        const challenges = await ctx.challengeEngine.detectConflicts({
+            domain: "api-layer",
+            task: "use kafka for event streaming",
+        });
+
+        const traumaChallenge = challenges.find(c => c.trauma === true);
+        expect(traumaChallenge).toBeDefined();
+        expect(traumaChallenge!.conflict_with).toBe("evt_t9_kafka_trauma");
+        expect(traumaChallenge!.level).toBe("hard_constraint");
+    });
+
+    it("Step 5: root cause discovered — downgrade trauma", async () => {
+        const rootCause = makeEvolutionEvent("evt_t9_root_cause", {
+            domain: "api-layer",
+            type: "constraint_removed",
+            subject: { name: "kafka" },
+            decision_or_change: "Root cause was bad deployment process (missing health checks), not Kafka itself",
+            reasoning: "Post-mortem identified CI/CD pipeline gap as true root cause",
+            behavior_effect: { type: "prefer_approach", instruction: "Kafka is safe when deployed with proper health checks" },
+        });
+        await ctx.bloodEngine.commit(rootCause);
+
+        const downgraded = await ctx.bloodEngine.downgradeTrauma(
+            "evt_t9_kafka_trauma",
+            "Root cause identified as deployment process failure, not Kafka",
+        );
+
+        expect(downgraded.trauma.is_trauma).toBe(false);
+        expect(downgraded.trauma.decay_override).toBeNull();
+        expect(downgraded.trauma.sensitivity_multiplier).toBe(1.0);
+        expect(downgraded.lifecycle.decay_policy).toBe("downgrade");
+        expect(downgraded.health.reason).toContain("Trauma downgraded");
+    });
+
+    it("Step 6: routing no longer escalates for trauma", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "kafka-connect",
+            type: "architecture_decision",
+            gravity: "G1",
+        });
+
+        expect(routing.gravity).toBe("G1");
+        expect(routing.governance).toBe("system_validated");
+    });
+
+    it("Step 7: no trauma challenge emitted", async () => {
+        const challenges = await ctx.challengeEngine.detectConflicts({
+            domain: "api-layer",
+            task: "use kafka for event streaming",
+        });
+
+        const traumaChallenge = challenges.find(c => c.trauma === true);
+        expect(traumaChallenge).toBeUndefined();
+    });
+
+    it("Step 8: event can now decay normally", async () => {
+        const event = await ctx.bloodStore.load("evt_t9_kafka_trauma");
+        event!.updated_at = daysAgo(150);
+        await ctx.bloodStore.save(event!);
+
+        const actions = await ctx.decayEngine.checkDecay("standard");
+        const action = actions.find(a => a.event_id === "evt_t9_kafka_trauma");
+        expect(action).toBeDefined();
+        expect(action!.action).toBe("mark_stale");
+    });
+
+    it("Step 9: stale event challenge level drops", async () => {
+        await ctx.bloodEngine.markStale("evt_t9_kafka_trauma", "no activation for 150 days");
+
+        const challenges = await ctx.challengeEngine.detectConflicts({
+            domain: "api-layer",
+            task: "use kafka for event streaming",
+            subject_name: "kafka",
+        });
+
+        const kafkaChallenge = challenges.find(c => c.conflict_with === "evt_t9_kafka_trauma");
+        if (kafkaChallenge) {
+            expect(kafkaChallenge.archived).toBe(true);
+            expect(kafkaChallenge.level).toBe("suggestion");
+        }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T10: Anti-Dogma Test
+// ---------------------------------------------------------------------------
+
+describe("T10: Anti-Dogma Test", () => {
+    let tmpDir: string;
+    let ctx: CairnContext;
+
+    beforeAll(async () => {
+        tmpDir = await createTmpDir();
+        ctx = await buildTimelineContext(tmpDir);
+    });
+
+    afterAll(async () => {
+        await cleanTmpDir(tmpDir);
+    });
+
+    it("Step 1: strong historical bias — many rejections, high DNA confidence", async () => {
+        await ctx.dnaStore.saveIdentity(makeDNA({
+            status: "emerged",
+            reevaluation_mode: false,
+            traits: {
+                simplicity_bias: {
+                    level: "high",
+                    confidence: 0.9,
+                    evidence_count: 15,
+                    last_updated: "2025-06",
+                    reasoning: "18 months of consistent simplicity preference",
+                    drift_warning_count: 0,
+                    last_safety_valve_at: null,
+                },
+            },
+        }));
+
+        const rejectSubjects = [
+            "kafka", "graphql", "event-sourcing",
+            "microservices", "kubernetes", "istio",
+        ];
+        for (let i = 0; i < rejectSubjects.length; i++) {
+            await ctx.bloodEngine.commit(makeEvolutionEvent(`evt_t10_reject_${i}`, {
+                domain: "api-layer",
+                type: "rejection",
+                gravity: { level: "G2" },
+                subject: { name: rejectSubjects[i] },
+                behavior_effect: { type: "avoid_suggestion", instruction: `Do not adopt ${rejectSubjects[i]}` },
+                reasoning: "Team of 3, no operational capacity for distributed infrastructure",
+            }));
+        }
+
+        const active = await ctx.bloodStore.findActive();
+        const rejections = active.filter(e => e.id.startsWith("evt_t10_reject_"));
+        expect(rejections.length).toBe(6);
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.traits["simplicity_bias"].confidence).toBe(0.9);
+    });
+
+    it("Step 2: routing blocks complex frameworks via DNA", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "kafka-streams-platform",
+            type: "architecture_decision",
+            gravity: "G1",
+            involves_complex_framework: true,
+        });
+
+        expect(routing.gravity).toBe("G2");
+        expect(routing.governance).toBe("human_ratified");
+    });
+
+    it("Step 3: environment fundamentally changes — many events favoring new direction", async () => {
+        const subjects = [
+            "distributed-pipeline", "event-driven-arch", "service-mesh-deploy",
+            "cqrs-pattern", "saga-orchestration", "grpc-gateway",
+            "container-orchestration", "async-messaging",
+        ];
+        for (let i = 0; i < subjects.length; i++) {
+            await ctx.bloodStore.save(makeEvolutionEvent(`evt_t10_shift_${i}`, {
+                domain: "api-layer",
+                type: "architecture_decision",
+                gravity: { level: "G2" },
+                subject: { name: subjects[i] },
+                behavior_effect: { type: "prefer_approach", instruction: `Adopt ${subjects[i]} for multi-region scaling` },
+                decision_or_change: `Introduced ${subjects[i]} — team grew to 50 engineers, multi-region mandate`,
+                reasoning: "market expansion requires distributed architecture",
+            }));
+        }
+
+        const active = await ctx.bloodStore.findActive();
+        const shifts = active.filter(e => e.id.startsWith("evt_t10_shift_"));
+        expect(shifts.length).toBe(8);
+    });
+
+    it("Step 4: ConsistencyEngine detects DNA-event contradiction", async () => {
+        const report = await ctx.consistencyEngine.runAll();
+
+        expect(report.dna_event_consistency.passed).toBe(false);
+        expect(report.dna_event_consistency.violations.some(
+            v => v.description.includes("simplicity_bias"),
+        )).toBe(true);
+        expect(report.overall).toBe("violations");
+    });
+
+    it("Step 5: first drift round — confidence drops, no reevaluation", async () => {
+        const cal = await ctx.calibrationEar.calibrate();
+        const drift = cal.signals.filter(s => s.signal_type === "dna_drift_warning");
+        expect(drift.length).toBeGreaterThanOrEqual(1);
+
+        const valve = await ctx.calibrationEar.applySafetyValve(drift);
+
+        expect(valve.triggered_traits).toContain("simplicity_bias");
+        expect(valve.confidence_reduced["simplicity_bias"].from).toBe(0.9);
+        expect(valve.confidence_reduced["simplicity_bias"].to).toBeCloseTo(0.81, 3);
+        expect(valve.entered_reevaluation).toBe(false);
+    });
+
+    it("Step 6: second drift round — still no reevaluation (0.9 starting confidence)", async () => {
+        for (let i = 8; i < 13; i++) {
+            await ctx.bloodStore.save(makeEvolutionEvent(`evt_t10_shift_${i}`, {
+                domain: "api-layer",
+                type: "architecture_decision",
+                gravity: { level: "G2" },
+                subject: { name: `scaling-initiative-${i}` },
+                behavior_effect: { type: "prefer_approach", instruction: "Deploy distributed tracing" },
+                decision_or_change: "Added OpenTelemetry across all services",
+                reasoning: "observability requirement for 50-person team",
+            }));
+        }
+
+        const cal = await ctx.calibrationEar.calibrate();
+        const drift = cal.signals.filter(s => s.signal_type === "dna_drift_warning");
+        const valve = await ctx.calibrationEar.applySafetyValve(drift);
+
+        expect(valve.confidence_reduced["simplicity_bias"].to).toBeCloseTo(0.729, 3);
+        expect(valve.entered_reevaluation).toBe(false);
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.traits["simplicity_bias"].drift_warning_count).toBe(2);
+    });
+
+    it("Step 7: third drift round → system overcomes strong bias", async () => {
+        for (let i = 13; i < 18; i++) {
+            await ctx.bloodStore.save(makeEvolutionEvent(`evt_t10_shift_${i}`, {
+                domain: "api-layer",
+                type: "architecture_decision",
+                gravity: { level: "G2" },
+                subject: { name: `platform-evolution-${i}` },
+                behavior_effect: { type: "prefer_approach", instruction: "Migrate to event-driven architecture" },
+                decision_or_change: "Full CQRS migration completed",
+                reasoning: "regulatory compliance requires event audit trail",
+            }));
+        }
+
+        const cal = await ctx.calibrationEar.calibrate();
+        const drift = cal.signals.filter(s => s.signal_type === "dna_drift_warning");
+        const valve = await ctx.calibrationEar.applySafetyValve(drift);
+
+        expect(valve.entered_reevaluation).toBe(true);
+        expect(valve.confidence_reduced["simplicity_bias"].to).toBeCloseTo(0.6561, 3);
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.reevaluation_mode).toBe(true);
+    });
+
+    it("Step 8: old rejection events decay — mark stale", async () => {
+        const rejectionIds = Array.from({ length: 6 }, (_, i) => `evt_t10_reject_${i}`);
+        for (const id of rejectionIds) {
+            const event = await ctx.bloodStore.load(id);
+            event!.updated_at = daysAgo(150);
+            await ctx.bloodStore.save(event!);
+        }
+
+        const actions = await ctx.decayEngine.checkDecay("standard");
+        const decaying = actions.filter(a => rejectionIds.includes(a.event_id));
+
+        expect(decaying.length).toBe(6);
+        for (const action of decaying) {
+            expect(action.action).toBe("mark_stale");
+        }
+
+        for (const id of rejectionIds) {
+            await ctx.bloodEngine.markStale(id, "no activation for 150 days");
+        }
+
+        for (const id of rejectionIds) {
+            const event = await ctx.bloodStore.load(id);
+            expect(event!.health.state).toBe("stale");
+        }
+    });
+
+    it("Step 9: challenges weaken for stale events", async () => {
+        const challenges = await ctx.challengeEngine.detectConflicts({
+            domain: "api-layer",
+            task: "adopt kafka for event pipeline",
+            involves_complex_framework: true,
+        });
+
+        const noGoChallenges = challenges.filter(c =>
+            c.conflict_with.startsWith("evt_t10_reject_") && c.archived,
+        );
+        for (const challenge of noGoChallenges) {
+            expect(challenge.level).toBe("suggestion");
+        }
+
+        const dnaChallenge = challenges.find(c => c.conflict_with === "dna:simplicity_bias");
+        expect(dnaChallenge).toBeDefined();
+        expect(dnaChallenge!.description).toContain("reevaluation");
+        expect(dnaChallenge!.description).toContain("advisory");
+    });
+
+    it("Step 10: new direction events accumulate without DNA blocking", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "new-distributed-framework",
+            type: "architecture_decision",
+            gravity: "G1",
+            involves_complex_framework: true,
+        });
+
+        expect(routing.gravity).toBe("G1");
+    });
+
+    it("Step 11: system state reflects adaptation", async () => {
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.reevaluation_mode).toBe(true);
+        expect(identity.traits["simplicity_bias"].confidence).toBeLessThan(0.7);
+
+        const result = await ctx.activationEngine.activate({ task: "design distributed system" });
+        expect(result.dna.reevaluation_mode).toBe(true);
+        expect(result.dna.relevant_traits).toEqual([]);
+        expect(result.dna.paused_traits).toBeDefined();
+        expect(result.dna.paused_traits!.some(
+            t => t.name === "simplicity_bias",
+        )).toBe(true);
+    });
+
+    it("Step 12: final bookend — routing allows what was previously blocked", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "kafka-streams-platform",
+            type: "architecture_decision",
+            gravity: "G1",
+            involves_complex_framework: true,
+        });
+
+        // Step 2 had: gravity G2, governance human_ratified
+        // Now: gravity G1, governance system_validated
+        expect(routing.gravity).toBe("G1");
+        expect(routing.destination).toBe("blood");
+        expect(routing.governance).toBe("system_validated");
+    });
+});

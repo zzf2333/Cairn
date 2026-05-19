@@ -153,4 +153,26 @@ export class BloodEngine {
 
         return event;
     }
+
+    async downgradeTrauma(eventId: string, reason: string): Promise<EvolutionEvent> {
+        const event = await this.bloodStore.load(eventId);
+        if (!event) {
+            throw new CairnError(CairnErrorCode.EVENT_NOT_FOUND, `Event ${eventId} not found`);
+        }
+        if (!event.trauma.is_trauma) {
+            throw new CairnError(CairnErrorCode.INVALID_INPUT, `Event ${eventId} is not a trauma event`);
+        }
+
+        event.trauma.is_trauma = false;
+        event.trauma.decay_override = null;
+        event.trauma.sensitivity_multiplier = 1.0;
+        event.lifecycle.decay_policy = "downgrade";
+        event.health.reason = `Trauma downgraded: ${reason}`;
+        event.updated_at = new Date().toISOString();
+
+        await this.bloodStore.save(event);
+        await this.viewsEngine.regenerate();
+
+        return event;
+    }
 }
