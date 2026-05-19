@@ -68,6 +68,7 @@ function checkRequiredCall(calls: ToolCallRecord[], a: ToolCallAssertion): Asser
     const matches = findMatchingCalls(calls, a);
     if (matches.length === 0) {
         return {
+            id: a.id,
             name: `required tool_call: ${a.tool}${a.description ? ` (${a.description})` : ""}`,
             passed: false,
             detail: `no matching call found (args_match=${JSON.stringify(a.args_match ?? {})})`,
@@ -77,6 +78,7 @@ function checkRequiredCall(calls: ToolCallRecord[], a: ToolCallAssertion): Asser
         const earliest = matches.reduce((m, c) => (c.order < m.order ? c : m), matches[0]);
         if (earliest.order !== a.order) {
             return {
+                id: a.id,
                 name: `required tool_call order: ${a.tool}`,
                 passed: false,
                 detail: `expected order=${a.order}, actual earliest order=${earliest.order}`,
@@ -84,6 +86,7 @@ function checkRequiredCall(calls: ToolCallRecord[], a: ToolCallAssertion): Asser
         }
     }
     return {
+        id: a.id,
         name: `required tool_call: ${a.tool}`,
         passed: true,
         detail: `${matches.length} matching call(s) at order [${matches.map((m) => m.order).join(", ")}]`,
@@ -94,12 +97,14 @@ function checkForbiddenCall(calls: ToolCallRecord[], a: ToolCallAssertion): Asse
     const matches = findMatchingCalls(calls, a);
     if (matches.length > 0) {
         return {
+            id: a.id,
             name: `forbidden tool_call: ${a.tool}${a.description ? ` (${a.description})` : ""}`,
             passed: false,
             detail: `unexpected ${matches.length} matching call(s), args=${JSON.stringify(matches[0].args).slice(0, 200)}`,
         };
     }
     return {
+        id: a.id,
         name: `forbidden tool_call: ${a.tool}`,
         passed: true,
         detail: "no matching call (as expected)",
@@ -111,6 +116,7 @@ function checkRequiredText(text: string, a: TextPatternAssertion): AssertionResu
     const m = text.match(re);
     if (!m) {
         return {
+            id: a.id,
             name: `required text: ${a.pattern}`,
             passed: false,
             detail: a.description ? `(${a.description})` : "pattern not found in assistant text",
@@ -121,6 +127,7 @@ function checkRequiredText(text: string, a: TextPatternAssertion): AssertionResu
         const window = text.slice(Math.max(0, idx - 400), Math.min(text.length, idx + 400));
         if (!makeRegex(a.near_pattern).test(window)) {
             return {
+                id: a.id,
                 name: `required text: ${a.pattern}`,
                 passed: false,
                 detail: `pattern found but near_pattern '${a.near_pattern}' missing within ±400 chars`,
@@ -128,6 +135,7 @@ function checkRequiredText(text: string, a: TextPatternAssertion): AssertionResu
         }
     }
     return {
+        id: a.id,
         name: `required text: ${a.pattern}`,
         passed: true,
         detail: "matched",
@@ -137,12 +145,14 @@ function checkRequiredText(text: string, a: TextPatternAssertion): AssertionResu
 function checkForbiddenText(text: string, a: TextPatternAssertion): AssertionResult {
     if (makeRegex(a.pattern).test(text)) {
         return {
+            id: a.id,
             name: `forbidden text: ${a.pattern}`,
             passed: false,
             detail: a.description ? `(${a.description})` : "pattern matched (should not appear)",
         };
     }
     return {
+        id: a.id,
         name: `forbidden text: ${a.pattern}`,
         passed: true,
         detail: "absent",
@@ -157,6 +167,7 @@ function checkToolResultPattern(calls: ToolCallRecord[], a: ToolResultPatternAss
     const matches = findMatchingCalls(calls, { tool: a.tool, args_match: a.args_match });
     if (matches.length === 0) {
         return {
+            id: a.id,
             name: `tool_result_pattern: ${a.tool}${a.description ? ` (${a.description})` : ""}`,
             passed: false,
             detail: "no matching tool call found",
@@ -165,6 +176,7 @@ function checkToolResultPattern(calls: ToolCallRecord[], a: ToolResultPatternAss
     const re = makeRegex(a.result_pattern);
     const hit = matches.some((c) => re.test(c.result_text));
     return {
+        id: a.id,
         name: `tool_result_pattern: ${a.tool}${a.description ? ` (${a.description})` : ""}`,
         passed: hit,
         detail: hit
@@ -175,17 +187,21 @@ function checkToolResultPattern(calls: ToolCallRecord[], a: ToolResultPatternAss
 
 function checkFinalDecision(text: string, a: FinalDecisionAssertion): AssertionResult[] {
     const results: AssertionResult[] = [];
-    for (const pattern of a.prefer ?? []) {
+    for (let i = 0; i < (a.prefer ?? []).length; i++) {
+        const pattern = a.prefer![i];
         const matched = makeRegex(pattern).test(text);
         results.push({
+            id: a.id ? `${a.id}/prefer/${i}` : undefined,
             name: `final_decision prefer: ${pattern}`,
             passed: matched,
             detail: matched ? "matched" : "pattern not found",
         });
     }
-    for (const pattern of a.avoid ?? []) {
+    for (let i = 0; i < (a.avoid ?? []).length; i++) {
+        const pattern = a.avoid![i];
         const matched = makeRegex(pattern).test(text);
         results.push({
+            id: a.id ? `${a.id}/avoid/${i}` : undefined,
             name: `final_decision avoid: ${pattern}`,
             passed: !matched,
             detail: matched ? "pattern matched (should not appear)" : "absent",
@@ -203,6 +219,7 @@ function checkSequence(calls: ToolCallRecord[], a: SequenceAssertion): Assertion
         );
         if (candidates.length === 0) {
             return {
+                id: a.id,
                 name: `sequence${a.description ? ` (${a.description})` : ""}`,
                 passed: false,
                 detail: `step ${i + 1} (${step.tool}) not found after order ${minOrder}`,
@@ -211,6 +228,7 @@ function checkSequence(calls: ToolCallRecord[], a: SequenceAssertion): Assertion
         minOrder = Math.min(...candidates.map((c) => c.order));
     }
     return {
+        id: a.id,
         name: `sequence${a.description ? ` (${a.description})` : ""}`,
         passed: true,
         detail: "all steps matched in order",

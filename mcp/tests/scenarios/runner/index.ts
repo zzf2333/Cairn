@@ -138,7 +138,7 @@ async function runOnePlatform(
         const assertions = run.error ? [{ name: "driver", passed: false, detail: run.error }] : evaluate(run, expected);
         const assertionOverrides = override?.assertion_overrides ?? {};
         for (const a of assertions) {
-            const ov = assertionOverrides[a.name];
+            const ov = (a.id && assertionOverrides[a.id]) || assertionOverrides[a.name];
             if (!a.passed && ov?.allow_fail) {
                 a.allowed_fail = true;
                 a.allowed_fail_reason = ov.allow_fail_reason;

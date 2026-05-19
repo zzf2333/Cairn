@@ -105,34 +105,40 @@ export interface ToolMatchSpec {
 }
 
 export interface ToolCallAssertion extends ToolMatchSpec {
+    id?: string;
     must_be_called?: boolean;
     order?: number;
     description?: string;
 }
 
 export interface TextPatternAssertion {
+    id?: string;
     pattern: string;
     near_pattern?: string;
     description?: string;
 }
 
 export interface ToolResultPatternAssertion extends ToolMatchSpec {
+    id?: string;
     result_pattern: string;
     description?: string;
 }
 
 export interface FinalDecisionAssertion {
+    id?: string;
     prefer?: string[];
     avoid?: string[];
     description?: string;
 }
 
 export interface SequenceAssertion {
+    id?: string;
     steps: ToolMatchSpec[];
     description?: string;
 }
 
 export interface AssertionResult {
+    id?: string;
     name: string;
     passed: boolean;
     detail: string;
