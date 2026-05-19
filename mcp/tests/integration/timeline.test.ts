@@ -32,7 +32,9 @@ import { TrustRouter } from "../../src/engines/trust-router.js";
 import { GitEar } from "../../src/engines/git-ear.js";
 import { CalibrationEar } from "../../src/engines/calibration-ear.js";
 import type { CairnContext } from "../../src/context.js";
+import type { DNAStagedEntry } from "../../src/schemas/dna-staged.js";
 import { handleDoctor } from "../../src/tools/cairn-doctor.js";
+import { handleDnaAccept } from "../../src/tools/cairn-dna-accept.js";
 
 function daysAgo(days: number): string {
     return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -480,6 +482,377 @@ describe("T1: DNA Drift Timeline", () => {
         expect(result.dna.relevant_traits).toEqual([]);
         expect(result.dna.paused_traits).toBeDefined();
         expect(result.dna.paused_traits!.some(
+            t => t.name === "simplicity_bias" && t.level === "high",
+        )).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T5: Compression → DNA Emergence Pipeline
+// ---------------------------------------------------------------------------
+
+describe("T5: Compression → DNA Emergence Pipeline", () => {
+    let tmpDir: string;
+    let ctx: CairnContext;
+
+    beforeAll(async () => {
+        tmpDir = await createTmpDir();
+        ctx = await buildTimelineContext(tmpDir);
+    });
+
+    afterAll(async () => {
+        await cleanTmpDir(tmpDir);
+    });
+
+    it("Step 1: DNA starts as not_yet_emerged", async () => {
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.status).toBe("not_yet_emerged");
+        expect(Object.keys(identity.traits)).toHaveLength(0);
+    });
+
+    it("Step 2: accumulate 7 infra rejection events across 4 months", async () => {
+        const baseTime = new Date("2026-01-10");
+        for (let i = 0; i < 7; i++) {
+            const time = new Date(baseTime);
+            time.setMonth(time.getMonth() + Math.floor(i / 2));
+            await ctx.bloodStore.save(makeEvolutionEvent(`evt_t5_infra_${i}`, {
+                domain: "infra",
+                type: "rejection",
+                time: time.toISOString().split("T")[0],
+                gravity: { level: "G2" },
+                subject: { name: `infra-tool-${i}`, type: "dependency" },
+                behavior_effect: { type: "avoid_suggestion", instruction: `Do not use infra-tool-${i}` },
+                source: { type: i % 2 === 0 ? "conversation" : "agent_inferred", confidence: 0.8, verified: false, refs: [] },
+            }));
+        }
+
+        const active = await ctx.bloodStore.findActive();
+        expect(active.filter(e => e.id.startsWith("evt_t5_infra_")).length).toBe(7);
+    });
+
+    it("Step 3: CompressionEngine detects infra_aggressiveness candidate", async () => {
+        const candidates = await ctx.compressionEngine.detectCandidates(3, 3);
+        const infraCandidate = candidates.find(c => c.trait_name === "infra_aggressiveness");
+
+        expect(infraCandidate).toBeDefined();
+        expect(infraCandidate!.level).toBe("high");
+        expect(infraCandidate!.confidence).toBeGreaterThanOrEqual(0.6);
+        expect(infraCandidate!.evidence_events.length).toBe(7);
+    });
+
+    it("Step 4: stage the DNA candidate for review", async () => {
+        const candidates = await ctx.compressionEngine.detectCandidates(3, 3);
+        const infraCandidate = candidates.find(c => c.trait_name === "infra_aggressiveness")!;
+
+        const stagedEntry: DNAStagedEntry = {
+            id: "stg_dna_infra_aggressiveness_t5",
+            trait_name: infraCandidate.trait_name,
+            level: infraCandidate.level,
+            confidence: infraCandidate.confidence,
+            evidence_events: infraCandidate.evidence_events,
+            reasoning: infraCandidate.reasoning,
+            proposed_at: new Date().toISOString(),
+            review_status: "pending",
+        };
+        await ctx.dnaStagedStore.save(stagedEntry);
+
+        const pending = await ctx.dnaStagedStore.findPending();
+        expect(pending.length).toBe(1);
+        expect(pending[0].trait_name).toBe("infra_aggressiveness");
+    });
+
+    it("Step 5: accept DNA trait → identity emerges", async () => {
+        const result = await handleDnaAccept(ctx, { id: "stg_dna_infra_aggressiveness_t5" });
+        const json = JSON.parse(result.content[0].text);
+
+        expect(json.success).toBe(true);
+        expect(json.trait_name).toBe("infra_aggressiveness");
+        expect(json.dna_status).toBe("emerged");
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.status).toBe("emerged");
+        expect(identity.traits["infra_aggressiveness"]).toBeDefined();
+        expect(identity.traits["infra_aggressiveness"].level).toBe("high");
+    });
+
+    it("Step 6: trait now influences TrustRouter (infra_aggressiveness low only)", async () => {
+        // infra_aggressiveness is "high", not "low" — so it does NOT upgrade gravity
+        // for new infrastructure. The modulation only applies when level === "low"
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "new-redis-cluster",
+            type: "architecture_decision",
+            gravity: "G1",
+            involves_new_infrastructure: true,
+        });
+
+        // high infra_aggressiveness does not modulate (only low does)
+        expect(routing.gravity).toBe("G1");
+        expect(routing.destination).toBe("blood");
+    });
+
+    it("Step 7: ChallengeEngine does NOT emit DNA challenge for high infra_aggressiveness", async () => {
+        // DNA challenges only fire when infra_aggressiveness is "low" + involves_new_infrastructure
+        const challenges = await ctx.challengeEngine.detectConflicts({
+            domain: "api-layer",
+            task: "add new infrastructure",
+            involves_new_infrastructure: true,
+        });
+
+        const dnaChallenge = challenges.find(c => c.conflict_with === "dna:infra_aggressiveness");
+        expect(dnaChallenge).toBeUndefined();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T6: Trauma × DNA Cross-System Interaction
+// ---------------------------------------------------------------------------
+
+describe("T6: Trauma × DNA Cross-System Interaction", () => {
+    let tmpDir: string;
+    let ctx: CairnContext;
+
+    beforeAll(async () => {
+        tmpDir = await createTmpDir();
+        ctx = await buildTimelineContext(tmpDir);
+    });
+
+    afterAll(async () => {
+        await cleanTmpDir(tmpDir);
+    });
+
+    it("Step 1: establish DNA simplicity_bias: high", async () => {
+        await ctx.dnaStore.saveIdentity(makeDNA({
+            status: "emerged",
+            traits: {
+                simplicity_bias: {
+                    level: "high",
+                    confidence: 0.9,
+                    evidence_count: 10,
+                    last_updated: "2026-03",
+                    reasoning: "strong simplicity preference",
+                    drift_warning_count: 0,
+                    last_safety_valve_at: null,
+                },
+            },
+        }));
+    });
+
+    it("Step 2: add trauma event in api-layer domain", async () => {
+        const event = makeEvolutionEvent("evt_t6_trauma", {
+            domain: "api-layer",
+            gravity: { level: "G1" },
+            subject: { name: "api-layer" },
+            trigger: "api-layer outage",
+            decision_or_change: "api-layer cascading failure",
+        });
+        await ctx.bloodStore.save(event);
+        await ctx.bloodEngine.markTrauma("evt_t6_trauma");
+
+        const loaded = await ctx.bloodStore.load("evt_t6_trauma");
+        expect(loaded!.trauma.is_trauma).toBe(true);
+        expect(loaded!.gravity.level).toBe("G2");
+    });
+
+    it("Step 3: TrustRouter applies BOTH trauma escalation and DNA modulation", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "new-complex-framework",
+            type: "architecture_decision",
+            gravity: "G0",
+            involves_complex_framework: true,
+        });
+
+        // G0 → G1 (trauma) → G2 (trauma sensitivity_multiplier >= 2.0) → G3 (DNA simplicity_bias)
+        expect(routing.gravity).toBe("G3");
+        expect(routing.destination).toBe("staged");
+        expect(routing.governance).toBe("human_ratified");
+    });
+
+    it("Step 4: verify escalation order — trauma first, then DNA", async () => {
+        // G1 input: trauma → G2 → G3, then DNA would try G3 → G3 (capped)
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "another-complex-thing",
+            type: "architecture_decision",
+            gravity: "G1",
+            involves_complex_framework: true,
+        });
+
+        // G1 → G2 (trauma) → G3 (trauma×2) → G3 (DNA, already capped)
+        expect(routing.gravity).toBe("G3");
+    });
+
+    it("Step 5: enter reevaluation_mode — DNA modulation stops but trauma persists", async () => {
+        const identity = await ctx.dnaStore.loadIdentity();
+        identity.reevaluation_mode = true;
+        await ctx.dnaStore.saveIdentity(identity);
+
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "yet-another-framework",
+            type: "architecture_decision",
+            gravity: "G0",
+            involves_complex_framework: true,
+        });
+
+        // G0 → G1 (trauma) → G2 (trauma×2), NO DNA modulation
+        expect(routing.gravity).toBe("G2");
+        expect(routing.governance).toBe("human_ratified");
+    });
+
+    it("Step 6: trauma challenge still fires during reevaluation_mode", async () => {
+        const challenges = await ctx.challengeEngine.detectConflicts({
+            domain: "api-layer",
+            task: "change api-layer routing",
+            involves_complex_framework: true,
+        });
+
+        const traumaChallenge = challenges.find(c => c.trauma === true);
+        expect(traumaChallenge).toBeDefined();
+
+        // ChallengeEngine does NOT check reevaluation_mode — only TrustRouter does.
+        // So DNA challenges still fire even in reevaluation mode.
+        const dnaChallenge = challenges.find(c => c.conflict_with === "dna:simplicity_bias");
+        expect(dnaChallenge).toBeDefined();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T7: DNA Full Lifecycle (emerge → drift → reevaluation → recover → re-modulate)
+// ---------------------------------------------------------------------------
+
+describe("T7: DNA Full Lifecycle", () => {
+    let tmpDir: string;
+    let ctx: CairnContext;
+
+    beforeAll(async () => {
+        tmpDir = await createTmpDir();
+        ctx = await buildTimelineContext(tmpDir);
+    });
+
+    afterAll(async () => {
+        await cleanTmpDir(tmpDir);
+    });
+
+    it("Step 1: DNA emerges via dna_accept", async () => {
+        await ctx.dnaStagedStore.save({
+            id: "stg_dna_simplicity_t7",
+            trait_name: "simplicity_bias",
+            level: "high",
+            confidence: 0.8,
+            evidence_events: ["e1", "e2", "e3"],
+            reasoning: "consistent simplicity preference across 3 events",
+            proposed_at: new Date().toISOString(),
+            review_status: "pending",
+        });
+
+        await handleDnaAccept(ctx, { id: "stg_dna_simplicity_t7" });
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.status).toBe("emerged");
+        expect(identity.traits["simplicity_bias"].level).toBe("high");
+        expect(identity.traits["simplicity_bias"].confidence).toBe(0.8);
+    });
+
+    it("Step 2: trait modulates routing", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "spring-boot",
+            type: "architecture_decision",
+            gravity: "G1",
+            involves_complex_framework: true,
+        });
+        expect(routing.gravity).toBe("G2");
+    });
+
+    it("Step 3: first drift round — 5 contradicting events + safety valve", async () => {
+        for (let i = 0; i < 5; i++) {
+            await ctx.bloodStore.save(makeEvolutionEvent(`evt_t7_drift1_${i}`, {
+                domain: "api-layer",
+                type: "architecture_decision",
+                gravity: { level: "G2" },
+                subject: { name: `complex-system-${i}` },
+                behavior_effect: { type: "prefer_approach", instruction: "Adopt event-driven architecture" },
+                decision_or_change: "Introduced saga orchestration pattern",
+            }));
+        }
+
+        const cal = await ctx.calibrationEar.calibrate();
+        const drift = cal.signals.filter(s => s.signal_type === "dna_drift_warning");
+        expect(drift.length).toBeGreaterThanOrEqual(1);
+
+        const valve = await ctx.calibrationEar.applySafetyValve(drift);
+        expect(valve.triggered_traits).toContain("simplicity_bias");
+        expect(valve.entered_reevaluation).toBe(false);
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.traits["simplicity_bias"].drift_warning_count).toBe(1);
+        expect(identity.traits["simplicity_bias"].confidence).toBeCloseTo(0.72, 2);
+    });
+
+    it("Step 4: second drift round → reevaluation_mode triggers", async () => {
+        for (let i = 0; i < 5; i++) {
+            await ctx.bloodStore.save(makeEvolutionEvent(`evt_t7_drift2_${i}`, {
+                domain: "api-layer",
+                type: "architecture_decision",
+                gravity: { level: "G2" },
+                subject: { name: `distributed-system-${i}` },
+                behavior_effect: { type: "prefer_approach", instruction: "Deploy Kubernetes operators" },
+                decision_or_change: "Added custom CRD-based deployment controller",
+            }));
+        }
+
+        const cal = await ctx.calibrationEar.calibrate();
+        const drift = cal.signals.filter(s => s.signal_type === "dna_drift_warning");
+        const valve = await ctx.calibrationEar.applySafetyValve(drift);
+
+        expect(valve.entered_reevaluation).toBe(true);
+
+        const identity = await ctx.dnaStore.loadIdentity();
+        expect(identity.reevaluation_mode).toBe(true);
+    });
+
+    it("Step 5: routing no longer modulated", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "webpack-v6",
+            type: "architecture_decision",
+            gravity: "G1",
+            involves_complex_framework: true,
+        });
+        expect(routing.gravity).toBe("G1");
+    });
+
+    it("Step 6: manually exit reevaluation_mode (simulating human decision)", async () => {
+        const identity = await ctx.dnaStore.loadIdentity();
+        identity.reevaluation_mode = false;
+        identity.traits["simplicity_bias"].confidence = 0.75;
+        identity.traits["simplicity_bias"].drift_warning_count = 0;
+        await ctx.dnaStore.saveIdentity(identity);
+
+        const reloaded = await ctx.dnaStore.loadIdentity();
+        expect(reloaded.reevaluation_mode).toBe(false);
+    });
+
+    it("Step 7: routing re-engages DNA modulation", async () => {
+        const routing = await ctx.trustRouter.route({
+            domain: "api-layer",
+            subject_name: "graphql-federation",
+            type: "architecture_decision",
+            gravity: "G1",
+            involves_complex_framework: true,
+        });
+
+        expect(routing.gravity).toBe("G2");
+        expect(routing.governance).toBe("human_ratified");
+    });
+
+    it("Step 8: activation reflects active trait again", async () => {
+        const result = await ctx.activationEngine.activate({ task: "work on api" });
+
+        expect(result.dna.reevaluation_mode).toBeUndefined();
+        expect(result.dna.relevant_traits.some(
             t => t.name === "simplicity_bias" && t.level === "high",
         )).toBe(true);
     });
