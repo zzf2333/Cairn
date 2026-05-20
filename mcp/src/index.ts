@@ -11,6 +11,7 @@ async function main(): Promise<void> {
     const server = createServer(ctx, instructions);
     const transport = new StdioServerTransport();
     await server.connect(transport);
+    ctx.hostName = server.server.getClientVersion()?.name ?? "unknown";
 }
 
 main().catch((error) => {

@@ -42,6 +42,7 @@ export interface CairnContext {
     calibrationEar: CalibrationEar;
     recoveryEngine: RecoveryEngine;
     logger: ToolLogger;
+    hostName?: string;
 }
 
 export async function createContext(projectRoot: string): Promise<CairnContext> {

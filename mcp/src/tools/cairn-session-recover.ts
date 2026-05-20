@@ -29,6 +29,8 @@ export async function handleSessionRecover(ctx: CairnContext) {
             degraded_signals_count: activeSession.degraded_signals_count,
         };
 
+        await ctx.stateStore.markSessionRecovered();
+
         const endResult = await handleSessionEnd(ctx, {
             summary: `[recovered] Stale session ${activeSession.id} recovered automatically`,
         });

@@ -21,6 +21,9 @@ export const SessionRecordSchema = z.object({
         observe_called: z.boolean(),
         signals_count: z.number(),
         degraded_signals_count: z.number(),
+        observed_candidates_count: z.number().default(0),
+        captured_candidates_count: z.number().default(0),
+        recovered: z.boolean().default(false),
     }).optional(),
 });
 

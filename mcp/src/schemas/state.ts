@@ -37,6 +37,9 @@ export const ActiveSessionSchema = z.object({
     observe_called: z.boolean().default(false),
     signals_count: z.number().default(0),
     degraded_signals_count: z.number().default(0),
+    observed_candidates_count: z.number().default(0),
+    captured_candidates_count: z.number().default(0),
+    recovered: z.boolean().default(false),
     checkpoint_step: z.string().optional(),
 });
 export type ActiveSession = z.infer<typeof ActiveSessionSchema>;

@@ -137,8 +137,8 @@ export async function handleObserve(ctx: CairnContext, args: Record<string, unkn
 
         if (captured > 0) {
             await ctx.stateStore.touchSession();
-            await ctx.stateStore.incrementSignalCount(false);
         }
+        await ctx.stateStore.recordObserveStats(candidates.length, captured);
 
         return toolResult(JSON.stringify({
             observed: true,

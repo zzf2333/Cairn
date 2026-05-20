@@ -43,6 +43,9 @@ export class StateStore {
             observe_called: false,
             signals_count: 0,
             degraded_signals_count: 0,
+            observed_candidates_count: 0,
+            captured_candidates_count: 0,
+            recovered: false,
         };
         await this.save(state);
     }
@@ -84,6 +87,23 @@ export class StateStore {
         state.active_session.signals_count += 1;
         if (degraded) state.active_session.degraded_signals_count += 1;
         state.active_session.last_touched_at = new Date().toISOString();
+        await this.save(state);
+    }
+
+    async recordObserveStats(observed: number, captured: number): Promise<void> {
+        const state = await this.load();
+        if (!state.active_session) return;
+        state.active_session.observed_candidates_count += observed;
+        state.active_session.captured_candidates_count += captured;
+        state.active_session.signals_count += captured;
+        state.active_session.last_touched_at = new Date().toISOString();
+        await this.save(state);
+    }
+
+    async markSessionRecovered(): Promise<void> {
+        const state = await this.load();
+        if (!state.active_session) return;
+        state.active_session.recovered = true;
         await this.save(state);
     }
 

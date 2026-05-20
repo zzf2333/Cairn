@@ -396,6 +396,9 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
                 observe_called: activeSession?.observe_called ?? false,
                 signals_count: activeSession?.signals_count ?? 0,
                 degraded_signals_count: activeSession?.degraded_signals_count ?? 0,
+                observed_candidates_count: activeSession?.observed_candidates_count ?? 0,
+                captured_candidates_count: activeSession?.captured_candidates_count ?? 0,
+                recovered: activeSession?.recovered ?? false,
             },
         };
 
@@ -405,12 +408,17 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         const complianceLine = JSON.stringify({
             ts: nowIso,
             session: sessionId,
+            host: ctx.hostName ?? "unknown",
             task: activeSession?.task ?? null,
             context: activeSession?.context_loaded ?? false,
             plan: activeSession?.plan_called ?? false,
             observe: activeSession?.observe_called ?? false,
             signals: activeSession?.signals_count ?? 0,
             degraded: activeSession?.degraded_signals_count ?? 0,
+            observed_candidates: activeSession?.observed_candidates_count ?? 0,
+            captured_candidates: activeSession?.captured_candidates_count ?? 0,
+            recovered: activeSession?.recovered ?? false,
+            session_closed: true,
             domains: changedDomains ?? [],
             duration_min: durationMin,
         });
