@@ -33,6 +33,8 @@ export const ActiveSessionSchema = z.object({
     task: z.string().nullable().default(null),
     files: z.array(z.string()).nullable().default(null),
     context_loaded: z.boolean().default(true),
+    plan_called: z.boolean().default(false),
+    observe_called: z.boolean().default(false),
     signals_count: z.number().default(0),
     degraded_signals_count: z.number().default(0),
     checkpoint_step: z.string().optional(),

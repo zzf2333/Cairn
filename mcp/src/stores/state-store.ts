@@ -39,6 +39,8 @@ export class StateStore {
             task: params.task ?? null,
             files: params.files ?? null,
             context_loaded: params.context_loaded ?? true,
+            plan_called: false,
+            observe_called: false,
             signals_count: 0,
             degraded_signals_count: 0,
         };
@@ -58,6 +60,22 @@ export class StateStore {
     async getActiveSession(): Promise<ActiveSession | null> {
         const state = await this.load();
         return state.active_session ?? null;
+    }
+
+    async markPlanCalled(): Promise<void> {
+        const state = await this.load();
+        if (!state.active_session) return;
+        state.active_session.plan_called = true;
+        state.active_session.last_touched_at = new Date().toISOString();
+        await this.save(state);
+    }
+
+    async markObserveCalled(): Promise<void> {
+        const state = await this.load();
+        if (!state.active_session) return;
+        state.active_session.observe_called = true;
+        state.active_session.last_touched_at = new Date().toISOString();
+        await this.save(state);
     }
 
     async incrementSignalCount(degraded: boolean): Promise<void> {

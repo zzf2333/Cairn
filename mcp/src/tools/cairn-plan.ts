@@ -17,6 +17,8 @@ export async function handlePlan(
         };
     }
 
+    await ctx.stateStore.markPlanCalled();
+
     const activation = await ctx.activationEngine.activate({ task: args.task });
 
     const identity = await ctx.dnaStore.loadIdentity();

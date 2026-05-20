@@ -15,6 +15,13 @@ export const SessionRecordSchema = z.object({
     domains_touched: z.array(z.string()).default([]),
     decisions_made: z.array(z.string()).default([]),
     unresolved: z.array(z.string()).default([]),
+    compliance: z.object({
+        context_loaded: z.boolean(),
+        plan_called: z.boolean(),
+        observe_called: z.boolean(),
+        signals_count: z.number(),
+        degraded_signals_count: z.number(),
+    }).optional(),
 });
 
 export type SessionRecord = z.infer<typeof SessionRecordSchema>;

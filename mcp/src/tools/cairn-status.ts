@@ -11,6 +11,7 @@ export async function handleStatus(ctx: CairnContext) {
             dnaStagedPending,
             state,
             auditLog,
+            recentSessions,
         ] = await Promise.all([
             ctx.bloodStore.loadAll(),
             ctx.stagedStore.loadAll(),
@@ -19,6 +20,7 @@ export async function handleStatus(ctx: CairnContext) {
             ctx.dnaStagedStore.findPending(),
             ctx.stateStore.load(),
             ctx.governanceStore.loadAuditLog(),
+            ctx.sessionStore.loadRecent(10),
         ]);
 
         const inactiveCount = bloodEvents.filter(e => e.health.state === "stale" || e.health.state === "archived").length;
@@ -75,6 +77,26 @@ export async function handleStatus(ctx: CairnContext) {
                 pending: pendingGovernance,
             },
             last_session: state.last_session,
+            compliance: (() => {
+                const withCompliance = recentSessions.filter(s => s.compliance);
+                if (withCompliance.length === 0) return { sessions_analyzed: 0, message: "no compliance data yet" };
+                const total = withCompliance.length;
+                const contextCount = withCompliance.filter(s => s.compliance!.context_loaded).length;
+                const planCount = withCompliance.filter(s => s.compliance!.plan_called).length;
+                const observeCount = withCompliance.filter(s => s.compliance!.observe_called).length;
+                const totalSignals = withCompliance.reduce((sum, s) => sum + s.compliance!.signals_count, 0);
+                const totalDegraded = withCompliance.reduce((sum, s) => sum + s.compliance!.degraded_signals_count, 0);
+                return {
+                    sessions_analyzed: total,
+                    context_rate: `${Math.round((contextCount / total) * 100)}%`,
+                    plan_rate: `${Math.round((planCount / total) * 100)}%`,
+                    observe_rate: `${Math.round((observeCount / total) * 100)}%`,
+                    signal_avg: Math.round((totalSignals / total) * 10) / 10,
+                    degraded_rate: totalSignals > 0
+                        ? `${Math.round((totalDegraded / totalSignals) * 100)}%`
+                        : "0%",
+                };
+            })(),
         }));
     } catch (error) {
         return formatToolError(error);

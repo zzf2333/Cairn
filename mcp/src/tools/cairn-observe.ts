@@ -22,6 +22,8 @@ export async function handleObserve(ctx: CairnContext, args: Record<string, unkn
         const { summary, candidates } = args as unknown as ObserveArgs;
         const now = new Date().toISOString();
 
+        await ctx.stateStore.markObserveCalled();
+
         const results: Array<{
             what: string;
             signal_type: string;

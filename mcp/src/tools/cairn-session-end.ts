@@ -388,6 +388,13 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
             domains_touched: changedDomains ?? [],
             decisions_made: decisionsMade ?? [],
             unresolved: unresolved ?? [],
+            compliance: {
+                context_loaded: activeSession?.context_loaded ?? false,
+                plan_called: activeSession?.plan_called ?? false,
+                observe_called: activeSession?.observe_called ?? false,
+                signals_count: activeSession?.signals_count ?? 0,
+                degraded_signals_count: activeSession?.degraded_signals_count ?? 0,
+            },
         };
 
         await ctx.sessionStore.save(record);
