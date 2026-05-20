@@ -1,16 +1,11 @@
-# Cairn Cognitive Lifecycle Protocol
+# Lifecycle Reference
 
-## Core Principle
-
-Cairn is not passive memory.
-
-Cairn only works if you actively call Cairn tools during reasoning.
-
-You must follow the lifecycle below.
+> **Runtime protocol**: see `core.md` for the short protocol you must follow every session.
+> This document is the detailed reference — parameter semantics, return value handling, edge cases, and recovery procedures.
 
 ---
 
-## 1. Context Before Technical Reasoning
+## 1. Context — Detailed Semantics
 
 Before any of the following:
 
