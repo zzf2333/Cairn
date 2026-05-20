@@ -4,7 +4,7 @@ Cairn stores project decisions, rejections, and constraints in `.cairn/`. Intera
 
 ## Required
 
-Read and follow `CORE.md` — the runtime protocol for every technical session.
+Read and follow `protocol/core.md` — the runtime protocol for every technical session.
 
 ## Reference (consult when needed)
 

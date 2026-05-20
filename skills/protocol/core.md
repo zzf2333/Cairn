@@ -1,55 +1,46 @@
 # Cairn Runtime Core
 
-## Activation Boundary
-
-This protocol governs all technical reasoning: architecture, code generation, refactoring, dependency selection, debugging strategy, infrastructure, security.
-
-It does NOT activate for: trivial formatting, typo fixes, pure explanation, non-technical conversation. See `minimal-intervention.md` for the full exclusion list.
+Governs technical reasoning. Does NOT activate for trivial formatting, typos, pure explanation, or non-technical conversation.
 
 ## Lifecycle
 
-### 1. Load constraints before reasoning
+Before technical reasoning:
+  → `cairn_context()`
 
-Active cognition must precede technical reasoning. No reasoning without historical awareness.
+Before architecture decisions:
+  → `cairn_plan()`
 
-→ `cairn_context({ task?, files? })`
+When explicit long-term cognition appears:
+  → `cairn_signal()`
 
-If recovery is indicated, resolve it first: `cairn_session_recover()` then `cairn_context()` again.
+Before commit or large structural change:
+  → `cairn_observe()`
 
-Respect ALL returned constraints for the entire session. Constraints are runtime state, not suggestions.
+When task completes or topic changes:
+  → `cairn_session_end()`
 
-### 2. Challenge direction before architecture
+If `recovery_required`:
+  → `cairn_session_recover()` then `cairn_context()` again
 
-Historical cognition must validate architectural direction before implementation begins.
+No `cairn_context` = no technical recommendation.
 
-→ `cairn_plan({ task })`
+## Constraints
 
-Required before: framework introduction, module boundary changes, migrations, infrastructure changes, large refactors.
+Respect ALL returned constraints for the entire session:
+- `no_go` — never suggest these directions
+- `accepted_debt` — do not fix; work within
+- `stage_constraints` — adjust aggressiveness to project phase
+- `challenges` — respond per level below
 
-### 3. Capture explicit cognition immediately
+## Challenges
 
-Long-term cognition expressed by the user — rejections, constraints, decisions, historical references, accepted debt — must never be silently acknowledged.
+- `suggestion` — acknowledge; may proceed
+- `reflective_challenge` — MUST justify in writing why history no longer applies
+- `hard_constraint` — do NOT proceed; inform user
+- `trauma` — acknowledge history explicitly; extra caution
+- `archived` — downgraded one level; still surface reasoning
 
-→ `cairn_signal({ signal_type, details, evidence })`
+## Two Rules
 
-If the user says something that future sessions need to know, signal it now. If it's routine implementation detail, don't.
-
-### 4. Capture implicit cognition before commit
-
-Complex work generates decisions that were never explicitly stated. Extract them before they disappear.
-
-→ `cairn_observe({ summary, candidates })`
-
-Required before: git commit, architecture merge, dependency change. Not needed for whitespace-only or docs-only commits.
-
-### 5. Close the cognitive lifecycle
-
-Every technical session must close. Skipping breaks decay, DNA emergence, calibration, and git scanning.
-
-→ `cairn_session_end({ summary, changed_domains?, decisions_made?, unresolved? })`
-
-### 6. Recover before resuming
-
-If Cairn indicates an unclosed previous session, recover it before starting new work.
-
-→ `cairn_session_recover()`
+Do not silently ignore historical cognition. Capture it.
+Do not treat historical cognition as immutable truth. Prefer reevaluation over dogma.
