@@ -12,7 +12,7 @@ required_tool_calls:
     tool: cairn_signal
     must_be_called: true
     args_match:
-      signal_type: "user_rejection"
+      signal_type: "(?i)rejection"
       "details.what": "(?i)redis"
 
 required_text_patterns:

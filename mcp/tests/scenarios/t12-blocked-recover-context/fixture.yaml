@@ -19,3 +19,10 @@ skeleton:
     role: authentication and authorization
     owns: [login, session, permissions]
     causal_keywords: [auth, login, session, permission]
+
+project_files:
+  src/auth/validate.ts: |
+    export function validateToken(token: string): boolean {
+      // Legacy JWT validation
+      return token.length > 0;
+    }

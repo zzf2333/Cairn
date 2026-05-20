@@ -41,6 +41,19 @@ blood:
     lifecycle: { validity: strategic, decay_policy: downgrade, resurrection_count: 0 }
     governance_status: ratified
 
+project_files:
+  src/api/routes.ts: |
+    export function registerRoutes(app: Express) {
+      app.get('/users', getUsers);
+      app.get('/products', getProducts);
+    }
+  src/storage/db.ts: |
+    import { Pool } from 'pg';
+    export const pool = new Pool();
+    export async function query(sql: string) {
+      return pool.query(sql);
+    }
+
 domains:
   storage:
     rejected_paths:

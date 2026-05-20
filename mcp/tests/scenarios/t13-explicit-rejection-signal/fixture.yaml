@@ -11,3 +11,10 @@ skeleton:
     role: infrastructure and runtime services
     owns: [caching, queues, deployment]
     causal_keywords: [redis, cache, infra, queue, deploy]
+
+project_files:
+  src/infra/cache.ts: |
+    // TODO: implement caching layer
+    export function getFromCache(key: string): unknown | null {
+      return null;
+    }

@@ -11,3 +11,14 @@ skeleton:
     role: documentation and developer guides
     owns: [readme, contributing, changelog]
     causal_keywords: [docs, readme, documentation, guide]
+
+project_files:
+  README.md: |
+    # Scenario T14
+
+    This project demonstrates how to recieve data from external APIs
+    and process it efficiently.
+
+    ## Getting Started
+
+    Run `npm install` to get started.

@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { stringify as yamlStringify, parse as yamlParse } from "yaml";
 import { readFile } from "node:fs/promises";
 import { buildPaths, ALL_DIRS, type CairnPaths } from "../../../src/paths.js";
@@ -231,6 +231,15 @@ export async function buildFixture(projectRoot: string, specIn: FixtureSpec): Pr
             const s = spec.sessions[i] as Record<string, unknown>;
             const id = (s.id as string) ?? `session_${i + 1}`;
             await writeYaml(join(paths.sessions, `${id}.yaml`), s);
+        }
+    }
+
+    // project_files — arbitrary files in the project root
+    if (spec.project_files) {
+        for (const [relPath, content] of Object.entries(spec.project_files)) {
+            const fullPath = join(projectRoot, relPath);
+            await mkdir(dirname(fullPath), { recursive: true });
+            await writeFile(fullPath, content, "utf8");
         }
     }
 }

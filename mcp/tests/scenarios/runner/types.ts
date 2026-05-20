@@ -62,6 +62,7 @@ export interface FixtureSpec {
         audit?: Array<Record<string, unknown>>;
     };
     sessions?: Array<Record<string, unknown>>;
+    project_files?: Record<string, string>;
 }
 
 export interface ToolCallRecord {
