@@ -1,0 +1,21 @@
+config:
+  project_name: scenario-t12
+  domains: [auth]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+  active_session:
+    id: sess_stale_t12
+    started_at: "2024-01-01T00:00:00.000Z"
+    last_touched_at: "2024-01-01T00:00:00.000Z"
+    task: "previous unfinished refactor"
+    context_loaded: true
+    signals_count: 3
+    degraded_signals_count: 0
+
+skeleton:
+  - domain: auth
+    role: authentication and authorization
+    owns: [login, session, permissions]
+    causal_keywords: [auth, login, session, permission]

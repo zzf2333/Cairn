@@ -1,6 +1,36 @@
 # Reverse-Regression Scenarios
 
-A 35-scenario harness that turns Cairn's core promise — "AI does not walk into the same wall twice" — into CI-assertable evidence.
+A 39-scenario harness that turns Cairn's core promise — "AI does not walk into the same wall twice" — into CI-assertable evidence.
+
+## Test Hierarchy
+
+Cairn's tests are organized in four levels:
+
+### L0: Unit + Integration (vitest, no LLM)
+
+Run via `npm test`. Exercises stores, schemas, engines, tools, and integration flows against real temp directories. No mocks for stores. Suites:
+
+- `tests/stores/` — atomic writes, store CRUD
+- `tests/schemas/` — Zod schema validation
+- `tests/engines/` — read/write engine logic, git signal mapper
+- `tests/tools/` — MCP tool handler unit tests
+- `tests/integration/` — timeline, session-guard, lifecycle, governance, pipeline
+- `tests/acceptance/` — end-to-end flows via direct tool calls
+- `tests/e2e/` — MCP server startup, CLI invocation
+- `tests/performance/` — response time benchmarks
+- `tests/security/` — path traversal, injection checks
+
+### L1: Protocol Scenarios (A–D, 26 scenarios, real LLM)
+
+Tests that the AI calls the right tools in the right order with correct arguments.
+
+### L2: Cognitive Behavior Scenarios (E–H, 9 scenarios, real LLM)
+
+Tests that Cairn's returned cognition actually changes AI decision-making — not just tool call correctness, but behavioral outcomes.
+
+### L3: Skill Compliance Scenarios (T11–T14, real LLM)
+
+Tests that the Skill Runtime drives a complete Cairn lifecycle for realistic task types: architecture planning, stale session recovery, explicit rejection capture, and minimal intervention for trivial tasks.
 
 Each scenario boots a fresh `.cairn/` fixture, spawns a real Cairn MCP server, drives a real LLM through a controlled prompt, and asserts the resulting tool-call trace and assistant text against `expected.yaml`.
 
@@ -42,7 +72,7 @@ Naming convention: `<category-letter><index>-<kebab-case-title>/`. Category lett
 
 ## Coverage
 
-35 scenarios across 8 categories, 70 runs per full pass (×2 platforms):
+39 scenarios across 9 categories, 78 runs per full pass (×2 platforms):
 
 ### L1: Protocol Tests (A–D)
 
@@ -90,6 +120,17 @@ These test whether Cairn's returned cognition **actually changes AI decision-mak
 | H1  | cognition-challenge  | JWT localStorage rejected → AI raises reflective challenge, not hard block |
 | H2  | cognition-capture    | user declares "no ORMs" → captured via cairn_signal + respected |
 | H3  | cognition-capture    | noise (CSS rename) → NOT signaled (inverse test) |
+
+### L3: Skill Compliance Tests (T)
+
+These test whether the Skill Runtime drives a complete Cairn lifecycle for realistic task types.
+
+| ID   | Category          | Tests |
+|------|-------------------|-------|
+| T11  | skill-compliance  | architecture task triggers context + plan, respects Redis rejection |
+| T12  | skill-compliance  | blocked stale session → recover → fresh context |
+| T13  | skill-compliance  | explicit user rejection → captured via cairn_signal |
+| T14  | skill-compliance  | typo-only task → minimal intervention (context only, no plan/signal) |
 
 ## Run
 

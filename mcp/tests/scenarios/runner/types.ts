@@ -5,7 +5,7 @@ export type Platform = "claude-code" | "codex";
 export interface ScenarioSpec {
     id: string;
     title: string;
-    category: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H";
+    category: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "T";
     fixtureDir: string;
     promptPath: string;
     expectedPath: string;
@@ -24,6 +24,15 @@ export interface FixtureSpec {
         stage?: { phase: string; confidence: number; status?: string; last_updated?: string };
         last_session?: string;
         activation_log?: { recent_hits?: Record<string, number> };
+        active_session?: {
+            id: string;
+            started_at: string;
+            last_touched_at: string;
+            task?: string;
+            context_loaded?: boolean;
+            signals_count?: number;
+            degraded_signals_count?: number;
+        };
     };
     skeleton?: Array<{
         domain: string;

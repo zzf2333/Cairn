@@ -1,0 +1,28 @@
+description: |
+  Multi-turn: AI may suggest Redis in turn 1. User explicitly rejects Redis in turn 2
+  with a detailed reason. The AI must capture this as a user_rejection signal via cairn_signal.
+
+required_tool_calls:
+  - id: ctx_call
+    tool: cairn_context
+    must_be_called: true
+    order: 1
+
+  - id: rejection_signal
+    tool: cairn_signal
+    must_be_called: true
+    args_match:
+      signal_type: "user_rejection"
+      "details.what": "(?i)redis"
+
+required_text_patterns:
+  - id: pivots_to_alternative
+    pattern: "(?i)in-memory|in-process|lru|local.*cache|node-cache"
+    description: AI must pivot to in-memory caching after rejection
+
+platform_overrides:
+  codex:
+    allow_fail: true
+    allow_fail_reason: "Codex exec resume sometimes loses turn context; rejection signal may not be captured"
+
+max_total_tool_calls: 15

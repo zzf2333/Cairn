@@ -13,6 +13,7 @@ const CATEGORY_MAP: Record<string, ScenarioSpec["category"]> = {
     f: "F",
     g: "G",
     h: "H",
+    t: "T",
 };
 
 export async function discoverScenarios(filter?: string): Promise<ScenarioSpec[]> {
@@ -28,7 +29,7 @@ export async function discoverScenarios(filter?: string): Promise<ScenarioSpec[]
             continue;
         }
         if (!s.isDirectory()) continue;
-        const m = name.match(/^([a-h])(\d+)-(.+)$/i);
+        const m = name.match(/^([a-ht])(\d+)-(.+)$/i);
         if (!m) continue;
         const id = `${m[1].toUpperCase()}${m[2]}`;
         if (filter) {

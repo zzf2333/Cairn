@@ -1,0 +1,13 @@
+config:
+  project_name: scenario-t14
+  domains: [docs]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: docs
+    role: documentation and developer guides
+    owns: [readme, contributing, changelog]
+    causal_keywords: [docs, readme, documentation, guide]

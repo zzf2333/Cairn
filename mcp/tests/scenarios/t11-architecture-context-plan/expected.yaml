@@ -1,0 +1,34 @@
+description: |
+  Architecture task must trigger cairn_context (always first) followed by cairn_plan.
+  The plan must respect the Redis rejection constraint and recommend alternatives.
+
+required_tool_calls:
+  - id: ctx_call
+    tool: cairn_context
+    must_be_called: true
+    order: 1
+    args_match:
+      task: "(?i)cach|api"
+
+  - id: plan_call
+    tool: cairn_plan
+    must_be_called: true
+
+required_sequence:
+  - id: ctx_before_plan
+    steps:
+      - tool: cairn_context
+      - tool: cairn_plan
+    description: context must precede plan
+
+required_text_patterns:
+  - id: respects_constraint
+    pattern: "(?i)redis.*(rejected|avoided|not|previously|constraint)|(?i)(in-process|in-memory|lru|local).*cach"
+    description: must respect Redis rejection and suggest alternative
+
+forbidden_text_patterns:
+  - id: no_recommend_redis
+    pattern: "(?i)(recommend|suggest|use|implement)\\s+redis"
+    description: must not recommend Redis given the constraint
+
+max_total_tool_calls: 15

@@ -1,0 +1,33 @@
+description: |
+  A stale active_session with signals_count > 0 exists. cairn_context must detect it as
+  blocked, the AI must call cairn_session_recover, then call cairn_context again to start fresh.
+
+required_tool_calls:
+  - id: first_ctx
+    tool: cairn_context
+    must_be_called: true
+    order: 1
+
+  - id: recover
+    tool: cairn_session_recover
+    must_be_called: true
+
+  - id: second_ctx
+    tool: cairn_context
+    must_be_called: true
+
+required_sequence:
+  - id: ctx_recover_ctx
+    steps:
+      - tool: cairn_context
+      - tool: cairn_session_recover
+      - tool: cairn_context
+    description: context detects stale → recover → context again
+
+required_tool_result_patterns:
+  - id: blocked_detected
+    tool: cairn_context
+    result_pattern: "(?i)blocked|unclosed|recover"
+    description: first cairn_context must indicate a blocked/stale session
+
+max_total_tool_calls: 20

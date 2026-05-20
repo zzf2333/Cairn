@@ -1,0 +1,19 @@
+description: |
+  A trivial typo-only task should NOT over-invoke Cairn. cairn_context is always required
+  (mandatory lifecycle), but cairn_plan should NOT be called (no architecture decision),
+  and cairn_signal should NOT be called (no cognitive signal worth capturing).
+
+required_tool_calls:
+  - id: ctx_call
+    tool: cairn_context
+    must_be_called: true
+
+forbidden_tool_calls:
+  - id: no_plan
+    tool: cairn_plan
+    description: typo fix does not warrant plan consultation
+  - id: no_signal
+    tool: cairn_signal
+    description: typo fix produces no signal worth capturing
+
+max_total_tool_calls: 5

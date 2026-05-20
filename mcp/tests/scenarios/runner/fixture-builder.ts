@@ -96,6 +96,24 @@ export async function buildFixture(projectRoot: string, specIn: FixtureSpec): Pr
         ...stageOverrides,
         ...activationLogOverrides,
     } as never);
+    if (spec.state?.active_session) {
+        const as = spec.state.active_session;
+        (state as any).active_session = {
+            id: as.id,
+            started_at: as.started_at,
+            last_touched_at: as.last_touched_at,
+            task: as.task ?? null,
+            files: null,
+            context_loaded: as.context_loaded ?? true,
+            plan_called: false,
+            observe_called: false,
+            signals_count: as.signals_count ?? 0,
+            degraded_signals_count: as.degraded_signals_count ?? 0,
+            observed_candidates_count: 0,
+            captured_candidates_count: 0,
+            recovered: false,
+        };
+    }
     await writeYaml(paths.state, state);
 
     // skeleton/*.yaml

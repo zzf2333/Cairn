@@ -1,0 +1,13 @@
+config:
+  project_name: scenario-t13
+  domains: [infra]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: infra
+    role: infrastructure and runtime services
+    owns: [caching, queues, deployment]
+    causal_keywords: [redis, cache, infra, queue, deploy]

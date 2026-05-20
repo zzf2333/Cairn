@@ -1,0 +1,49 @@
+config:
+  project_name: scenario-t11
+  domains: [api, storage]
+  cognitive_mode: standard
+
+state:
+  stage: { phase: growth, confidence: 0.7, status: advisory }
+
+skeleton:
+  - domain: api
+    role: REST API layer
+    owns: [routes, controllers, middleware]
+    does_not_own: [auth]
+    causal_keywords: [api, rest, endpoint, route]
+  - domain: storage
+    role: data persistence layer
+    owns: [database, cache, queries]
+    does_not_own: [api]
+    causal_keywords: [storage, database, cache, query, persist]
+
+blood:
+  - id: blood_redis_rejected
+    time: "2026-03-01"
+    domain: storage
+    type: rejection
+    gravity: { level: G2 }
+    source: { type: conversation, confidence: 0.9, verified: true, refs: [] }
+    subject: { name: Redis, aliases: [redis cache] }
+    trigger: Team rejected Redis for caching due to operational complexity
+    decision_or_change: Use in-process caching instead of Redis
+    rejected_paths:
+      - path: Redis
+        reason: Ops team too small for external cache dependency
+    reasoning: Evaluated Redis, decided against due to operational burden.
+    constraints_added:
+      - "storage: no Redis for caching"
+    behavior_effect:
+      type: avoid_suggestion
+      instruction: Do not propose Redis for caching in this project.
+    affects: { skeleton: false, dna: false, domains: [storage] }
+    lifecycle: { validity: strategic, decay_policy: downgrade, resurrection_count: 0 }
+    governance_status: ratified
+
+domains:
+  storage:
+    rejected_paths:
+      - path: Redis
+        reason: Ops team too small for external cache dependency
+        source_event: blood_redis_rejected
