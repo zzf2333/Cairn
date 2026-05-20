@@ -1,3 +1,5 @@
+import { appendFile, mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { CairnContext } from "../context.js";
 import { toolResult, formatToolError } from "../errors.js";
 import type { SessionRecord, State, EvolutionEvent } from "../schemas/index.js";
@@ -398,6 +400,26 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
         };
 
         await ctx.sessionStore.save(record);
+
+        const durationMin = Math.round((now.getTime() - new Date(sessionStartedAt).getTime()) / 60000);
+        const complianceLine = JSON.stringify({
+            ts: nowIso,
+            session: sessionId,
+            task: activeSession?.task ?? null,
+            context: activeSession?.context_loaded ?? false,
+            plan: activeSession?.plan_called ?? false,
+            observe: activeSession?.observe_called ?? false,
+            signals: activeSession?.signals_count ?? 0,
+            degraded: activeSession?.degraded_signals_count ?? 0,
+            domains: changedDomains ?? [],
+            duration_min: durationMin,
+        });
+        try {
+            await mkdir(dirname(ctx.paths.complianceLog), { recursive: true });
+            await appendFile(ctx.paths.complianceLog, complianceLine + "\n");
+        } catch {
+            // best-effort logging
+        }
 
         await ctx.stateStore.clearSession();
 

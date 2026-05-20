@@ -26,6 +26,8 @@ export interface CairnPaths {
     viewsDomains: string;
     sessions: string;
     logs: string;
+    runtime: string;
+    complianceLog: string;
 }
 
 export function buildPaths(projectRoot: string): CairnPaths {
@@ -35,6 +37,7 @@ export function buildPaths(projectRoot: string): CairnPaths {
     const governance = join(cairn, "governance");
     const dna = join(cairn, "dna");
     const views = join(cairn, "views");
+    const runtime = join(cairn, "runtime");
 
     return {
         root,
@@ -62,6 +65,8 @@ export function buildPaths(projectRoot: string): CairnPaths {
         viewsDomains: join(views, "domains"),
         sessions: join(cairn, "sessions"),
         logs: join(cairn, "logs"),
+        runtime,
+        complianceLog: join(runtime, "compliance.jsonl"),
     };
 }
 
@@ -81,4 +86,5 @@ export const ALL_DIRS = (p: CairnPaths): string[] => [
     p.views,
     p.viewsDomains,
     p.sessions,
+    p.runtime,
 ];
