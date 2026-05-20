@@ -1,38 +1,14 @@
 # Claude Code Adapter
 
-## Platform Rules
+Platform-specific rules for Claude Code. The lifecycle protocol is defined in `protocol/core.md`.
 
-Claude Code obeys long structured instructions well. This adapter leverages that strength with strong imperative language and explicit lifecycle ordering.
+## Platform Behavior
 
-You must actively use Cairn during technical work. Do not treat Cairn as optional memory.
+Claude Code obeys long structured instructions well. Use strong imperative language and explicit ordering.
 
-Always follow the lifecycle:
-
-```
-context -> plan -> signal -> observe -> session_end
-```
-
-If blocked by an unclosed session:
-
-```
-recover first
-```
-
-Before giving architecture advice:
-
-```
-call cairn_plan
-```
-
-Before coding:
-
-```
-call cairn_context
-```
-
-Do not skip lifecycle steps silently.
-
----
+- Follow the lifecycle from `core.md` during every technical session
+- Do not skip steps silently — if a step is skipped, it must match a `minimal-intervention.md` exclusion
+- Do not treat Cairn as optional memory
 
 ## Setup
 
@@ -61,37 +37,27 @@ For multi-project setups, pin the project root:
 
 Restart Claude Code after editing MCP config.
 
----
-
 ## Initialization
 
 On first encounter with a project that has no `.cairn/`:
 
-1. Call `cairn_init_status()`
-2. If `status` is `not_initialized`, `empty_scaffold`, or `partial`, perform step-by-step initialization
-3. Steps (in order): config -> skeleton -> blood -> dna -> stage
-4. For each step:
-   - Analyze what the step needs. For blood: cross-reference git history, code structure, team memory/lessons, AND project instructions (CLAUDE.md, ADRs)
-   - Call `cairn_init_commit({ step, ..., dry_run: true })` to preview
-   - Present preview to user for confirmation
-   - Call `cairn_init_commit({ step, ... })` to write
-   - Call `cairn_init_status()` to check next step
-5. Blood candidates auto-confirm during init (no staging)
-6. DNA traits are staged — after committing the dna step, call `cairn_dna_list` to review, then `cairn_dna_accept` for each trait
-7. DNA and stage steps are optional but recommended
-
----
+1. `cairn_init_status()` — check state
+2. If `not_initialized` / `empty_scaffold` / `partial`: run step-by-step init
+3. Steps (in order): config → skeleton → blood → dna → stage
+4. For each step: analyze → `dry_run: true` preview → user confirms → commit → `cairn_init_status()` for next
+5. For blood: cross-reference git history, code structure, team memory, AND project instructions (CLAUDE.md, ADRs)
+6. Blood auto-confirms during init. DNA traits staged for human review.
 
 ## Degraded Mode
 
-If MCP tools are unavailable from Claude Code, fall back in this order:
+If MCP tools unavailable:
 
-1. Read `.cairn/views/output.md` (global constraints), `.cairn/views/domains/<name>.md` (per-domain), `.cairn/views/stage.md` (stage advisory)
-2. These are auto-generated and read-only. Do not write to views.
-3. Signal capture is unavailable in degraded mode.
+1. Read `.cairn/views/output.md`, `.cairn/views/domains/<name>.md`, `.cairn/views/stage.md`
+2. These are auto-generated, read-only. Do not write to views.
+3. Signal capture unavailable.
 
 When `cairn_*` tools fail:
 
-1. Ask user to run `cairn doctor` — if CLI errors, the install is broken
-2. If CLI works but MCP doesn't, check `.claude/mcp.json` has `"cairn": { "command": "cairn-mcp-server" }`
-3. If MCP runs but returns path errors, set `CAIRN_ROOT` in the MCP config env
+1. Ask user to run `cairn doctor` — if CLI errors, install is broken
+2. If CLI works but MCP doesn't, check `.claude/mcp.json` config
+3. If MCP runs but returns path errors, set `CAIRN_ROOT` in env
