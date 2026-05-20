@@ -863,6 +863,14 @@ describe("cairn_session_end", () => {
         expect(data.pending_review).toBeDefined();
     });
 
+    it("includes highlights array in output", async () => {
+        const result = await handleSessionEnd(ctx, {
+            summary: "first session",
+        });
+        const data = parseResult(result);
+        expect(Array.isArray(data.highlights)).toBe(true);
+    });
+
     it("includes git_signals output shape", async () => {
         const result = await handleSessionEnd(ctx, {
             summary: "first session",

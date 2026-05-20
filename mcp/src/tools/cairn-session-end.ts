@@ -425,7 +425,18 @@ export async function handleSessionEnd(ctx: CairnContext, args: Record<string, u
 
         const stagedCount = await ctx.stagedStore.count();
 
+        const highlights: string[] = [];
+        if (safetyValve.entered_reevaluation) highlights.push("DNA safety valve triggered — entered reevaluation mode");
+        if (stageResult.changed) highlights.push(`Stage transition detected: → ${stageResult.inferred_phase}`);
+        if (decayArchived.length > 0) highlights.push(`${decayArchived.length} event(s) archived by decay`);
+        if (dnaResult.new_staged.length > 0) highlights.push(`${dnaResult.new_staged.length} new DNA candidate(s) staged for review`);
+        if (stagedCount > 0) highlights.push(`${stagedCount} staged entry/entries pending review`);
+        if (safetyValve.triggered_traits.length > 0 && !safetyValve.entered_reevaluation) {
+            highlights.push(`DNA confidence reduced for: ${safetyValve.triggered_traits.join(", ")}`);
+        }
+
         const response: Record<string, unknown> = {
+            highlights,
             signals_processed: gitScan.signals.length + calibration.signals.length,
             new_blood: gitNewBlood.length,
             new_staged: gitNewStaged.length,

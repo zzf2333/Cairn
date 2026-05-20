@@ -21,7 +21,7 @@ Respect ALL returned constraints for the entire session — they are runtime sta
 4. CAPTURE IMPLICIT COGNITION BEFORE COMMIT — Complex work generates decisions never explicitly stated. cairn_observe({ summary, candidates }) before git commit. Extract candidate signals, each gets recommendation (capture/skip). If staged > 0, present to user before committing. Skip for whitespace-only or docs-only commits.
 
 5. CLOSE THE COGNITIVE LIFECYCLE — Every technical session must close. cairn_session_end({ summary, changed_domains?, decisions_made?, unresolved? }). Skipping breaks: git scanning, decay, DNA emergence, calibration. Not optional.
-After calling, report to user if: dna_safety_valve.entered_reevaluation, stage.changed, decay.archived.length > 0, or dna_compression.new_staged.length > 0.
+Check the `highlights` array first — it surfaces notable events (reevaluation, stage transitions, archived events, new DNA candidates, pending reviews). Report any non-empty highlights to the user.
 
 6. RECOVER BEFORE RESUMING — If previous session was unclosed, cairn_session_recover() before starting new work.
 
