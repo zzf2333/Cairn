@@ -9,6 +9,8 @@ import { handleObserve } from "../../src/tools/cairn-observe.js";
 import { handleSessionEnd } from "../../src/tools/cairn-session-end.js";
 import { handleSessionRecover } from "../../src/tools/cairn-session-recover.js";
 import { handlePlan } from "../../src/tools/cairn-plan.js";
+import { handleStatus } from "../../src/tools/cairn-status.js";
+import { readFile } from "node:fs/promises";
 
 let tmpDir: string;
 let ctx: CairnContext;
@@ -233,5 +235,82 @@ describe("Session guard lifecycle", () => {
         expect(result.views_regenerated).toBe(true);
 
         expect(await ctx.stateStore.getActiveSession()).toBeNull();
+    });
+
+    it("compliance tracking: context → plan → observe → session_end records all flags", async () => {
+        await setupProject();
+
+        await handleContext(ctx, { task: "architecture review" });
+
+        const s1 = await ctx.stateStore.getActiveSession();
+        expect(s1!.plan_called).toBe(false);
+        expect(s1!.observe_called).toBe(false);
+
+        await handlePlan(ctx, { task: "architecture review" });
+
+        const s2 = await ctx.stateStore.getActiveSession();
+        expect(s2!.plan_called).toBe(true);
+
+        await handleObserve(ctx, {
+            summary: "Reviewed architecture",
+            candidates: [{
+                signal_type: "decision",
+                domain: "api-layer",
+                details: { what: "Keep current architecture" },
+                evidence: {},
+                recommendation: "capture",
+                recommendation_reason: "architecture decision",
+            }],
+        });
+
+        const s3 = await ctx.stateStore.getActiveSession();
+        expect(s3!.observe_called).toBe(true);
+
+        await handleSessionEnd(ctx, {
+            summary: "Architecture review complete",
+            changed_domains: ["api-layer"],
+        });
+
+        const records = await ctx.sessionStore.loadAll();
+        const record = records[records.length - 1];
+        expect(record.compliance).toBeDefined();
+        expect(record.compliance!.context_loaded).toBe(true);
+        expect(record.compliance!.plan_called).toBe(true);
+        expect(record.compliance!.observe_called).toBe(true);
+        expect(record.compliance!.signals_count).toBeGreaterThanOrEqual(1);
+    });
+
+    it("compliance JSONL: session_end appends to compliance.jsonl", async () => {
+        await setupProject();
+
+        await handleContext(ctx, { task: "quick fix" });
+        await handleSessionEnd(ctx, { summary: "Quick fix done" });
+
+        const logContent = await readFile(ctx.paths.complianceLog, "utf-8");
+        const lines = logContent.trim().split("\n");
+        expect(lines.length).toBeGreaterThanOrEqual(1);
+
+        const entry = JSON.parse(lines[lines.length - 1]);
+        expect(entry.ts).toBeDefined();
+        expect(entry.session).toBeDefined();
+        expect(entry.context).toBe(true);
+        expect(entry.plan).toBe(false);
+        expect(entry.observe).toBe(false);
+        expect(typeof entry.duration_min).toBe("number");
+    });
+
+    it("cairn_status includes compliance rates from session records", async () => {
+        await setupProject();
+
+        await handleContext(ctx, { task: "task 1" });
+        await handlePlan(ctx, { task: "task 1" });
+        await handleSessionEnd(ctx, { summary: "Task 1 done" });
+
+        const statusResult = parseResult(await handleStatus(ctx));
+        expect(statusResult.compliance).toBeDefined();
+        expect(statusResult.compliance.sessions_analyzed).toBeGreaterThanOrEqual(1);
+        expect(statusResult.compliance.context_rate).toBeDefined();
+        expect(statusResult.compliance.plan_rate).toBeDefined();
+        expect(statusResult.compliance.observe_rate).toBeDefined();
     });
 });
