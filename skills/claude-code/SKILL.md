@@ -1,12 +1,57 @@
-# Cairn Skill
+# Cairn Runtime Core
+
+Governs technical reasoning. Does NOT activate for trivial formatting, typos, pure explanation, or non-technical conversation.
+
+## Lifecycle
+
+Before technical reasoning:
+  → `cairn_context()`
+
+Before architecture decisions:
+  → `cairn_plan()`
+
+When explicit long-term cognition appears:
+  → `cairn_signal()`
+
+Before commit or large structural change:
+  → `cairn_observe()`
+
+When task completes or topic changes:
+  → `cairn_session_end()`
+
+If `recovery_required`:
+  → `cairn_session_recover()` then `cairn_context()` again
+
+No `cairn_context` = no technical recommendation.
+
+## Constraints
+
+Respect ALL returned constraints for the entire session:
+- `no_go` — never suggest these directions
+- `accepted_debt` — do not fix; work within
+- `stage_constraints` — adjust aggressiveness to project phase
+- `challenges` — respond per level below
+
+## Challenges
+
+- `suggestion` — acknowledge; may proceed
+- `reflective_challenge` — MUST justify in writing why history no longer applies
+- `hard_constraint` — do NOT proceed; inform user
+- `trauma` — acknowledge history explicitly; extra caution
+- `archived` — downgraded one level; still surface reasoning
+
+## Two Rules
+
+Do not silently ignore historical cognition. Capture it.
+Do not treat historical cognition as immutable truth. Prefer reevaluation over dogma.
+
+---
+
+# Reference
 
 Cairn stores project decisions, rejections, and constraints in `.cairn/`. Interact through MCP tools only.
 
-## Required
-
-Read and follow `protocol/core.md` — the runtime protocol for every technical session.
-
-## Reference (consult when needed)
+## Consult when needed
 
 - `protocol/runtime-rules.md` — constraint processing, DNA, trauma, debt, stage, reevaluation, degraded mode
 - `protocol/escalation-model.md` — challenge levels and response templates
