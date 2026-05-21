@@ -75,52 +75,52 @@ Cairn 通过两层机制驱动 AI 的工程认知：
 
 ---
 
-## 3 分钟安装
+## 快速开始 — Claude Code
 
-**第 1 步 —— 安装**
+```bash
+# 1. 安装
+npm install -g cairn-mcp-server
+
+# 2. 安装协议 skill
+npx skills add zzf2333/Cairn
+```
+
+把 Cairn 加入 MCP 配置 — 创建或编辑 `.claude/mcp.json`：
+
+```json
+{
+  "mcpServers": {
+    "cairn": { "command": "cairn-mcp-server" }
+  }
+}
+```
+
+重启 Claude Code，然后告诉它：
+
+> 初始化 Cairn
+
+AI 会分析你的项目，提出初始认知供你审核，确认后写入。全程约 2 分钟。
+
+<details>
+<summary><strong>Codex</strong></summary>
 
 ```bash
 npm install -g cairn-mcp-server
+cairn skill show codex >> AGENTS.md
 ```
 
-**第 2 步 —— 配置 MCP**（选你的宿主）
+编辑 `~/.codex/config.toml`：
 
-| 宿主 | 配置文件 | 添加内容 |
-|------|----------|----------|
-| Claude Code | `.claude/mcp.json` 或 `~/.claude.json` | `"mcpServers": { "cairn": { "command": "cairn-mcp-server" } }` |
-| Codex | `~/.codex/config.toml` | `[mcp_servers.cairn]`<br>`command = "cairn-mcp-server"` |
+```toml
+[mcp_servers.cairn]
+command = "cairn-mcp-server"
+```
 
-编辑后重启你的 AI 工具。
+重启 Codex，然后说：`Initialize Cairn for this project`
 
-**第 3 步 —— 安装协议**
+</details>
 
-协议告诉 AI *何时*调用每个工具 —— 完整的会话契约。
-
-| 宿主 | 命令 |
-|------|------|
-| Claude Code | `npx skills add zzf2333/Cairn` |
-| Codex | `cairn skill show codex >> AGENTS.md` |
-
-没有协议，AI 只能使用 MCP 工具描述中的压缩版指令 —— 足够初始化，但无法完整执行生命周期。完整步骤：[`docs/v-intervene/enter.md`](./docs/v-intervene/enter.md)。
-
-**第 4 步 —— 初始化**（在 AI 工具里说一句话）
-
-不需要 `cairn init` —— 直接告诉你的 AI：
-
-> **Claude Code**：`初始化 Cairn` 或 `Initialize Cairn for this project`
->
-> **Codex**：`Initialize Cairn for this project`
-
-AI 会分析你的项目，提出初始认知（骨架 + 决策 + 阶段）供你审核，确认后写入。全程约 2 分钟。
-
-### 当前支持的宿主
-
-| 宿主 | 安装方式 | 状态 |
-|------|----------|------|
-| **Claude Code** | `npx skills add zzf2333/Cairn` | 一线 |
-| **Codex** | `cairn skill show codex >> AGENTS.md` | 一线 |
-
-其他 MCP 兼容宿主(Cline、Windsurf、Cursor、Copilot、Gemini CLI、OpenCode)在 1.x 路线图上。0.4.1 把它们的 adapter 移除,集中精力让两个支持平台到位 —— 等到每个新平台都能通过和 Claude Code / Codex 同样严格的反向回归测试,再加回来。
+完整安装步骤（含验证）：[`docs/v-intervene/enter.md`](./docs/v-intervene/enter.md)
 
 ---
 

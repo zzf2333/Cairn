@@ -70,52 +70,52 @@ More diagrams: [Integration overview](./docs/diagrams/03-integration-overview.pn
 
 ---
 
-## Install in 3 minutes
+## Quick Start — Claude Code
 
-**Step 1 — Install**
+```bash
+# 1. Install
+npm install -g cairn-mcp-server
+
+# 2. Install the protocol skill
+npx skills add zzf2333/Cairn
+```
+
+Add Cairn to your MCP config — create or edit `.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "cairn": { "command": "cairn-mcp-server" }
+  }
+}
+```
+
+Restart Claude Code, then tell it:
+
+> Initialize Cairn for this project
+
+The AI analyzes your project, proposes initial cognition for your review, and writes it after you confirm. Takes about 2 minutes.
+
+<details>
+<summary><strong>Codex</strong></summary>
 
 ```bash
 npm install -g cairn-mcp-server
+cairn skill show codex >> AGENTS.md
 ```
 
-**Step 2 — Wire MCP** (pick your host)
+Edit `~/.codex/config.toml`:
 
-| Host | Config file | Add this |
-|------|-------------|----------|
-| Claude Code | `.claude/mcp.json` or `~/.claude.json` | `"mcpServers": { "cairn": { "command": "cairn-mcp-server" } }` |
-| Codex | `~/.codex/config.toml` | `[mcp_servers.cairn]`<br>`command = "cairn-mcp-server"` |
+```toml
+[mcp_servers.cairn]
+command = "cairn-mcp-server"
+```
 
-Restart your AI tool after editing.
+Restart Codex, then say: `Initialize Cairn for this project`
 
-**Step 3 — Install the protocol**
+</details>
 
-The protocol tells the AI *when* to call each tool — the full session contract.
-
-| Host | Command |
-|------|---------|
-| Claude Code | `npx skills add zzf2333/Cairn` |
-| Codex | `cairn skill show codex >> AGENTS.md` |
-
-Without the protocol, the AI only has a compressed version in MCP tool descriptions — enough for initialization, not for full lifecycle enforcement. Full walkthrough in [`docs/v-intervene/enter.md`](./docs/v-intervene/enter.md).
-
-**Step 4 — Initialize** (one sentence in your AI tool)
-
-No `cairn init` needed — just tell your AI:
-
-> **Claude Code**: `Initialize Cairn for this project`
->
-> **Codex**: `Initialize Cairn for this project`
-
-The AI will analyze your project, propose initial cognition (skeleton + decisions + stage) for your review, and write it after you confirm. The whole process takes about 2 minutes.
-
-### Supported hosts
-
-| Host | Install | Status |
-|------|---------|--------|
-| **Claude Code** | `npx skills add zzf2333/Cairn` | first-class |
-| **Codex** | `cairn skill show codex >> AGENTS.md` | first-class |
-
-Other MCP-capable hosts (Cline, Windsurf, Cursor, Copilot, Gemini CLI, OpenCode) are on the 1.x roadmap. We removed their adapters in 0.4.1 to focus on getting the two supported platforms right; they return once each can pass the same reverse-regression bar.
+Full walkthrough with verification steps: [`docs/v-intervene/enter.md`](./docs/v-intervene/enter.md)
 
 ---
 
