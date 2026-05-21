@@ -130,9 +130,9 @@ When reporting signals via `cairn_signal()`:
 
 ---
 
-## Degraded Mode (No MCP)
+## Degraded Mode
 
-If MCP tools are unavailable, fall back to reading `.cairn/views/` directly:
+If the `cairn` CLI is unavailable, fall back to reading `.cairn/views/` directly:
 
 1. `.cairn/views/output.md` — global constraints (no-go, stack, debt, stage)
 2. `.cairn/views/domains/<name>.md` — per-domain context
@@ -141,11 +141,3 @@ If MCP tools are unavailable, fall back to reading `.cairn/views/` directly:
 `views/` is auto-generated and read-only. Do not write to views.
 
 Signal capture is unavailable in degraded mode.
-
-### Diagnosing MCP Transport Issues
-
-When `cairn_*` tools fail or return "unknown tool":
-
-1. Ask the user to run `cairn doctor`. If CLI errors, the install is broken.
-2. If CLI works but MCP tools don't, check MCP config (`mcp.json` has `"cairn": { "command": "cairn-rt" }`).
-3. If MCP server runs but tools return path errors, set `"env": { "CAIRN_ROOT": "/absolute/path" }` in MCP config.

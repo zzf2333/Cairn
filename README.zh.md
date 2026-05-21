@@ -51,23 +51,6 @@ Cairn 通过两层机制驱动 AI 的工程认知：
 
 **每次会话必走**：`cairn context`（开始）+ `cairn session-end`（结束）。`cairn context` 充当 session guard — 追踪活跃 session 状态机并检测中断 session。
 
-<details>
-<summary><strong>进阶：MCP 模式</strong></summary>
-
-MCP 工具（`cairn_context`、`cairn_plan` 等）与 CLI 命令一一对应。添加到 `.claude/mcp.json`：
-
-```json
-{
-  "mcpServers": {
-    "cairn": { "command": "cairn-rt" }
-  }
-}
-```
-
-MCP 模式为支持 Model Context Protocol 的 AI 运行时提供工具级集成。协议和行为与 Skill + CLI 模式完全一致。
-
-</details>
-
 ---
 
 ## 工作原理(一张图)
@@ -99,35 +82,11 @@ npx skills add zzf2333/Cairn
 AI 会分析你的项目，提出初始认知供你审核，确认后写入。全程约 2 分钟。
 
 <details>
-<summary><strong>可选：MCP 模式（支持 MCP 的运行时）</strong></summary>
-
-如果你的 AI 运行时原生支持 MCP，可以额外添加到 `.claude/mcp.json`：
-
-```json
-{
-  "mcpServers": {
-    "cairn": { "command": "cairn-rt" }
-  }
-}
-```
-
-MCP 工具与 CLI 命令一一对应。上面的 Skill + CLI 方式是推荐默认路径。
-
-</details>
-
-<details>
 <summary><strong>Codex</strong></summary>
 
 ```bash
 npm install -g cairn-rt
 cairn skill show codex >> AGENTS.md
-```
-
-编辑 `~/.codex/config.toml`：
-
-```toml
-[mcp_servers.cairn]
-command = "cairn-rt"
 ```
 
 重启 Codex，然后说：`Initialize Cairn for this project`

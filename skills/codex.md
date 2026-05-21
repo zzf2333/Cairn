@@ -4,7 +4,7 @@
 
 ## Setup
 
-**1. Install the MCP server**
+**1. Install the CLI**
 
 ```bash
 npm install -g cairn-rt
@@ -12,36 +12,23 @@ npm install -g cairn-rt
 
 Requires Node.js 18+.
 
-**2. Register the server with Codex**
+**2. Install the protocol**
 
-Add to `~/.codex/config.toml` (global) or `.codex/config.toml` (project):
-
-```toml
-[mcp_servers.cairn]
-command = "cairn-rt"
-```
-
-For multi-project setups, pin the project root:
-
-```toml
-[mcp_servers.cairn]
-command = "cairn-rt"
-env = { CAIRN_ROOT = "/absolute/path/to/your/project" }
+```bash
+cairn skill show codex >> AGENTS.md
 ```
 
 **3. Verify the install**
 
 ```bash
-cairn status            # CLI works → server binary OK
-cairn doctor            # CLI consistency check → engines OK
+cairn status
+cairn doctor
 ```
-
-Then in a Codex session ask: *"Call `cairn_init_status` and show the raw response."* If Codex returns a JSON object with `status` and `has_cairn_dir` fields, MCP wiring is live. If the call fails or Codex says the tool is unknown, recheck `config.toml` and restart the Codex CLI.
 
 <!-- cairn:start -->
 ## Cairn (AI-maintained project memory)
 
-If this project has `.cairn/` and the `cairn` MCP server is available, follow this protocol.
+If this project has `.cairn/` and the `cairn` CLI is available, follow this protocol.
 
 ### 0. Initialization (first encounter)
 
@@ -173,15 +160,12 @@ After calling, **proactively report to user** if any of these are true in the ou
 - `cairn_status()` — system snapshot (counts, DNA mode, stage, drift warnings)
 - `cairn_doctor()` — consistency check. **Side effect**: auto-resurrects archived G0/G1 events with ≥5 hits/30d. G2+ surface as candidates needing human ratification.
 
-### Degraded mode (no MCP)
+### Degraded mode
 
-If the `cairn` MCP server is unreachable from Codex, fall back in this order:
+If the `cairn` CLI is unavailable, fall back in this order:
 
 1. **Read-only views** — `.cairn/views/output.md` (global constraints), `.cairn/views/domains/<name>.md` (per-domain), `.cairn/views/stage.md` (stage advisory). These are auto-generated from blood events and reflect the last known state.
-2. **CLI for state inspection** — `cairn status`, `cairn doctor`, `cairn review`, `cairn dna list`, `cairn stage list`.
-3. **CLI for review queues** — `cairn dna accept/reject <id>`, `cairn stage accept/reject <id>`, `cairn blood archive/resurrect <id>`.
-
-Signal capture (`cairn_signal`) and session pipelines (`cairn_session_end`) are **unavailable** in degraded mode — restore MCP before relying on automatic memory updates.
+2. Signal capture and session pipelines are unavailable in degraded mode.
 
 ### Reference protocol
 

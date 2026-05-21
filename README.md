@@ -46,23 +46,6 @@ Cairn works through two layers:
 
 **Mandatory every session**: `cairn context` (start) + `cairn session-end` (close). `cairn context` acts as the session guard — it tracks an active session state machine and detects interrupted sessions.
 
-<details>
-<summary><strong>Advanced: MCP mode</strong></summary>
-
-MCP tools (`cairn_context`, `cairn_plan`, etc.) map 1:1 to CLI commands. Add to `.claude/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "cairn": { "command": "cairn-rt" }
-  }
-}
-```
-
-MCP mode provides tool-level integration for AI runtimes that support the Model Context Protocol. The protocol and behavior are identical to skill + CLI mode.
-
-</details>
-
 ---
 
 ## How it works (one image)
@@ -94,23 +77,6 @@ Then tell Claude Code:
 The AI analyzes your project, proposes initial cognition for your review, and writes it after you confirm. Takes about 2 minutes.
 
 <details>
-<summary><strong>Optional: MCP mode (for runtimes that support MCP)</strong></summary>
-
-If your AI runtime supports MCP natively, you can also add Cairn to `.claude/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "cairn": { "command": "cairn-rt" }
-  }
-}
-```
-
-MCP tools map 1:1 to CLI commands. The skill + CLI path above is the recommended default.
-
-</details>
-
-<details>
 <summary><strong>Codex</strong></summary>
 
 ```bash
@@ -118,14 +84,7 @@ npm install -g cairn-rt
 cairn skill show codex >> AGENTS.md
 ```
 
-Edit `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.cairn]
-command = "cairn-rt"
-```
-
-Restart Codex, then say: `Initialize Cairn for this project`
+Then say: `Initialize Cairn for this project`
 
 </details>
 

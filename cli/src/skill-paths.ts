@@ -52,25 +52,7 @@ export async function loadMode(mode: string): Promise<string | null> {
     return content.trim();
 }
 
-export async function loadMcpInstructions(): Promise<string> {
-    const path = join(getSkillsDir(), "protocol", "mcp-instructions.md");
-    try {
-        return (await readFile(path, "utf8")).trim();
-    } catch {
-        return FALLBACK_INSTRUCTIONS;
-    }
-}
-
 export async function listPlatforms(): Promise<string[]> {
     const order = await loadAssemblyOrder();
     return Object.keys(order.platforms);
 }
-
-const FALLBACK_INSTRUCTIONS = [
-    "Cairn is a project memory engine.",
-    "You MUST call cairn_context() BEFORE any technical response.",
-    "You MUST call cairn_session_end() when the task completes.",
-    "You MUST call cairn_signal() when the user rejects, constrains, or decides.",
-    "You MUST call cairn_observe() before every git commit.",
-    "You MUST call cairn_plan() before architecture changes.",
-].join("\n");

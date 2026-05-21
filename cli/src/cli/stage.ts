@@ -1,13 +1,15 @@
 import { createContext } from "../context.js";
-import { handleStageAccept } from "../tools/cairn-stage-accept.js";
-import { handleStageReject } from "../tools/cairn-stage-reject.js";
+import { PROJECT_PHASES } from "../schemas/state.js";
 
-function parseToolResult(result: { content: Array<{ type: string; text: string }>; isError?: boolean }): unknown {
-    if (result.isError) {
-        console.error(result.content[0].text);
-        process.exit(1);
+type ProjectPhase = typeof PROJECT_PHASES[number];
+
+function parsePhaseSubject(name: string): ProjectPhase | null {
+    if (!name.startsWith("phase:")) return null;
+    const phase = name.slice("phase:".length);
+    if ((PROJECT_PHASES as readonly string[]).includes(phase)) {
+        return phase as ProjectPhase;
     }
-    return JSON.parse(result.content[0].text);
+    return null;
 }
 
 export async function runStage(args: string[]): Promise<void> {
@@ -53,13 +55,36 @@ export async function runStage(args: string[]): Promise<void> {
             console.error("Usage: cairn stage accept <id>");
             process.exit(1);
         }
-        const data = parseToolResult(await handleStageAccept(ctx, { id })) as {
-            success: boolean;
-            moved_to: string;
-            stage_applied?: boolean;
-        };
-        console.log(`Accepted: moved to ${data.moved_to}`);
-        if (data.stage_applied) {
+        const entry = await ctx.stagedStore.load(id);
+        if (!entry) throw new Error(`Staged entry "${id}" not found`);
+
+        const now = new Date().toISOString();
+        entry.draft_event.governance_status = "ratified";
+        await ctx.bloodEngine.commit(entry.draft_event);
+
+        let stageApplied = false;
+        if (entry.draft_event.type === "stage_transition") {
+            const newPhase = parsePhaseSubject(entry.draft_event.subject.name);
+            if (newPhase) {
+                const state = await ctx.stateStore.load();
+                state.stage.phase = newPhase;
+                state.stage.status = "confirmed";
+                state.stage.last_updated = now;
+                state.stage.guidance = entry.draft_event.behavior_effect.instruction
+                    .split(";")
+                    .map(s => s.trim())
+                    .filter(Boolean);
+                await ctx.stateStore.save(state);
+                stageApplied = true;
+            }
+        }
+
+        await ctx.stagedStore.remove(entry.id);
+        await ctx.governanceEngine.logAudit({ time: now, action: "ratified", target: entry.draft_event.id, actor: "human" });
+        await ctx.viewsEngine.regenerate();
+
+        console.log(`Accepted: moved to blood`);
+        if (stageApplied) {
             const state = await ctx.stateStore.load();
             console.log(`Stage updated → phase=${state.stage.phase}`);
         }
@@ -73,10 +98,13 @@ export async function runStage(args: string[]): Promise<void> {
             console.error("Usage: cairn stage reject <id> <reason>");
             process.exit(1);
         }
-        const data = parseToolResult(await handleStageReject(ctx, { id, reason })) as {
-            success: boolean;
-        };
-        if (data.success) console.log(`Rejected stage transition: ${id}`);
+        const entry = await ctx.stagedStore.load(id);
+        if (!entry) throw new Error(`Staged entry "${id}" not found`);
+
+        await ctx.stagedStore.remove(entry.id);
+        await ctx.governanceEngine.logAudit({ time: new Date().toISOString(), action: "rejected", target: entry.draft_event.id, actor: "human", reason });
+
+        console.log(`Rejected stage transition: ${id}`);
         return;
     }
 

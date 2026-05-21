@@ -16,7 +16,7 @@ context -> plan -> signal -> observe -> session_end
 
 ## Setup
 
-**1. Install the MCP server**
+**1. Install the CLI**
 
 ```bash
 npm install -g cairn-rt
@@ -24,21 +24,10 @@ npm install -g cairn-rt
 
 Requires Node.js 18+.
 
-**2. Register the server with Codex**
+**2. Install the protocol**
 
-Add to `~/.codex/config.toml` (global) or `.codex/config.toml` (project):
-
-```toml
-[mcp_servers.cairn]
-command = "cairn-rt"
-```
-
-For multi-project setups, pin the project root:
-
-```toml
-[mcp_servers.cairn]
-command = "cairn-rt"
-env = { CAIRN_ROOT = "/absolute/path/to/your/project" }
+```bash
+cairn skill show codex >> AGENTS.md
 ```
 
 **3. Verify the install**
@@ -48,16 +37,12 @@ cairn status
 cairn doctor
 ```
 
-Then in a Codex session ask: "Call `cairn_init_status` and show the raw response." If it returns JSON with `status` and `has_cairn_dir` fields, MCP wiring is live.
-
 ---
 
 ## Degraded Mode
 
-If MCP tools are unavailable from Codex, fall back in this order:
+If the `cairn` CLI is unavailable, fall back in this order:
 
 1. Read-only views: `.cairn/views/output.md`, `.cairn/views/domains/<name>.md`, `.cairn/views/stage.md`
 2. CLI for state inspection: `cairn status`, `cairn doctor`, `cairn review`, `cairn dna list`, `cairn stage list`
 3. CLI for review queues: `cairn dna accept/reject <id>`, `cairn stage accept/reject <id>`
-
-Signal capture and session pipelines are unavailable in degraded mode.

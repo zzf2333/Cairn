@@ -6,9 +6,9 @@
 
 ## Stable (SemVer-protected after 1.0)
 
-### MCP tool signatures
+### CLI command signatures
 
-Tool names + parameter shape + return structure are the public contract. Tool consumers (Claude Code, Codex, future MCP hosts) depend on them.
+CLI command names + parameter shape + return structure are the public contract. Tool consumers (Claude Code, Codex, future AI tool integrations) depend on them.
 
 | Tool | Status |
 |------|--------|

@@ -126,7 +126,7 @@ DNA inheritance from a forked parent project (`.cairn/dna/imprint.yaml`). Carrie
 ## Acronyms
 
 - **ADR** — Architecture Decision Record
-- **MCP** — Model Context Protocol
+- **MCP** — Model Context Protocol (historical; Cairn no longer uses MCP as a transport layer)
 - **G0–G3** — Gravity levels
 - **SLO** — Service-level objective
 

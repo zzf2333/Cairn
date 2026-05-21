@@ -41,7 +41,7 @@ git add .cairn/
 git commit -m "chore: enable dogfood"
 ```
 
-然后在每个 Claude Code / Codex 会话开始时,确保 cairn MCP server 已挂在本仓库根。
+然后在每个 Claude Code / Codex 会话开始时,确保 cairn CLI 已安装并可用。
 
 ### 30 天检视清单
 

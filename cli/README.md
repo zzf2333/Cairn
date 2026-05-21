@@ -37,66 +37,6 @@ Cairn works through two layers:
 
 **Mandatory every session**: `cairn context` (start) + `cairn session-end` (close).
 
-## MCP Mode (optional)
-
-For AI runtimes that support the Model Context Protocol, Cairn also exposes 16 MCP tools that map 1:1 to CLI commands.
-
-Add to your MCP config (e.g. `.claude/mcp.json`):
-
-```json
-{
-    "mcpServers": {
-        "cairn": { "command": "cairn-rt" }
-    }
-}
-```
-
-<details>
-<summary><strong>MCP Tools Reference</strong></summary>
-
-### Initialization
-
-| Tool | Description |
-|------|-------------|
-| `cairn_init_status` | Check initialization status |
-| `cairn_init_commit` | Write initial cognition after project analysis |
-
-### Core Workflow
-
-| Tool | Description |
-|------|-------------|
-| `cairn_context` | Activate relevant cognition for current task |
-| `cairn_plan` | History-aware planning with constraints and DNA guidance |
-| `cairn_signal` | Report a conversation signal (rejection, decision, constraint) |
-| `cairn_observe` | Batch-capture signals before commit |
-| `cairn_session_end` | End-of-session processing pipeline |
-| `cairn_session_recover` | Recover interrupted session |
-| `cairn_status` | System status overview |
-
-### Staged Review
-
-| Tool | Description |
-|------|-------------|
-| `cairn_stage_list` | List pending staged entries |
-| `cairn_stage_accept` | Accept a staged entry into blood |
-| `cairn_stage_reject` | Reject a staged entry with reason |
-
-### DNA Emergence
-
-| Tool | Description |
-|------|-------------|
-| `cairn_dna_list` | List pending DNA trait candidates |
-| `cairn_dna_accept` | Confirm a DNA trait candidate |
-| `cairn_dna_reject` | Reject a DNA trait candidate |
-
-### Diagnostics
-
-| Tool | Description |
-|------|-------------|
-| `cairn_doctor` | Consistency checks + auto-resurrection |
-
-</details>
-
 ## CLI
 
 **Runtime commands** (called by AI / scripts, all support `--json`):
@@ -140,16 +80,6 @@ npm install -g cairn-rt
 npx skills add zzf2333/Cairn
 ```
 
-Optional MCP — add to `.claude/mcp.json`:
-
-```json
-{
-    "mcpServers": {
-        "cairn": { "command": "cairn-rt" }
-    }
-}
-```
-
 </details>
 
 <details>
@@ -158,13 +88,6 @@ Optional MCP — add to `.claude/mcp.json`:
 ```bash
 npm install -g cairn-rt
 cairn skill show codex >> AGENTS.md
-```
-
-Add to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.cairn]
-command = "cairn-rt"
 ```
 
 </details>
@@ -177,16 +100,6 @@ npm install -g cairn-rt
 cairn skill show cursor >> .cursorrules
 ```
 
-Add to `.cursor/mcp.json`:
-
-```json
-{
-    "mcpServers": {
-        "cairn": { "command": "cairn-rt" }
-    }
-}
-```
-
 </details>
 
 ### Project root detection
@@ -196,7 +109,7 @@ The runtime resolves `.cairn/` in this order:
 1. `CAIRN_ROOT` environment variable
 2. Walk up from `process.cwd()` until `.cairn/` is found
 
-To pin to a specific project, set `CAIRN_ROOT` in your MCP config or shell environment.
+To pin to a specific project, set `CAIRN_ROOT` in your shell environment.
 
 ## Development
 
@@ -225,16 +138,13 @@ See `tests/scenarios/README.md` for the full coverage matrix.
 
 ```
 cli/src/
-├── index.ts                 # MCP stdio entry point
-├── server.ts                # McpServer factory
-├── actions/                 # Shared business logic (MCP + CLI)
+├── actions/                 # Shared business logic
 │   ├── context-action.ts
 │   ├── plan-action.ts
 │   ├── signal-action.ts
 │   ├── observe-action.ts
 │   ├── session-end-action.ts
 │   └── session-recover-action.ts
-├── tools/                   # MCP tool wrappers (thin, delegate to actions/)
 ├── cli/                     # CLI subcommands + runtime commands
 │   ├── index.ts             # CLI router
 │   ├── runtime-*.ts         # Runtime commands (delegate to actions/)

@@ -4,7 +4,6 @@ import { createTmpDir, cleanTmpDir, initTestRepo } from "../test-helpers.js";
 import { buildPaths, ALL_DIRS } from "../../src/paths.js";
 import { bootstrapEmpty } from "../../src/bootstrap.js";
 import { createContext, ensureCairnDirs } from "../../src/context.js";
-import { createServer } from "../../src/server.js";
 
 let tmpDir: string;
 
@@ -18,25 +17,6 @@ afterEach(async () => {
 });
 
 describe("E2E smoke", () => {
-    it("createServer returns a valid McpServer", async () => {
-        await bootstrapEmpty(tmpDir);
-        const ctx = await createContext(tmpDir);
-        await ensureCairnDirs(ctx.paths);
-
-        const server = createServer(ctx);
-        expect(server).toBeDefined();
-        expect(typeof server.tool).toBe("function");
-        expect(typeof server.connect).toBe("function");
-    });
-
-    it("createServer registers all 16 tools without throwing", async () => {
-        await bootstrapEmpty(tmpDir);
-        const ctx = await createContext(tmpDir);
-        await ensureCairnDirs(ctx.paths);
-
-        expect(() => createServer(ctx)).not.toThrow();
-    });
-
     it("bootstrap creates correct directory structure", async () => {
         await bootstrapEmpty(tmpDir);
         const paths = buildPaths(tmpDir);

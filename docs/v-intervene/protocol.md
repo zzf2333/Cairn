@@ -177,23 +177,11 @@ cairn_dna_list()
 
 ---
 
-## Degraded mode (no MCP)
-
-If the Cairn MCP server is unreachable, the AI falls back in this order:
-
-1. **Read-only views** — `.cairn/views/output.md` (global constraints), `.cairn/views/domains/<name>.md` (per-domain), `.cairn/views/stage.md` (stage advisory). These are auto-generated from Blood events and reflect the last known state.
-2. **CLI for inspection** — `cairn status`, `cairn doctor`, `cairn review`, `cairn dna list`, `cairn stage list`.
-3. **CLI for review** — `cairn dna accept/reject <id>`, `cairn stage accept/reject <id>`, `cairn blood archive/resurrect <id>`.
-
-Signal capture (`cairn_signal`) and session pipelines (`cairn_session_end`) are **unavailable** in degraded mode. Restore MCP before relying on automatic memory updates.
-
----
-
 ## What "the AI follows the protocol" actually means
 
 It means the AI internalizes the protocol as part of its session context — installed as a native skill (`npx skills add zzf2333/Cairn` for Claude Code) or manually appended (`cairn skill show codex >> AGENTS.md` for Codex).
 
-The skill file is the contract. The MCP tools are the surface. Together they make Cairn behave like a colleague who's been on this project for two years instead of like a model that read the codebase three minutes ago.
+The skill file is the contract. The CLI runtime is the delivery mechanism. Together they make Cairn behave like a colleague who's been on this project for two years instead of like a model that read the codebase three minutes ago.
 
 ---
 

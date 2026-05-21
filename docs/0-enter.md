@@ -41,7 +41,7 @@ If any of those three are uncomfortable, you are in the right place — they are
 
 ## Two supported hosts, deliberately
 
-Today Cairn is first-class on **Claude Code** and **Codex**. Other MCP hosts will return in the 1.x line, after each can pass the same reverse-regression bar.
+Today Cairn is first-class on **Claude Code** and **Codex**. Other AI tool integrations will return in the 1.x line, after each can pass the same reverse-regression bar.
 
 This is not a limitation. It is a refusal to grow the supported surface faster than the supported quality.
 

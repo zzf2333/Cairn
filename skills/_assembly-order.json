@@ -3,7 +3,6 @@
         "protocol/core.md",
         "protocol/minimal-intervention.md",
         "protocol/lifecycle.md",
-        "protocol/tool-contracts.md",
         "protocol/escalation-model.md",
         "protocol/runtime-rules.md",
         "protocol/reasoning-examples.md"

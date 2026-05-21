@@ -1,15 +1,4 @@
 import { createContext } from "../context.js";
-import { handleDnaList } from "../tools/cairn-dna-list.js";
-import { handleDnaAccept } from "../tools/cairn-dna-accept.js";
-import { handleDnaReject } from "../tools/cairn-dna-reject.js";
-
-function parseToolResult(result: { content: Array<{ type: string; text: string }>; isError?: boolean }): unknown {
-    if (result.isError) {
-        console.error(result.content[0].text);
-        process.exit(1);
-    }
-    return JSON.parse(result.content[0].text);
-}
 
 export async function runDna(args: string[]): Promise<void> {
     const sub = args[0];
@@ -42,24 +31,13 @@ export async function runDna(args: string[]): Promise<void> {
     }
 
     if (sub === "list") {
-        const data = parseToolResult(await handleDnaList(ctx)) as {
-            count: number;
-            candidates: Array<{
-                id: string;
-                trait_name: string;
-                level: string;
-                confidence: number;
-                evidence_events: string[];
-                reasoning: string;
-                proposed_at: string;
-            }>;
-        };
-        if (data.count === 0) {
+        const pending = await ctx.dnaStagedStore.findPending();
+        if (pending.length === 0) {
             console.log("No pending DNA candidates");
             return;
         }
-        console.log(`${data.count} pending DNA candidate(s):\n`);
-        for (const c of data.candidates) {
+        console.log(`${pending.length} pending DNA candidate(s):\n`);
+        for (const c of pending) {
             console.log(`  ${c.id}`);
             console.log(`    trait: ${c.trait_name} (level=${c.level}, confidence=${c.confidence.toFixed(2)})`);
             console.log(`    evidence: ${c.evidence_events.length} events`);
@@ -75,15 +53,34 @@ export async function runDna(args: string[]): Promise<void> {
             console.error("Usage: cairn dna accept <id>");
             process.exit(1);
         }
-        const data = parseToolResult(await handleDnaAccept(ctx, { id })) as {
-            success: boolean;
-            trait_name: string;
-            level: string;
-            confidence: number;
-            dna_status: string;
+        const entry = await ctx.dnaStagedStore.load(id);
+        if (!entry) throw new Error(`DNA staged entry "${id}" not found`);
+        if (entry.review_status !== "pending") throw new Error(`DNA staged entry "${id}" already ${entry.review_status}`);
+
+        const now = new Date().toISOString();
+        const identity = await ctx.dnaStore.loadIdentity();
+        const existing = identity.traits[entry.trait_name];
+
+        identity.traits[entry.trait_name] = {
+            level: entry.level,
+            confidence: entry.confidence,
+            evidence_count: (existing?.evidence_count ?? 0) + Math.max(1, entry.evidence_events.length),
+            last_updated: now,
+            reasoning: entry.reasoning,
+            drift_warning_count: existing?.drift_warning_count ?? 0,
+            last_safety_valve_at: existing?.last_safety_valve_at ?? null,
         };
-        console.log(`Accepted: ${data.trait_name} (level=${data.level}, confidence=${data.confidence.toFixed(2)})`);
-        console.log(`DNA status: ${data.dna_status}`);
+        if (identity.status === "not_yet_emerged") identity.status = "emerging";
+        if (Object.values(identity.traits).some(t => t.level === "high")) identity.status = "emerged";
+
+        await ctx.dnaStore.saveIdentity(identity);
+        entry.review_status = "accepted";
+        await ctx.dnaStagedStore.save(entry);
+        await ctx.governanceEngine.logAudit({ time: now, action: "ratified", target: entry.id, actor: "human" });
+        await ctx.viewsEngine.regenerate();
+
+        console.log(`Accepted: ${entry.trait_name} (level=${entry.level}, confidence=${entry.confidence.toFixed(2)})`);
+        console.log(`DNA status: ${identity.status}`);
         return;
     }
 
@@ -94,11 +91,15 @@ export async function runDna(args: string[]): Promise<void> {
             console.error("Usage: cairn dna reject <id> <reason>");
             process.exit(1);
         }
-        const data = parseToolResult(await handleDnaReject(ctx, { id, reason })) as {
-            success: boolean;
-            trait_name: string;
-        };
-        console.log(`Rejected DNA candidate for trait: ${data.trait_name}`);
+        const entry = await ctx.dnaStagedStore.load(id);
+        if (!entry) throw new Error(`DNA staged entry "${id}" not found`);
+        if (entry.review_status !== "pending") throw new Error(`DNA staged entry "${id}" already ${entry.review_status}`);
+
+        entry.review_status = "rejected";
+        await ctx.dnaStagedStore.save(entry);
+        await ctx.governanceEngine.logAudit({ time: new Date().toISOString(), action: "rejected", target: entry.id, actor: "human", reason });
+
+        console.log(`Rejected DNA candidate for trait: ${entry.trait_name}`);
         return;
     }
 

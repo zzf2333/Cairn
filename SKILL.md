@@ -65,7 +65,6 @@ Cairn stores project decisions, rejections, and constraints in `.cairn/`. Intera
 Load these files when you need detailed guidance on a specific topic:
 
 - `skills/protocol/lifecycle.md` — detailed semantics for each lifecycle step, recovery procedures
-- `skills/protocol/tool-contracts.md` — parameter schemas and return values for all tools
 - `skills/protocol/escalation-model.md` — challenge levels, response templates, archived downgrade rules
 - `skills/protocol/runtime-rules.md` — constraint processing, DNA, trauma, debt, stage, reevaluation, degraded mode
 - `skills/protocol/minimal-intervention.md` — when to skip lifecycle steps
@@ -104,20 +103,3 @@ If `cairn` CLI is unavailable:
 2. These are auto-generated, read-only. Do not write to views.
 3. Signal capture unavailable.
 
----
-
-## Alternative: MCP Mode
-
-If you prefer MCP tool integration instead of CLI:
-
-Add to `.claude/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "cairn": { "command": "cairn-rt" }
-  }
-}
-```
-
-MCP tools (`cairn_context`, `cairn_plan`, `cairn_signal`, `cairn_observe`, `cairn_session_end`, `cairn_session_recover`) map 1:1 to CLI commands. The protocol and constraints are identical.

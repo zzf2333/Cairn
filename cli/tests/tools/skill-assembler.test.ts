@@ -13,11 +13,9 @@ describe("skill-assembler", () => {
         it("includes protocol content in correct order", async () => {
             const result = await assembleProtocol({ platform: "claude-code", mode: "balanced" });
             const lifecycleIdx = result.indexOf("Lifecycle Protocol");
-            const contractsIdx = result.indexOf("Tool Contracts");
             const escalationIdx = result.indexOf("Escalation Model");
             const runtimeIdx = result.indexOf("Runtime Behavior");
-            expect(lifecycleIdx).toBeLessThan(contractsIdx);
-            expect(contractsIdx).toBeLessThan(escalationIdx);
+            expect(lifecycleIdx).toBeLessThan(escalationIdx);
             expect(escalationIdx).toBeLessThan(runtimeIdx);
         });
 

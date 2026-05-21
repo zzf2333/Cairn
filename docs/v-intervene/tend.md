@@ -48,9 +48,9 @@ Most common newcomer problem. Symptom: AI gives answers without referencing cons
 
 Check:
 
-1. The protocol skill is installed. For Claude Code: `npx skills add zzf2333/Cairn` (check `.claude/skills/cairn/SKILL.md` exists). For Codex: verify `AGENTS.md` contains the protocol. Without it, MCP tools are visible to the AI but the protocol isn't loaded.
+1. The protocol skill is installed. For Claude Code: `npx skills add zzf2333/Cairn` (check `.claude/skills/cairn/SKILL.md` exists). For Codex: verify `AGENTS.md` contains the protocol. Without it, the tools are visible to the AI but the protocol isn't loaded.
 2. Restart the host (Claude Code, Codex). The skill file is read at session start.
-3. Test: ask the AI "Call `cairn_context` and show me the raw response." If it can't, the MCP wiring is broken; if it can but doesn't on its own, the skill isn't being loaded.
+3. Test: ask the AI "Call `cairn_context` and show me the raw response." If it can't, the installation is broken; if it can but doesn't on its own, the skill isn't being loaded.
 
 ### "Staged backlog keeps climbing"
 
@@ -81,7 +81,7 @@ This is normal life for a healthy project — drift catches happen, the team adj
 
 ### "A yaml file got corrupted"
 
-Symptom: `cairn status` errors with `YAMLParseError`, or the MCP server fails to start.
+Symptom: `cairn status` errors with `YAMLParseError`, or the runtime fails to start.
 
 ```bash
 cairn doctor --fix
@@ -110,7 +110,7 @@ Symptom: `cairn_context` takes seconds instead of milliseconds.
 Check:
 
 1. Run `npm run bench` (in the `cli/` directory) on a clean tmpdir at your blood-event scale. Compare to `docs/vi-coordinates/performance.md` numbers.
-2. Confirm the BloodStore cache is alive — restart the MCP server (the cache is in-process; multiple host restarts each spawn a fresh process).
+2. Confirm the BloodStore cache is alive — restart the runtime (the cache is in-process; multiple host restarts each spawn a fresh process).
 3. Check `.cairn/blood/` file count. If it's grown into the tens of thousands, decay isn't running enough — either `cairn_session_end` is being skipped, or the cognitive mode is too institutional for the activity rate.
 
 ### "An old constraint suddenly came back"
@@ -151,7 +151,7 @@ Cairn is meant to be **mostly silent**. If `cairn doctor` outputs no warnings, n
 
 ## The dogfood handle
 
-The Cairn repository itself runs Cairn on Cairn (see `.cairn/` in the repo root). Findings — surprises, friction, false-positives, false-negatives — accumulate in `mcp/tests/scenarios/_findings.md`. That file is the slow institutional memory of how Cairn behaves in real use. When something feels off, check there first; it may already be a known pattern with a known workaround.
+The Cairn repository itself runs Cairn on Cairn (see `.cairn/` in the repo root). Findings — surprises, friction, false-positives, false-negatives — accumulate in `cli/tests/scenarios/_findings.md`. That file is the slow institutional memory of how Cairn behaves in real use. When something feels off, check there first; it may already be a known pattern with a known workaround.
 
 ---
 

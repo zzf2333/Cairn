@@ -36,7 +36,9 @@ Method: Real dogfood session on Cairn itself + code analysis of all 6 lifecycle 
 
 ---
 
-### F4: mcp-instructions.md and SKILL.md duplication risk
+### F4: [Archived] mcp-instructions.md duplication risk
+
+Obsolete after MCP removal in v0.5.0.
 
 **Problem**: Both define the lifecycle. MCP instructions load via server.ts into the MCP protocol description. SKILL.md loads via the platform adapter (Claude Code). If they drift, conflicting signals.
 
@@ -88,7 +90,7 @@ Method: Real dogfood session on Cairn itself + code analysis of all 6 lifecycle 
 | F1 | session_end lacks highlights | High | **Fixed** |
 | F2 | observe candidates verbose | Low | No change (already lean) |
 | F3 | Recovery 3 round-trips | Medium | Accepted trade-off |
-| F4 | mcp-instructions / SKILL.md drift risk | Medium | Future: CI check |
+| F4 | [Archived] mcp-instructions duplication risk | — | Obsolete (MCP removed in v0.5.0) |
 | F5 | No mid-session compliance check | Low | No change (by design) |
 | F6 | Static observe_reminder | Low | No change |
 | F7 | Domain inference skipped | Low | Acceptable |
@@ -97,4 +99,4 @@ Method: Real dogfood session on Cairn itself + code analysis of all 6 lifecycle 
 
 The protocol is structurally sound. The main friction is output readability (F1, now fixed), not tool design. The minimal-intervention rules correctly scope when to skip lifecycle steps. The anti-patterns doc covers real failure modes.
 
-The biggest risk going forward is F4 (duplication drift between mcp-instructions.md and SKILL.md/core.md). Consider automation.
+F4 (duplication drift) is obsolete after MCP removal in v0.5.0. No major open risks remain.

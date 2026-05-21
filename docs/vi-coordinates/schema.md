@@ -347,7 +347,7 @@ Auto-generated markdown. Read-only artifact for degraded mode. Regenerated on ev
 
 ## `logs/tools-YYYY-MM-DD.jsonl`
 
-One JSON per line, one row per MCP tool call:
+One JSON per line, one row per CLI command invocation:
 
 ```json
 {"ts":"2026-05-17T10:00:01Z","tool":"cairn_context","duration_ms":12.4,"ok":true,"args_summary":"{\"task\":\"add caching\"}"}

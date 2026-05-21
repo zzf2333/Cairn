@@ -7,14 +7,14 @@
 ## What you need
 
 - Node.js **18+**
-- An AI tool that speaks MCP — today: **Claude Code** or **Codex**
+- An AI tool that supports Cairn — today: **Claude Code** or **Codex**
 - A git repository (non-git also works, with reduced calibration features)
 
 ---
 
 ## Claude Code (recommended)
 
-### 1. Install the MCP server
+### 1. Install the runtime
 
 ```bash
 npm install -g cairn-rt
@@ -35,34 +35,7 @@ npx skills add zzf2333/Cairn
 
 This clones the Cairn protocol to `.claude/skills/cairn/`. Claude Code auto-loads it at session start.
 
-### 3. Add MCP config
-
-Create or edit `.claude/mcp.json` at your project root and paste:
-
-```json
-{
-  "mcpServers": {
-    "cairn": { "command": "cairn-rt" }
-  }
-}
-```
-
-Multi-project? Pin the project root explicitly:
-
-```json
-{
-  "mcpServers": {
-    "cairn": {
-      "command": "cairn-rt",
-      "env": { "CAIRN_ROOT": "/absolute/path/to/your/project" }
-    }
-  }
-}
-```
-
-Restart Claude Code. The `cairn_*` tool family should now appear in the tool palette.
-
-### 4. Initialize
+### 3. Initialize
 
 Tell Claude Code:
 
@@ -86,7 +59,7 @@ That's it. The AI takes it from here — the whole process takes about 2 minutes
 5. You review staged events — high-gravity decisions (G2+) need your explicit accept/reject
 6. Done — `cairn_context()` now returns real constraints
 
-### 5. Verify
+### 4. Verify
 
 ```bash
 cairn doctor --metrics
@@ -131,32 +104,13 @@ cairn skill show codex >> AGENTS.md
 
 This appends the full Cairn protocol to your project's `AGENTS.md`.
 
-### 3. Add MCP config
-
-Edit `~/.codex/config.toml` (global) or `.codex/config.toml` (project):
-
-```toml
-[mcp_servers.cairn]
-command = "cairn-rt"
-```
-
-With per-project pin:
-
-```toml
-[mcp_servers.cairn]
-command = "cairn-rt"
-env = { CAIRN_ROOT = "/absolute/path/to/your/project" }
-```
-
-Restart the `codex` CLI.
-
-### 4. Initialize
+### 3. Initialize
 
 Tell Codex:
 
 > Initialize Cairn for this project
 
-### 5. Verify
+### 4. Verify
 
 ```bash
 cairn doctor --metrics
@@ -178,7 +132,7 @@ After the first session, your project has a `.cairn/` directory. **Commit it.**
 
 Today: Claude Code, Codex. That's it.
 
-Other MCP-capable hosts (Cline, Windsurf, Cursor, Copilot, Gemini CLI, OpenCode) had adapters in earlier releases. They return in the 1.x line, one at a time, after each one passes the reverse-regression bar.
+Other AI tools (Cline, Windsurf, Cursor, Copilot, Gemini CLI, OpenCode) had adapters in earlier releases. They return in the 1.x line, one at a time, after each one passes the reverse-regression bar.
 
 ---
 

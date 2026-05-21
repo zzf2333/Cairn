@@ -53,7 +53,7 @@ These are the numbers the SLO is tuned against. Your machine will vary; what mat
 | `StateStore.recordActivationBatch` | `cli/src/stores/state-store.ts` + activation engine | Eliminates N writes to `state.yaml` per activation |
 | `atomicWriteFile` (write + rename) | `cli/src/utils/atomic-write.ts` | Concurrent-safe; no measurable perf regression |
 
-Cache lives in process, invalidates on Blood store mutations, shared across all tool calls in one MCP server lifetime. Multiple host restarts each spawn a fresh process, hence a cold cache; this is acceptable since the cache rebuilds in milliseconds.
+Cache lives in process, invalidates on Blood store mutations, shared across all tool calls in one process lifetime. Multiple CLI invocations each spawn a fresh process, hence a cold cache; this is acceptable since the cache rebuilds in milliseconds.
 
 ---
 
@@ -76,7 +76,7 @@ Until then: 10k scale is unconstrained but believed safe based on the BloodStore
 
 - **Memory footprint.** BloodStore cache holds all events; ~5 MB at 1k, ~50 MB at 10k. Acceptable for a single-server long-running process.
 - **Cold start.** `createContext` initializes 11 stores + 14 engines. Sub-second; not on the hot path.
-- **Multi-process concurrency.** Cairn assumes one MCP server process per project. Multi-process coordination via file lock is a 0.5+ topic.
+- **Multi-process concurrency.** Cairn assumes single-process CLI usage per project. Multi-process coordination via file lock is a 0.5+ topic.
 
 ---
 

@@ -13,10 +13,10 @@ Run via `npm test`. Exercises stores, schemas, engines, tools, and integration f
 - `tests/stores/` — atomic writes, store CRUD
 - `tests/schemas/` — Zod schema validation
 - `tests/engines/` — read/write engine logic, git signal mapper
-- `tests/tools/` — MCP tool handler unit tests
+- `tests/tools/` — tool handler unit tests
 - `tests/integration/` — timeline, session-guard, lifecycle, governance, pipeline
 - `tests/acceptance/` — end-to-end flows via direct tool calls
-- `tests/e2e/` — MCP server startup, CLI invocation
+- `tests/e2e/` — CLI invocation
 - `tests/performance/` — response time benchmarks
 - `tests/security/` — path traversal, injection checks
 
@@ -100,7 +100,7 @@ Naming convention: `<category-letter><index>-<kebab-case-title>/`. Category lett
 | C4  | protocol    | challenges three-level intervention respected |
 | C5  | protocol    | doctor side effects (auto-resurrection) reported transparently |
 | D1  | robustness  | duplicate signal de-dup is visible to AI |
-| D2  | robustness  | degraded mode (no MCP) falls back to views/ |
+| D2  | robustness  | degraded mode falls back to views/ |
 | D3  | robustness  | empty project triggers AI-native init flow |
 | D4  | robustness  | scale: 1000 blood events still responsive |
 
@@ -156,7 +156,7 @@ npm run scenarios:codex
 # crash fast on first fail
 npm run scenarios -- --bail
 
-# framework smoke test — NO LLM, just verifies fixtures + MCP wiring
+# framework smoke test — NO LLM, just verifies fixtures + tool wiring
 npm run smoke
 
 # session guard lifecycle — NO LLM, verifies context→signal→session_end→recover state machine

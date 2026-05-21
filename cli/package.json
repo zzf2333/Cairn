@@ -19,8 +19,7 @@
         "ai",
         "cognition",
         "engineering-memory",
-        "mcp",
-        "model-context-protocol"
+        "skill-protocol"
     ],
     "files": [
         "dist/**/*.js",
@@ -34,9 +33,7 @@
         "access": "public"
     },
     "bin": {
-        "cairn": "dist/cli/index.js",
-        "cairn-rt": "dist/index.js",
-        "cairn-mcp-server": "dist/index.js"
+        "cairn": "dist/cli/index.js"
     },
     "scripts": {
         "prebuild": "node scripts/copy-skills.js",
@@ -54,7 +51,6 @@
         "smoke:lifecycle": "npm run build && tsx tests/scenarios/runner/smoke-lifecycle.ts"
     },
     "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.10.0",
         "simple-git": "^3.27.0",
         "yaml": "^2.7.0",
         "zod": "^3.25.0"

@@ -37,66 +37,6 @@ Cairn 通过两层机制工作：
 
 **每次会话必走**：`cairn context`（开始）+ `cairn session-end`（结束）。
 
-## MCP 模式（可选）
-
-对于支持 Model Context Protocol 的 AI 运行时，Cairn 也提供 16 个 MCP 工具，与 CLI 命令一一对应。
-
-添加到 MCP 配置（如 `.claude/mcp.json`）：
-
-```json
-{
-    "mcpServers": {
-        "cairn": { "command": "cairn-rt" }
-    }
-}
-```
-
-<details>
-<summary><strong>MCP 工具参考</strong></summary>
-
-### 初始化
-
-| 工具 | 描述 |
-|------|------|
-| `cairn_init_status` | 检查初始化状态 |
-| `cairn_init_commit` | 分析项目后写入初始认知 |
-
-### 核心流程
-
-| 工具 | 描述 |
-|------|------|
-| `cairn_context` | 激活当前任务的相关认知 |
-| `cairn_plan` | 历史感知规划，含约束和 DNA 指引 |
-| `cairn_signal` | 报告对话信号（拒绝、决策、约束） |
-| `cairn_observe` | commit 前批量捕获信号 |
-| `cairn_session_end` | 会话结束处理管道 |
-| `cairn_session_recover` | 恢复中断的 session |
-| `cairn_status` | 系统状态概览 |
-
-### 事件审核
-
-| 工具 | 描述 |
-|------|------|
-| `cairn_stage_list` | 列出待审 staged 条目 |
-| `cairn_stage_accept` | 接受条目写入 blood |
-| `cairn_stage_reject` | 带理由拒绝条目 |
-
-### DNA 涌现
-
-| 工具 | 描述 |
-|------|------|
-| `cairn_dna_list` | 列出待审 DNA 特质候选 |
-| `cairn_dna_accept` | 确认 DNA 特质候选 |
-| `cairn_dna_reject` | 拒绝 DNA 特质候选 |
-
-### 诊断
-
-| 工具 | 描述 |
-|------|------|
-| `cairn_doctor` | 一致性检查 + 自动复活 |
-
-</details>
-
 ## CLI
 
 **运行时命令**（AI / 脚本调用，均支持 `--json`）：
@@ -140,16 +80,6 @@ npm install -g cairn-rt
 npx skills add zzf2333/Cairn
 ```
 
-可选 MCP — 添加到 `.claude/mcp.json`：
-
-```json
-{
-    "mcpServers": {
-        "cairn": { "command": "cairn-rt" }
-    }
-}
-```
-
 </details>
 
 <details>
@@ -158,13 +88,6 @@ npx skills add zzf2333/Cairn
 ```bash
 npm install -g cairn-rt
 cairn skill show codex >> AGENTS.md
-```
-
-添加到 `~/.codex/config.toml`：
-
-```toml
-[mcp_servers.cairn]
-command = "cairn-rt"
 ```
 
 </details>
@@ -177,16 +100,6 @@ npm install -g cairn-rt
 cairn skill show cursor >> .cursorrules
 ```
 
-添加到 `.cursor/mcp.json`：
-
-```json
-{
-    "mcpServers": {
-        "cairn": { "command": "cairn-rt" }
-    }
-}
-```
-
 </details>
 
 ### 项目根目录检测
@@ -196,7 +109,7 @@ cairn skill show cursor >> .cursorrules
 1. `CAIRN_ROOT` 环境变量
 2. 从 `process.cwd()` 向上遍历直到找到 `.cairn/`
 
-要固定到特定项目，在 MCP 配置或 shell 环境中设置 `CAIRN_ROOT`。
+要固定到特定项目，在 shell 环境中设置 `CAIRN_ROOT`。
 
 ## 开发
 

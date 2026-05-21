@@ -24,40 +24,13 @@ Install as Claude Code skill:
 npx skills add zzf2333/Cairn/skill-dist
 ```
 
-The skill protocol instructs the AI to run lifecycle commands via `cairn` CLI. No MCP config needed.
-
-## Setup (Alternative: MCP)
-
-Add to `.claude/mcp.json` (project) or `~/.claude/mcp.json` (global):
-
-```json
-{
-  "mcpServers": {
-    "cairn": { "command": "cairn-rt" }
-  }
-}
-```
-
-For multi-project setups, pin the project root:
-
-```json
-{
-  "mcpServers": {
-    "cairn": {
-      "command": "cairn-rt",
-      "env": { "CAIRN_ROOT": "/absolute/path/to/your/project" }
-    }
-  }
-}
-```
-
-Restart Claude Code after editing MCP config.
+The skill protocol instructs the AI to run lifecycle commands via `cairn` CLI.
 
 ## Initialization
 
 On first encounter with a project that has no `.cairn/`:
 
-1. Run `cairn init` or `cairn_init_status()` — check state
+1. Run `cairn init` — check state
 2. If `not_initialized` / `empty_scaffold` / `partial`: run step-by-step init
 3. Steps (in order): config → skeleton → blood → dna → stage
 4. For each step: analyze → preview → user confirms → commit → check next
@@ -66,7 +39,7 @@ On first encounter with a project that has no `.cairn/`:
 
 ## Degraded Mode
 
-If both CLI and MCP tools are unavailable:
+If the `cairn` CLI is unavailable:
 
 1. Read `.cairn/views/output.md`, `.cairn/views/domains/<name>.md`, `.cairn/views/stage.md`
 2. These are auto-generated, read-only. Do not write to views.
