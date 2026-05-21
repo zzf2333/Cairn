@@ -8,7 +8,7 @@
 
 <p><strong>A software project is not a pile of code. It is a path-dependent cognitive organism.</strong></p>
 
-<p>Cairn is the MCP layer that keeps that organism's cognition alive across AI sessions.</p>
+<p>Cairn is the cognitive runtime protocol that keeps that organism's memory alive across AI sessions — delivered as an MCP server with 16 tools and a behavioral contract the AI follows.</p>
 
 <p>
   <a href="https://github.com/zzf2333/Cairn/stargazers"><img src="https://img.shields.io/github/stars/zzf2333/Cairn?style=flat-square&color=f59e0b" alt="GitHub Stars"/></a>
@@ -29,7 +29,11 @@ Cairn is the active maintenance layer that prevents that cognitive collapse. It 
 
 ## What Cairn gives the AI
 
-Cairn exposes 16 MCP tools. Two are mandatory in every session flow; the rest are queue management and maintenance.
+Cairn works through two layers:
+
+**The Protocol** — behavioral rules installed into the AI's instruction file (CLAUDE.md / AGENTS.md) via `cairn skill install`. The protocol defines *when* each tool must be called, how to process constraints, and when lifecycle steps can be skipped. Without the protocol, the AI falls back to a compressed version in the MCP tool descriptions — sufficient for initialization but not for full lifecycle enforcement.
+
+**16 MCP tools** — the mechanisms the protocol calls. Two are mandatory in every session flow; the rest are queue management and maintenance.
 
 | Tool | When the AI calls it | What it does |
 |------|----------------------|--------------|
@@ -83,7 +87,20 @@ npm install -g cairn-mcp-server
 
 Restart your AI tool after editing.
 
-**Step 3 — Initialize** (one sentence in your AI tool)
+**Step 3 — Install the protocol**
+
+The protocol tells the AI *when* to call each tool — the full session contract. Install it into your project's instruction file:
+
+| Host | Command |
+|------|---------|
+| Claude Code | `cairn skill install claude-code` (appends to `CLAUDE.md`) |
+| Codex | `cairn skill install codex` (appends to `AGENTS.md`) |
+
+Or manually append `skills/claude-code/SKILL.md` / `skills/codex.md` to your instruction file.
+
+Without the protocol, the AI only has a compressed version in MCP tool descriptions — enough for initialization, not for full lifecycle enforcement. Full walkthrough in [`docs/v-intervene/enter.md`](./docs/v-intervene/enter.md).
+
+**Step 4 — Initialize** (one sentence in your AI tool)
 
 No `cairn init` needed — just tell your AI:
 
@@ -92,17 +109,6 @@ No `cairn init` needed — just tell your AI:
 > **Codex**: `Initialize Cairn for this project`
 
 The AI will analyze your project, propose initial cognition (skeleton + decisions + stage) for your review, and write it after you confirm. The whole process takes about 2 minutes.
-
-**Step 4 (optional) — Add the protocol file**
-
-Append the skill file to your project instructions for stronger ongoing session enforcement:
-
-| Host | File | Append to |
-|------|------|-----------|
-| Claude Code | `skills/claude-code/SKILL.md` | `CLAUDE.md` |
-| Codex | `skills/codex.md` | `AGENTS.md` |
-
-Full walkthrough in [`docs/v-intervene/enter.md`](./docs/v-intervene/enter.md).
 
 ### Supported hosts
 
@@ -164,6 +170,7 @@ Cairn writes plain YAML you can read, diff, and git-track. Nothing leaves your m
 | `cairn skeleton show` | Domain map check | Prints skeleton tree |
 | `cairn blood list \| show \| archive \| resurrect \| trauma` | Event-level surgery | Manage individual evolution events |
 | `cairn stage confirm \| list \| accept \| reject` | Event ratification | Process the staged queue |
+| `cairn skill install\|status\|update\|show` | Protocol management | Install or update the Cognitive Runtime Protocol |
 | `cairn migrate` | After upgrade | Stamps version, applies pending migrations |
 
 Full reference: `cairn --help`.
