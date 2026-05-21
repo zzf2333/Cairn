@@ -12,7 +12,7 @@
 
 <p>
   <a href="https://github.com/zzf2333/Cairn/stargazers"><img src="https://img.shields.io/github/stars/zzf2333/Cairn?style=flat-square&color=f59e0b" alt="GitHub Stars"/></a>
-  <a href="https://www.npmjs.com/package/cairn-mcp-server"><img src="https://img.shields.io/npm/v/cairn-mcp-server?style=flat-square&label=npm&color=2563eb" alt="npm version"/></a>
+  <a href="https://www.npmjs.com/package/cairn-rt"><img src="https://img.shields.io/npm/v/cairn-rt?style=flat-square&label=npm&color=2563eb" alt="npm version"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-16a34a?style=flat-square" alt="License MIT"/></a>
   <img src="https://img.shields.io/badge/node-18%2B-6b7280?style=flat-square" alt="Node 18+"/>
 </p>
@@ -54,7 +54,7 @@ MCP tools (`cairn_context`, `cairn_plan`, etc.) map 1:1 to CLI commands. Add to 
 ```json
 {
   "mcpServers": {
-    "cairn": { "command": "cairn-mcp-server" }
+    "cairn": { "command": "cairn-rt" }
   }
 }
 ```
@@ -81,7 +81,7 @@ More diagrams: [Integration overview](./docs/diagrams/03-integration-overview.pn
 
 ```bash
 # 1. Install the CLI (provides the `cairn` command)
-npm install -g cairn-mcp-server
+npm install -g cairn-rt
 
 # 2. Install the protocol skill
 npx skills add zzf2333/Cairn
@@ -101,7 +101,7 @@ If your AI runtime supports MCP natively, you can also add Cairn to `.claude/mcp
 ```json
 {
   "mcpServers": {
-    "cairn": { "command": "cairn-mcp-server" }
+    "cairn": { "command": "cairn-rt" }
   }
 }
 ```
@@ -114,7 +114,7 @@ MCP tools map 1:1 to CLI commands. The skill + CLI path above is the recommended
 <summary><strong>Codex</strong></summary>
 
 ```bash
-npm install -g cairn-mcp-server
+npm install -g cairn-rt
 cairn skill show codex >> AGENTS.md
 ```
 
@@ -122,7 +122,7 @@ Edit `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.cairn]
-command = "cairn-mcp-server"
+command = "cairn-rt"
 ```
 
 Restart Codex, then say: `Initialize Cairn for this project`

@@ -147,5 +147,5 @@ Signal capture is unavailable in degraded mode.
 When `cairn_*` tools fail or return "unknown tool":
 
 1. Ask the user to run `cairn doctor`. If CLI errors, the install is broken.
-2. If CLI works but MCP tools don't, check MCP config (`mcp.json` has `"cairn": { "command": "cairn-mcp-server" }`).
+2. If CLI works but MCP tools don't, check MCP config (`mcp.json` has `"cairn": { "command": "cairn-rt" }`).
 3. If MCP server runs but tools return path errors, set `"env": { "CAIRN_ROOT": "/absolute/path" }` in MCP config.

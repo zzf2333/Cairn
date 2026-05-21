@@ -1,7 +1,7 @@
 {
-    "name": "cairn-mcp-server",
+    "name": "cairn-rt",
     "version": "0.4.6",
-    "description": "Cairn — AI-native engineering cognition engine via MCP",
+    "description": "Cairn — cognitive runtime for AI-native engineering",
     "type": "module",
     "license": "MIT",
     "author": "Cairn Contributors",
@@ -15,12 +15,12 @@
         "url": "https://github.com/zzf2333/Cairn/issues"
     },
     "keywords": [
-        "mcp",
         "cairn",
         "ai",
         "cognition",
-        "model-context-protocol",
-        "engineering-memory"
+        "engineering-memory",
+        "mcp",
+        "model-context-protocol"
     ],
     "files": [
         "dist/**/*.js",
@@ -35,6 +35,7 @@
     },
     "bin": {
         "cairn": "dist/cli/index.js",
+        "cairn-rt": "dist/index.js",
         "cairn-mcp-server": "dist/index.js"
     },
     "scripts": {

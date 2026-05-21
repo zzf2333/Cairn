@@ -12,7 +12,7 @@
 
 <p>
   <a href="https://github.com/zzf2333/Cairn/stargazers"><img src="https://img.shields.io/github/stars/zzf2333/Cairn?style=flat-square&color=f59e0b" alt="GitHub Stars"/></a>
-  <a href="https://www.npmjs.com/package/cairn-mcp-server"><img src="https://img.shields.io/npm/v/cairn-mcp-server?style=flat-square&label=npm&color=2563eb" alt="npm version"/></a>
+  <a href="https://www.npmjs.com/package/cairn-rt"><img src="https://img.shields.io/npm/v/cairn-rt?style=flat-square&label=npm&color=2563eb" alt="npm version"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-16a34a?style=flat-square" alt="License MIT"/></a>
   <img src="https://img.shields.io/badge/node-18%2B-6b7280?style=flat-square" alt="Node 18+"/>
 </p>
@@ -59,7 +59,7 @@ MCP 工具（`cairn_context`、`cairn_plan` 等）与 CLI 命令一一对应。�
 ```json
 {
   "mcpServers": {
-    "cairn": { "command": "cairn-mcp-server" }
+    "cairn": { "command": "cairn-rt" }
   }
 }
 ```
@@ -86,7 +86,7 @@ MCP 模式为支持 Model Context Protocol 的 AI 运行时提供工具级集成
 
 ```bash
 # 1. 安装 CLI（提供 `cairn` 命令）
-npm install -g cairn-mcp-server
+npm install -g cairn-rt
 
 # 2. 安装协议 skill
 npx skills add zzf2333/Cairn
@@ -106,7 +106,7 @@ AI 会分析你的项目，提出初始认知供你审核，确认后写入。�
 ```json
 {
   "mcpServers": {
-    "cairn": { "command": "cairn-mcp-server" }
+    "cairn": { "command": "cairn-rt" }
   }
 }
 ```
@@ -119,7 +119,7 @@ MCP 工具与 CLI 命令一一对应。上面的 Skill + CLI 方式是推荐默�
 <summary><strong>Codex</strong></summary>
 
 ```bash
-npm install -g cairn-mcp-server
+npm install -g cairn-rt
 cairn skill show codex >> AGENTS.md
 ```
 
@@ -127,7 +127,7 @@ cairn skill show codex >> AGENTS.md
 
 ```toml
 [mcp_servers.cairn]
-command = "cairn-mcp-server"
+command = "cairn-rt"
 ```
 
 重启 Codex，然后说：`Initialize Cairn for this project`

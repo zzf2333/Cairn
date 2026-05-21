@@ -19,7 +19,7 @@ context -> plan -> signal -> observe -> session_end
 **1. Install the MCP server**
 
 ```bash
-npm install -g cairn-mcp-server
+npm install -g cairn-rt
 ```
 
 Requires Node.js 18+.
@@ -30,14 +30,14 @@ Add to `~/.codex/config.toml` (global) or `.codex/config.toml` (project):
 
 ```toml
 [mcp_servers.cairn]
-command = "cairn-mcp-server"
+command = "cairn-rt"
 ```
 
 For multi-project setups, pin the project root:
 
 ```toml
 [mcp_servers.cairn]
-command = "cairn-mcp-server"
+command = "cairn-rt"
 env = { CAIRN_ROOT = "/absolute/path/to/your/project" }
 ```
 

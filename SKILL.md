@@ -115,7 +115,7 @@ Add to `.claude/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "cairn": { "command": "cairn-mcp-server" }
+    "cairn": { "command": "cairn-rt" }
   }
 }
 ```

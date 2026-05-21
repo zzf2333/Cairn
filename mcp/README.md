@@ -240,7 +240,7 @@ Diagnostics (any time):
 ### From npm (recommended)
 
 ```bash
-npm install -g cairn-mcp-server
+npm install -g cairn-rt
 ```
 
 ### From source
@@ -263,7 +263,7 @@ Add to `~/.claude/mcp.json` (global) or `.claude/mcp.json` (project):
 {
     "mcpServers": {
         "cairn": {
-            "command": "cairn-mcp-server"
+            "command": "cairn-rt"
         }
     }
 }
@@ -289,7 +289,7 @@ Add to `.cursor/mcp.json` in your project:
 {
     "mcpServers": {
         "cairn": {
-            "command": "cairn-mcp-server"
+            "command": "cairn-rt"
         }
     }
 }
@@ -303,7 +303,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 {
     "mcpServers": {
         "cairn": {
-            "command": "cairn-mcp-server"
+            "command": "cairn-rt"
         }
     }
 }
@@ -315,7 +315,7 @@ Add to `~/.codex/config.toml` or `.codex/config.toml`:
 
 ```toml
 [mcp_servers.cairn]
-command = "cairn-mcp-server"
+command = "cairn-rt"
 ```
 
 ### Project root detection
@@ -333,7 +333,7 @@ To pin the server to a specific project:
 {
     "mcpServers": {
         "cairn": {
-            "command": "cairn-mcp-server",
+            "command": "cairn-rt",
             "env": {
                 "CAIRN_ROOT": "/path/to/your/project"
             }

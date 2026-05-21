@@ -37,13 +37,19 @@ function main() {
     const paths = getMcpConfigPaths();
 
     console.log("");
-    console.log(`${BOLD}${CYAN}cairn-mcp-server${RESET} installed successfully.`);
+    console.log(`${BOLD}${CYAN}cairn-rt${RESET} installed successfully.`);
     console.log("");
-    console.log(`${BOLD}Next step:${RESET} Add cairn to your AI tool's MCP configuration:`);
+    console.log(`${BOLD}Recommended:${RESET} Install the Cairn protocol skill:`);
+    console.log("");
+    console.log(`  npx skills add zzf2333/Cairn      ${DIM}# Claude Code${RESET}`);
+    console.log(`  cairn skill show codex >> AGENTS.md   ${DIM}# Codex${RESET}`);
+    console.log(`  cairn skill show cursor >> .cursorrules  ${DIM}# Cursor${RESET}`);
+    console.log("");
+    console.log(`${BOLD}Optional:${RESET} Add cairn to your AI tool's MCP configuration:`);
     console.log("");
     console.log(`${DIM}  {`);
     console.log(`    "mcpServers": {`);
-    console.log(`      "cairn": { "command": "cairn-mcp-server" }`);
+    console.log(`      "cairn": { "command": "cairn-rt" }`);
     console.log(`    }`);
     console.log(`  }${RESET}`);
     console.log("");
@@ -53,12 +59,6 @@ function main() {
     }
     console.log("");
     console.log(`  Then open your AI tool in a project — it will auto-initialize on first use.`);
-    console.log("");
-    console.log(`${BOLD}Optional:${RESET} Install the Cairn protocol skill:`);
-    console.log("");
-    console.log(`  npx skills add zzf2333/Cairn      ${DIM}# Claude Code${RESET}`);
-    console.log(`  cairn skill show codex >> AGENTS.md   ${DIM}# Codex${RESET}`);
-    console.log(`  cairn skill show cursor >> .cursorrules  ${DIM}# Cursor${RESET}`);
     console.log("");
 }
 

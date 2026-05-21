@@ -15,7 +15,7 @@ Claude Code obeys long structured instructions well. Use strong imperative langu
 Install the CLI:
 
 ```bash
-npm install -g cairn-mcp-server
+npm install -g cairn-rt
 ```
 
 Install as Claude Code skill:
@@ -33,7 +33,7 @@ Add to `.claude/mcp.json` (project) or `~/.claude/mcp.json` (global):
 ```json
 {
   "mcpServers": {
-    "cairn": { "command": "cairn-mcp-server" }
+    "cairn": { "command": "cairn-rt" }
   }
 }
 ```
@@ -44,7 +44,7 @@ For multi-project setups, pin the project root:
 {
   "mcpServers": {
     "cairn": {
-      "command": "cairn-mcp-server",
+      "command": "cairn-rt",
       "env": { "CAIRN_ROOT": "/absolute/path/to/your/project" }
     }
   }
@@ -75,5 +75,5 @@ If both CLI and MCP tools are unavailable:
 When `cairn` CLI fails:
 
 1. Run `cairn doctor` — if it errors, the install is broken
-2. Reinstall with `npm install -g cairn-mcp-server`
+2. Reinstall with `npm install -g cairn-rt`
 3. For path issues, set `CAIRN_ROOT` environment variable

@@ -2,7 +2,7 @@
 
 > Upgrade paths. Each version lists only what changed from the previous one. Skip versions still works — the migrate command catches up multiple steps.
 
-General flow: `npm install -g cairn-mcp-server@<new>` → `cairn migrate` → `cairn status` to confirm `cairn_version` reflects the new release.
+General flow: `npm install -g cairn-rt@<new>` → `cairn migrate` → `cairn status` to confirm `cairn_version` reflects the new release.
 
 ---
 
@@ -21,7 +21,7 @@ Added: 5 new English authoritative docs (`PHILOSOPHY`, `ARCHITECTURE`, `QUICK_ST
 Upgrade:
 
 ```bash
-npm install -g cairn-mcp-server@0.4.1
+npm install -g cairn-rt@0.4.1
 cairn migrate    # idempotent; just stamps cairn_version: "0.4.1"
 ```
 
@@ -47,7 +47,7 @@ Added:
 Upgrade:
 
 ```bash
-npm install -g cairn-mcp-server@0.4.2
+npm install -g cairn-rt@0.4.2
 cairn migrate
 ```
 
@@ -70,7 +70,7 @@ Added:
 Upgrade:
 
 ```bash
-npm install -g cairn-mcp-server@0.4.0
+npm install -g cairn-rt@0.4.0
 cd your-project
 cairn migrate    # stamps cairn_version: "0.4.0" — no data change required
 cairn status     # should show no warnings
@@ -111,7 +111,7 @@ Safer rollback path:
 
 ```bash
 cairn doctor --recover    # clear any pending checkpoint first
-npm install -g cairn-mcp-server@<older-version>
+npm install -g cairn-rt@<older-version>
 ```
 
 ---

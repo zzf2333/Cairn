@@ -16,13 +16,13 @@ export async function runInit(args: string[]): Promise<void> {
     console.log("so this step is optional. It is useful for pre-creating the directory");
     console.log("structure before configuring your AI tool.");
     console.log("");
-    console.log("Next: configure cairn-mcp-server in your AI tool's MCP settings:");
+    console.log("Next: configure cairn-rt in your AI tool's MCP settings:");
     console.log("");
-    console.log('  { "mcpServers": { "cairn": { "command": "cairn-mcp-server" } } }');
+    console.log('  { "mcpServers": { "cairn": { "command": "cairn-rt" } } }');
     console.log("");
     console.log("  Claude Code  — .claude/mcp.json");
     console.log("  Cursor       — .cursor/mcp.json");
-    console.log("  Codex CLI    — codex --mcp-server cairn=cairn-mcp-server");
+    console.log("  Codex CLI    — codex --mcp-server cairn=cairn-rt");
     console.log("");
     console.log("On first use, the AI will call cairn_init_status() to get a structured");
     console.log("initialization guide with analysis steps and valid enum values.");

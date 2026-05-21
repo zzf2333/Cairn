@@ -19,7 +19,7 @@ context -> plan -> signal -> observe -> session_end
 **1. Install the MCP server**
 
 ```bash
-npm install -g cairn-mcp-server
+npm install -g cairn-rt
 ```
 
 Requires Node.js 18+.
@@ -31,7 +31,7 @@ Add to `.cursor/mcp.json` (project):
 ```json
 {
   "mcpServers": {
-    "cairn": { "command": "cairn-mcp-server" }
+    "cairn": { "command": "cairn-rt" }
   }
 }
 ```
@@ -42,7 +42,7 @@ For multi-project setups, pin the project root:
 {
   "mcpServers": {
     "cairn": {
-      "command": "cairn-mcp-server",
+      "command": "cairn-rt",
       "env": { "CAIRN_ROOT": "/absolute/path/to/your/project" }
     }
   }
