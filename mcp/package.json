@@ -27,6 +27,7 @@
         "dist/**/*.d.ts",
         "skills/**/*.md",
         "skills/**/*.json",
+        "skill-dist/**/*",
         "README.md"
     ],
     "publishConfig": {

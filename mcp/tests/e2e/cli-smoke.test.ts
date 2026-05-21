@@ -130,4 +130,90 @@ describe.skipIf(!existsSync(CLI))("CLI E2E smoke", () => {
         expect(existsSync(resolve(tmpDir, ".cairn"))).toBe(true);
         expect(existsSync(resolve(tmpDir, ".cairn/config.yaml"))).toBe(true);
     });
+
+    it("context --json exits 0 and returns valid JSON with session", () => {
+        runCli(["init", "--empty"], tmpDir);
+        const r = runCli(["context", "--json"], tmpDir);
+        expect(r.code).toBe(0);
+        const data = JSON.parse(r.stdout);
+        expect(data.session).toBeDefined();
+        expect(data.session.status).toBe("active");
+    });
+
+    it("context --task --json includes task context", () => {
+        runCli(["init", "--empty"], tmpDir);
+        const r = runCli(["context", "--task", "test task", "--json"], tmpDir);
+        expect(r.code).toBe(0);
+        const data = JSON.parse(r.stdout);
+        expect(data.session.status).toBe("active");
+    });
+
+    it("plan --json without context exits 1", () => {
+        runCli(["init", "--empty"], tmpDir);
+        const r = runCli(["plan", "--task", "test", "--json"], tmpDir);
+        expect(r.code).toBe(1);
+    });
+
+    it("plan --json after context exits 0", () => {
+        runCli(["init", "--empty"], tmpDir);
+        runCli(["context", "--task", "setup", "--json"], tmpDir);
+        const r = runCli(["plan", "--task", "test plan", "--json"], tmpDir);
+        expect(r.code).toBe(0);
+        const data = JSON.parse(r.stdout);
+        expect(data.task).toBe("test plan");
+    });
+
+    it("signal --json exits 0 with routing info", () => {
+        runCli(["init", "--empty"], tmpDir);
+        runCli(["context", "--json"], tmpDir);
+        const r = runCli(["signal", "--type", "decision", "--what", "chose REST over GraphQL", "--json"], tmpDir);
+        expect(r.code).toBe(0);
+        const data = JSON.parse(r.stdout);
+        expect(data.accepted).toBe(true);
+        expect(data.routing).toBeDefined();
+    });
+
+    it("observe --json exits 0", () => {
+        runCli(["init", "--empty"], tmpDir);
+        runCli(["context", "--json"], tmpDir);
+        const r = runCli(["observe", "--summary", "test observe", "--json"], tmpDir);
+        expect(r.code).toBe(0);
+        const data = JSON.parse(r.stdout);
+        expect(data.observed).toBe(true);
+    });
+
+    it("session-end --json exits 0 and returns highlights", () => {
+        runCli(["init", "--empty"], tmpDir);
+        runCli(["context", "--json"], tmpDir);
+        const r = runCli(["session-end", "--summary", "test session end", "--json"], tmpDir);
+        expect(r.code).toBe(0);
+        const data = JSON.parse(r.stdout);
+        expect(data.highlights).toBeDefined();
+        expect(data.session).toBeDefined();
+    });
+
+    it("session-recover --json exits 0 when no stale session", () => {
+        runCli(["init", "--empty"], tmpDir);
+        const r = runCli(["session-recover", "--json"], tmpDir);
+        expect(r.code).toBe(0);
+        const data = JSON.parse(r.stdout);
+        expect(data.recovered).toBe(false);
+    });
+
+    it("full runtime lifecycle via CLI: context → signal → observe → session-end", () => {
+        runCli(["init", "--empty"], tmpDir);
+        const ctx = runCli(["context", "--task", "lifecycle test", "--json"], tmpDir);
+        expect(ctx.code).toBe(0);
+
+        const sig = runCli(["signal", "--type", "decision", "--what", "test decision", "--json"], tmpDir);
+        expect(sig.code).toBe(0);
+
+        const obs = runCli(["observe", "--summary", "pre-commit check", "--json"], tmpDir);
+        expect(obs.code).toBe(0);
+
+        const end = runCli(["session-end", "--summary", "completed lifecycle", "--json"], tmpDir);
+        expect(end.code).toBe(0);
+        const endData = JSON.parse(end.stdout);
+        expect(endData.session.context_was_loaded).toBe(true);
+    });
 });

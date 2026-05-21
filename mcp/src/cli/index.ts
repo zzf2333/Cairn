@@ -11,6 +11,12 @@ import { runBlood } from "./blood.js";
 import { runStage } from "./stage.js";
 import { runMigrate } from "./migrate.js";
 import { runSkill } from "./skill.js";
+import { runRuntimeContext } from "./runtime-context.js";
+import { runRuntimePlan } from "./runtime-plan.js";
+import { runRuntimeSignal } from "./runtime-signal.js";
+import { runRuntimeObserve } from "./runtime-observe.js";
+import { runRuntimeSessionEnd } from "./runtime-session-end.js";
+import { runRuntimeSessionRecover } from "./runtime-session-recover.js";
 
 const USAGE = `cairn v${VERSION}
 
@@ -39,6 +45,14 @@ Commands:
   stage reject <id> <reason>    Reject a stage transition
   migrate                       Stamp .cairn/state.yaml with current cairn_version, apply pending migrations
   skill show [platform]         Print assembled protocol to stdout
+
+Runtime commands (for AI / scripts):
+  context [--task <t>] [--files <f1,f2>] [--json]
+  plan --task <t> [--json]
+  signal --type <t> --what <w> [--domain <d>] [--reason <r>] [--json]
+  observe --summary <s> [--candidates-file <path>] [--json]
+  session-end --summary <s> [--domains <d>] [--json]
+  session-recover [--json]
 
 Install as Claude Code skill:   npx skills add zzf2333/Cairn
 
@@ -94,6 +108,24 @@ async function main() {
                 break;
             case "skill":
                 await runSkill(args.slice(1));
+                break;
+            case "context":
+                await runRuntimeContext(args.slice(1));
+                break;
+            case "plan":
+                await runRuntimePlan(args.slice(1));
+                break;
+            case "signal":
+                await runRuntimeSignal(args.slice(1));
+                break;
+            case "observe":
+                await runRuntimeObserve(args.slice(1));
+                break;
+            case "session-end":
+                await runRuntimeSessionEnd(args.slice(1));
+                break;
+            case "session-recover":
+                await runRuntimeSessionRecover(args.slice(1));
                 break;
             default:
                 console.error(`Unknown command: ${command}`);

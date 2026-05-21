@@ -8,7 +8,7 @@
 
 <p><strong>A software project is not a pile of code. It is a path-dependent cognitive organism.</strong></p>
 
-<p>Cairn is the cognitive runtime protocol that keeps that organism's memory alive across AI sessions — delivered as an MCP server with 16 tools and a behavioral contract the AI follows.</p>
+<p>Cairn is the cognitive runtime protocol that keeps that organism's memory alive across AI sessions — delivered as a CLI + skill protocol with a behavioral contract the AI follows.</p>
 
 <p>
   <a href="https://github.com/zzf2333/Cairn/stargazers"><img src="https://img.shields.io/github/stars/zzf2333/Cairn?style=flat-square&color=f59e0b" alt="GitHub Stars"/></a>
@@ -73,14 +73,23 @@ More diagrams: [Integration overview](./docs/diagrams/03-integration-overview.pn
 ## Quick Start — Claude Code
 
 ```bash
-# 1. Install
+# 1. Install the CLI
 npm install -g cairn-mcp-server
 
 # 2. Install the protocol skill
 npx skills add zzf2333/Cairn
 ```
 
-Add Cairn to your MCP config — create or edit `.claude/mcp.json`:
+Then tell Claude Code:
+
+> Initialize Cairn for this project
+
+The AI analyzes your project, proposes initial cognition for your review, and writes it after you confirm. Takes about 2 minutes.
+
+<details>
+<summary><strong>Alternative: MCP mode</strong></summary>
+
+Instead of (or in addition to) the skill, add Cairn to `.claude/mcp.json`:
 
 ```json
 {
@@ -90,11 +99,9 @@ Add Cairn to your MCP config — create or edit `.claude/mcp.json`:
 }
 ```
 
-Restart Claude Code, then tell it:
+MCP tools (`cairn_context`, `cairn_plan`, etc.) map 1:1 to CLI commands. The protocol is identical.
 
-> Initialize Cairn for this project
-
-The AI analyzes your project, proposes initial cognition for your review, and writes it after you confirm. Takes about 2 minutes.
+</details>
 
 <details>
 <summary><strong>Codex</strong></summary>
@@ -122,18 +129,18 @@ Full walkthrough with verification steps: [`docs/v-intervene/enter.md`](./docs/v
 ## A session in flight
 
 ```
-cairn_init_status  →  cairn_context  →  [your work]  →  cairn_signal (×N)  →  cairn_session_end
-   one-time          session guard       AI codes         on decision           maintenance
-                     (+ stale detect)                                       cairn_session_recover
-                                                                              (if previous crashed)
+cairn context  →  [your work]  →  cairn signal (×N)  →  cairn session-end
+session guard       AI codes         on decision           maintenance
+(+ stale detect)                                       cairn session-recover
+                                                          (if previous crashed)
 ```
 
 Four concrete flows the AI runs on its own:
 
-- **Fresh task** — `cairn_context` creates session + activates constraints → AI codes → flags decisions via `cairn_signal` → `cairn_session_end` compresses.
-- **Stale recovery** — `cairn_context` detects unclosed session → `cairn_session_recover` runs maintenance pipeline → new session begins cleanly.
-- **Design review** — `cairn_plan` surfaces what was tried before → AI proposes only un-tried paths.
-- **Ratification** — `cairn_stage_list` (you) → `cairn_stage_accept` / `cairn_stage_reject` → blood updated.
+- **Fresh task** — `cairn context` creates session + activates constraints → AI codes → flags decisions via `cairn signal` → `cairn session-end` compresses.
+- **Stale recovery** — `cairn context` detects unclosed session → `cairn session-recover` runs maintenance pipeline → new session begins cleanly.
+- **Design review** — `cairn plan` surfaces what was tried before → AI proposes only un-tried paths.
+- **Ratification** — `cairn review` (you) → `cairn stage accept` / `cairn stage reject` → blood updated.
 
 ---
 
@@ -157,9 +164,22 @@ Cairn writes plain YAML you can read, diff, and git-track. Nothing leaves your m
 
 ## CLI
 
+**Runtime commands** (called by AI / scripts, all support `--json`):
+
 | Command | When | What it does |
 |---------|------|--------------|
-| `cairn init [--empty]` | Optional — pre-create scaffold | Scaffolds `.cairn/` directory (MCP server auto-bootstraps if missing) |
+| `cairn context [--task <t>]` | At task start | Creates session, activates constraints, detects stale sessions |
+| `cairn plan --task <t>` | Before architecture work | Surfaces historical constraints + DNA guidance |
+| `cairn signal --type <t> --what <w>` | On decision / rejection | Routes through TrustRouter |
+| `cairn observe --summary <s>` | Before git commit | Extracts and routes candidate signals |
+| `cairn session-end --summary <s>` | Session close | Git scan → decay → calibration → stage → DNA compression |
+| `cairn session-recover` | After stale session detected | Runs session-end pipeline for interrupted session |
+
+**Management commands**:
+
+| Command | When | What it does |
+|---------|------|--------------|
+| `cairn init [--empty]` | Optional — pre-create scaffold | Scaffolds `.cairn/` directory |
 | `cairn status` | Quick health glance | Cognitive snapshot |
 | `cairn doctor [--fix\|--recover\|--metrics]` | Something feels off | Consistency, auto-resurrection, repairs |
 | `cairn review` | Catch up on staged queue | Lists entries awaiting ratification |

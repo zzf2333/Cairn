@@ -5,24 +5,24 @@ Governs technical reasoning. Does NOT activate for trivial formatting, typos, pu
 ## Lifecycle
 
 Before technical reasoning:
-  → `cairn_context()`
+  → `cairn context --task "<task>" --json`
 
 Before architecture decisions:
-  → `cairn_plan()`
+  → `cairn plan --task "<task>" --json`
 
 When explicit long-term cognition appears:
-  → `cairn_signal()`
+  → `cairn signal --type <type> --what "<what>" --json`
 
 Before commit or large structural change:
-  → `cairn_observe()`
+  → `cairn observe --summary "<summary>" --json`
 
 When task completes or topic changes:
-  → `cairn_session_end()`
+  → `cairn session-end --summary "<summary>" --json`
 
 If `recovery_required`:
-  → `cairn_session_recover()` then `cairn_context()` again
+  → `cairn session-recover --json` then `cairn context` again
 
-No `cairn_context` = no technical recommendation.
+No context = no technical recommendation.
 
 ## Constraints
 
