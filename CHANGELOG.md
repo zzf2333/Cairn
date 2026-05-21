@@ -9,10 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Skill installation** — migrated from `cairn skill install` (injecting into CLAUDE.md) to native Claude Code skill mechanism (`npx skills add zzf2333/Cairn`). Protocol is now delivered as a standalone `SKILL.md` at repo root with YAML frontmatter.
-- **CLI** — removed `cairn skill install`, `cairn skill status`, `cairn skill update` subcommands. Retained `cairn skill show [platform]` for previewing assembled protocol.
+- **Skill installation** — migrated from `cairn skill install` (injecting into CLAUDE.md) to native Claude Code skill mechanism (`npx skills add zzf2333/Cairn`). Root `SKILL.md` is a compact entry point with progressive disclosure — detailed protocol files in `skills/protocol/` are loaded on demand.
+- **CLI** — removed `cairn skill install`, `cairn skill status`, `cairn skill update` subcommands. Retained `cairn skill show [platform]` for previewing assembled protocol (useful for Codex/Cursor).
 - **Root `package.json`** — added with `"main": "SKILL.md"` for Claude Code skill discovery.
-- **Build script** — added `scripts/assemble-skill.js` to regenerate `SKILL.md` from protocol source files.
 
 ### Removed
 
