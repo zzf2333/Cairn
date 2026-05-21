@@ -31,7 +31,7 @@ Cairn is the active maintenance layer that prevents that cognitive collapse. It 
 
 Cairn works through two layers:
 
-**The Protocol** — behavioral rules installed into the AI's instruction file (CLAUDE.md / AGENTS.md) via `cairn skill install`. The protocol defines *when* each tool must be called, how to process constraints, and when lifecycle steps can be skipped. Without the protocol, the AI falls back to a compressed version in the MCP tool descriptions — sufficient for initialization but not for full lifecycle enforcement.
+**The Protocol** — behavioral rules installed as a native skill (via `npx skills add zzf2333/Cairn` for Claude Code). The protocol defines *when* each tool must be called, how to process constraints, and when lifecycle steps can be skipped. Without the protocol, the AI falls back to a compressed version in the MCP tool descriptions — sufficient for initialization but not for full lifecycle enforcement.
 
 **16 MCP tools** — the mechanisms the protocol calls. Two are mandatory in every session flow; the rest are queue management and maintenance.
 
@@ -89,14 +89,12 @@ Restart your AI tool after editing.
 
 **Step 3 — Install the protocol**
 
-The protocol tells the AI *when* to call each tool — the full session contract. Install it into your project's instruction file:
+The protocol tells the AI *when* to call each tool — the full session contract.
 
 | Host | Command |
 |------|---------|
-| Claude Code | `cairn skill install claude-code` (appends to `CLAUDE.md`) |
-| Codex | `cairn skill install codex` (appends to `AGENTS.md`) |
-
-Or manually append `skills/claude-code/SKILL.md` / `skills/codex.md` to your instruction file.
+| Claude Code | `npx skills add zzf2333/Cairn` |
+| Codex | `cairn skill show codex >> AGENTS.md` |
 
 Without the protocol, the AI only has a compressed version in MCP tool descriptions — enough for initialization, not for full lifecycle enforcement. Full walkthrough in [`docs/v-intervene/enter.md`](./docs/v-intervene/enter.md).
 
@@ -112,10 +110,10 @@ The AI will analyze your project, propose initial cognition (skeleton + decision
 
 ### Supported hosts
 
-| Host | Protocol file | Status |
-|------|---------------|--------|
-| **Claude Code** | [`skills/claude-code/SKILL.md`](./skills/claude-code/SKILL.md) | first-class |
-| **Codex** | [`skills/codex.md`](./skills/codex.md) | first-class |
+| Host | Install | Status |
+|------|---------|--------|
+| **Claude Code** | `npx skills add zzf2333/Cairn` | first-class |
+| **Codex** | `cairn skill show codex >> AGENTS.md` | first-class |
 
 Other MCP-capable hosts (Cline, Windsurf, Cursor, Copilot, Gemini CLI, OpenCode) are on the 1.x roadmap. We removed their adapters in 0.4.1 to focus on getting the two supported platforms right; they return once each can pass the same reverse-regression bar.
 
@@ -170,7 +168,7 @@ Cairn writes plain YAML you can read, diff, and git-track. Nothing leaves your m
 | `cairn skeleton show` | Domain map check | Prints skeleton tree |
 | `cairn blood list \| show \| archive \| resurrect \| trauma` | Event-level surgery | Manage individual evolution events |
 | `cairn stage confirm \| list \| accept \| reject` | Event ratification | Process the staged queue |
-| `cairn skill install\|status\|update\|show` | Protocol management | Install or update the Cognitive Runtime Protocol |
+| `cairn skill show [platform]` | Protocol preview | Print assembled protocol to stdout |
 | `cairn migrate` | After upgrade | Stamps version, applies pending migrations |
 
 Full reference: `cairn --help`.
@@ -210,7 +208,7 @@ Cairn is the layer that remembers.
 ## Contributing
 
 - Issues + PRs: https://github.com/zzf2333/Cairn
-- Engine rules-of-the-road: [`CLAUDE.md`](./CLAUDE.md)
+- Protocol: [`SKILL.md`](./SKILL.md)
 - Release checklist (contributor-facing, internal): see `docs/internal/` in repo
 
 ---

@@ -88,12 +88,14 @@ Restart the `codex` CLI.
 
 ## 3. Install the protocol
 
-The protocol file tells the AI *when* to call which tool — the full session contract. Without it, the AI falls back to a compressed version in the MCP tool descriptions (sufficient for initialization but not for full lifecycle enforcement).
+The protocol tells the AI *when* to call which tool — the full session contract. Without it, the AI falls back to a compressed version in the MCP tool descriptions (sufficient for initialization but not for full lifecycle enforcement).
 
-| Host | Command | Or manually append |
-|------|---------|-------------------|
-| Claude Code | `cairn skill install claude-code` | `skills/claude-code/SKILL.md` → `CLAUDE.md` |
-| Codex | `cairn skill install codex` | `skills/codex.md` → `AGENTS.md` |
+| Host | Command |
+|------|---------|
+| Claude Code | `npx skills add zzf2333/Cairn` |
+| Codex | `cairn skill show codex >> AGENTS.md` |
+
+For Claude Code, this installs the Cairn protocol as a native skill in `.claude/skills/cairn/`. Claude Code auto-loads it at session start.
 
 The protocol defines: when to capture signals, how to respond to challenges, when lifecycle steps can be skipped, and when to call `cairn_session_end`. For production use, protocol installation is required. See [`protocol.md`](./protocol.md) for the full contract.
 

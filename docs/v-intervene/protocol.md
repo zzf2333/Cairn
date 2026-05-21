@@ -191,7 +191,7 @@ Signal capture (`cairn_signal`) and session pipelines (`cairn_session_end`) are 
 
 ## What "the AI follows the protocol" actually means
 
-It means the AI internalizes the protocol as part of its system prompt — by appending `skills/claude-code/SKILL.md` (or `skills/codex.md`) to the relevant project-level instruction file (`CLAUDE.md` or `AGENTS.md`).
+It means the AI internalizes the protocol as part of its session context — installed as a native skill (`npx skills add zzf2333/Cairn` for Claude Code) or manually appended (`cairn skill show codex >> AGENTS.md` for Codex).
 
 The skill file is the contract. The MCP tools are the surface. Together they make Cairn behave like a colleague who's been on this project for two years instead of like a model that read the codebase three minutes ago.
 

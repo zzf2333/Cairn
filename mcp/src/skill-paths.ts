@@ -52,12 +52,6 @@ export async function loadMode(mode: string): Promise<string | null> {
     return content.trim();
 }
 
-export function getTargetFile(platform: string, order: AssemblyOrder): string {
-    const entry = order.platforms[platform];
-    if (!entry) throw new Error(`Unknown platform "${platform}"`);
-    return entry.target;
-}
-
 export async function loadMcpInstructions(): Promise<string> {
     const path = join(getSkillsDir(), "protocol", "mcp-instructions.md");
     try {

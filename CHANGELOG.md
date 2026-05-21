@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - skill installation migration
+
+### Changed
+
+- **Skill installation** — migrated from `cairn skill install` (injecting into CLAUDE.md) to native Claude Code skill mechanism (`npx skills add zzf2333/Cairn`). Protocol is now delivered as a standalone `SKILL.md` at repo root with YAML frontmatter.
+- **CLI** — removed `cairn skill install`, `cairn skill status`, `cairn skill update` subcommands. Retained `cairn skill show [platform]` for previewing assembled protocol.
+- **Root `package.json`** — added with `"main": "SKILL.md"` for Claude Code skill discovery.
+- **Build script** — added `scripts/assemble-skill.js` to regenerate `SKILL.md` from protocol source files.
+
+### Removed
+
+- `skills/claude-code/SKILL.md` — replaced by root-level `SKILL.md`.
+- CLAUDE.md injection logic (`hasProtocolBlock`, `replaceProtocolBlock`, `appendProtocolBlock`, `parseInstalledVersion`, `getTargetFileName`) from `skill-assembler.ts`.
+- `<!-- cairn:start/end -->` marker system — no longer needed.
+
 ## [0.4.6] - 2026-05-21 (documentation alignment)
 
 0.4.5 restructured the skill system into a Cognitive Runtime Protocol. 0.4.6 aligns project documentation to position the Protocol as the primary lifecycle driver rather than fallback to raw MCP instructions.

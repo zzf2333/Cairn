@@ -1,0 +1,12 @@
+{
+    "name": "cairn",
+    "version": "0.4.6",
+    "type": "module",
+    "description": "Cairn Cognitive Runtime Protocol",
+    "main": "SKILL.md",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/zzf2333/Cairn.git"
+    }
+}

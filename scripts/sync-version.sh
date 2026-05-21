@@ -9,10 +9,11 @@
 #   bash scripts/sync-version.sh 2.0.0
 #
 # Updates version in:
-#   - mcp/package.json        (via npm version --no-git-tag-version)
-#   - mcp/package-lock.json   (updated automatically by npm)
-#   - mcp/src/server.ts       (hardcoded version field in createCairnServer)
-#   - mcp/src/cli.ts          (VERSION constant)
+#   - package.json              (root — skill discovery)
+#   - mcp/package.json          (via npm version --no-git-tag-version)
+#   - mcp/package-lock.json     (updated automatically by npm)
+#   - mcp/src/server.ts         (hardcoded version field in createCairnServer)
+#   - mcp/src/constants.ts      (VERSION constant)
 # =============================================================================
 
 set -euo pipefail
@@ -34,27 +35,32 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "Syncing version to $VERSION..."
 
-# 1. mcp/package.json + mcp/package-lock.json
+# 1. Root package.json (skill discovery)
+cd "$REPO_ROOT"
+npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
+echo "  [OK] package.json (root)"
+
+# 2. mcp/package.json + mcp/package-lock.json
 cd "$REPO_ROOT/mcp"
 npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
 echo "  [OK] mcp/package.json and mcp/package-lock.json"
 
-# 2. mcp/src/server.ts — replace hardcoded version: "x.y.z..."
+# 3. mcp/src/server.ts — replace hardcoded version: "x.y.z..."
 SERVER_TS="$REPO_ROOT/mcp/src/server.ts"
 sed -i.bak "s/version: \"[0-9]*\.[0-9]*\.[0-9]*[^\"]*\"/version: \"$VERSION\"/" "$SERVER_TS"
 rm -f "${SERVER_TS}.bak"
 echo "  [OK] mcp/src/server.ts"
 
-# 3. mcp/src/cli.ts — replace VERSION constant
-CLI_TS="$REPO_ROOT/mcp/src/cli.ts"
-sed -i.bak "s/const VERSION = \"[^\"]*\"/const VERSION = \"$VERSION\"/" "$CLI_TS"
-rm -f "${CLI_TS}.bak"
-echo "  [OK] mcp/src/cli.ts"
+# 4. mcp/src/constants.ts — replace VERSION constant
+CONSTANTS_TS="$REPO_ROOT/mcp/src/constants.ts"
+sed -i.bak "s/const VERSION = \"[^\"]*\"/const VERSION = \"$VERSION\"/" "$CONSTANTS_TS"
+rm -f "${CONSTANTS_TS}.bak"
+echo "  [OK] mcp/src/constants.ts"
 
 echo ""
 echo "Done. All files updated to version $VERSION."
 echo ""
 echo "Verify with:"
-echo "  grep '\"version\"' mcp/package.json"
+echo "  grep '\"version\"' package.json mcp/package.json"
 echo "  grep 'version:' mcp/src/server.ts"
-echo "  grep 'VERSION' mcp/src/cli.ts"
+echo "  grep 'VERSION' mcp/src/constants.ts"

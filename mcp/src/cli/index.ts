@@ -38,10 +38,9 @@ Commands:
   stage accept <id>             Accept a stage transition (applies new phase)
   stage reject <id> <reason>    Reject a stage transition
   migrate                       Stamp .cairn/state.yaml with current cairn_version, apply pending migrations
-  skill install [platform]      Install Cairn protocol into CLAUDE.md / AGENTS.md / .cursorrules
-  skill status                  Check installed protocol version
-  skill update                  Update installed protocol to current version
   skill show [platform]         Print assembled protocol to stdout
+
+Install as Claude Code skill:   npx skills add zzf2333/Cairn
 
 Options:
   --version                     Show version

@@ -48,9 +48,9 @@ Most common newcomer problem. Symptom: AI gives answers without referencing cons
 
 Check:
 
-1. The `skills/<host>/SKILL.md` content is appended to the project-level `CLAUDE.md` / `AGENTS.md`. Without it, MCP tools are visible to the AI but the protocol isn't loaded.
+1. The protocol skill is installed. For Claude Code: `npx skills add zzf2333/Cairn` (check `.claude/skills/cairn/SKILL.md` exists). For Codex: verify `AGENTS.md` contains the protocol. Without it, MCP tools are visible to the AI but the protocol isn't loaded.
 2. Restart the host (Claude Code, Codex). The skill file is read at session start.
-3. Test: ask the AI "Call `cairn_context` and show me the raw response." If it can't, the MCP wiring is broken; if it can but doesn't on its own, the SKILL.md isn't being loaded.
+3. Test: ask the AI "Call `cairn_context` and show me the raw response." If it can't, the MCP wiring is broken; if it can but doesn't on its own, the skill isn't being loaded.
 
 ### "Staged backlog keeps climbing"
 
@@ -59,7 +59,7 @@ Symptom: `staged backlog: 47` and growing.
 Two paths:
 
 - **Wrong cognitive mode** — you're on `institutional` when your team is willing to pay `standard`-level overhead. Edit `config.yaml.cognitive_mode`. Existing staged entries don't auto-resolve, but the inflow drops.
-- **No one is reviewing** — schedule a 10-minute review at the start of standups, or use `cairn review` to batch-process. The AI is supposed to surface staged count after `cairn_session_end`; if it isn't, re-check SKILL.md.
+- **No one is reviewing** — schedule a 10-minute review at the start of standups, or use `cairn review` to batch-process. The AI is supposed to surface staged count after `cairn_session_end`; if it isn't, re-check the skill installation.
 
 ### "DNA emerged, then immediately drifted"
 
