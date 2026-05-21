@@ -1,4 +1,4 @@
-export const VERSION = "0.4.6";
+export const VERSION = "0.4.7";
 
 export const STATE_FILE_FORMAT_VERSION = "1";
 

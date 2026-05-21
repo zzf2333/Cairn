@@ -5,13 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - skill installation migration
+## [0.4.7] - 2026-05-21 (Skill-first + CLI-backed, package rename)
+
+0.4.6 aligned docs to position Protocol as the primary lifecycle driver. 0.4.7 completes the migration: the default product path is now **Skill Runtime Protocol + CLI commands**, MCP is demoted to optional/advanced, and the npm package is renamed from `cairn-mcp-server` to `cairn-rt`.
 
 ### Changed
 
-- **Skill installation** — migrated from `cairn skill install` (injecting into CLAUDE.md) to native Claude Code skill mechanism (`npx skills add zzf2333/Cairn`). Root `SKILL.md` is a compact entry point with progressive disclosure — detailed protocol files in `skills/protocol/` are loaded on demand.
-- **CLI** — removed `cairn skill install`, `cairn skill status`, `cairn skill update` subcommands. Retained `cairn skill show [platform]` for previewing assembled protocol (useful for Codex/Cursor).
-- **Root `package.json`** — added with `"main": "SKILL.md"` for Claude Code skill discovery.
+- **Package rename** — npm package renamed from `cairn-mcp-server` to `cairn-rt`. The `cairn` CLI binary is unchanged. `cairn-mcp-server` binary kept as legacy alias for transition.
+- **Runtime architecture** — extracted shared business logic into `mcp/src/actions/` layer. Both MCP tools and CLI runtime commands delegate to the same action functions, eliminating code duplication.
+- **CLI runtime commands** — added 6 new CLI subcommands (`cairn context`, `cairn plan`, `cairn signal`, `cairn observe`, `cairn session-end`, `cairn session-recover`) backed by the actions layer. All support `--json` output for programmatic use by AI skills.
+- **Skill installation** — migrated from `cairn skill install` (injecting into CLAUDE.md) to native Claude Code skill mechanism (`npx skills add zzf2333/Cairn`). Root `SKILL.md` is a compact entry point with progressive disclosure.
+- **README narrative** — "What Cairn gives the AI" rewritten from "Protocol + 16 MCP tools" to "Skill Runtime Protocol + CLI Runtime". MCP moved to folded optional sections in both EN and ZH READMEs.
+- **CLI** — removed `cairn skill install`, `cairn skill status`, `cairn skill update` subcommands. Retained `cairn skill show [platform]` for previewing assembled protocol.
+- **postinstall** — now shows skill installation as recommended path, MCP config as optional.
+
+### Added
+
+- `mcp/src/actions/` — 6 action files (`context-action.ts`, `plan-action.ts`, `signal-action.ts`, `observe-action.ts`, `session-end-action.ts`, `session-recover-action.ts`) with typed interfaces and zero MCP dependencies.
+- `mcp/src/cli/runtime-*.ts` — 6 CLI runtime command handlers.
+- `skill-dist/` — pre-built skill bundle with wrapper scripts for Claude Code skill system.
+- `mcp/tests/e2e/cli-smoke.test.ts` — CLI smoke tests.
+- Root `package.json` with `"main": "SKILL.md"` for Claude Code skill discovery.
 
 ### Removed
 

@@ -1,6 +1,6 @@
 {
     "name": "cairn",
-    "version": "0.4.6",
+    "version": "0.4.7",
     "type": "module",
     "description": "Cairn Cognitive Runtime Protocol",
     "main": "SKILL.md",
