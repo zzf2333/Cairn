@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-05-21 (documentation alignment)
+
+0.4.5 restructured the skill system into a Cognitive Runtime Protocol. 0.4.6 aligns project documentation to position the Protocol as the primary lifecycle driver rather than fallback to raw MCP instructions.
+
+### Changed
+
+- **CLAUDE.md** — repositioned `skills/` as the Cognitive Runtime Protocol: the primary mechanism that drives the project lifecycle. MCP tools are now described as mechanisms the protocol calls. Clarified that `mcp-instructions.md` is a compressed fallback, not the canonical source.
+
 ## [0.4.5] - 2026-05-21 (Cognitive Runtime Protocol + compliance telemetry)
 
 0.4.4 completed the cognitive breakthrough test suite (T8–T10). 0.4.5 restructures the skill system into a **Cognitive Runtime Protocol** — a layered, adapter-agnostic architecture that any AI platform can consume — and adds **compliance telemetry** so lifecycle adherence is observable across sessions.
