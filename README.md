@@ -12,7 +12,7 @@
 
 <p>
   <a href="https://github.com/zzf2333/Cairn/stargazers"><img src="https://img.shields.io/github/stars/zzf2333/Cairn?style=flat-square&color=f59e0b" alt="GitHub Stars"/></a>
-  <a href="https://www.npmjs.com/package/cairn-mcp-server"><img src="https://img.shields.io/npm/v/cairn-mcp-server?style=flat-square&label=mcp%20server&color=2563eb" alt="npm version"/></a>
+  <a href="https://www.npmjs.com/package/cairn-mcp-server"><img src="https://img.shields.io/npm/v/cairn-mcp-server?style=flat-square&label=npm&color=2563eb" alt="npm version"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-16a34a?style=flat-square" alt="License MIT"/></a>
   <img src="https://img.shields.io/badge/node-18%2B-6b7280?style=flat-square" alt="Node 18+"/>
 </p>
@@ -31,30 +31,37 @@ Cairn is the active maintenance layer that prevents that cognitive collapse. It 
 
 Cairn works through two layers:
 
-**The Protocol** — behavioral rules installed as a native skill (via `npx skills add zzf2333/Cairn` for Claude Code). The protocol defines *when* each tool must be called, how to process constraints, and when lifecycle steps can be skipped. Without the protocol, the AI falls back to a compressed version in the MCP tool descriptions — sufficient for initialization but not for full lifecycle enforcement.
+**Skill Runtime Protocol** — behavioral rules installed as a native skill (`npx skills add zzf2333/Cairn` for Claude Code). The protocol defines *when* each command must run, how to process constraints, and when lifecycle steps can be skipped.
 
-**16 MCP tools** — the mechanisms the protocol calls. Two are mandatory in every session flow; the rest are queue management and maintenance.
+**CLI Runtime** — the commands the protocol calls. The AI runs these as shell commands during its session:
 
-| Tool | When the AI calls it | What it does |
-|------|----------------------|--------------|
-| `cairn_context` | At task start (session guard) | Creates active session, activates domain-relevant cognition, detects stale sessions |
-| `cairn_plan` | Before design / architecture work | Pulls historical constraints + DNA guidance (requires prior `cairn_context`) |
-| `cairn_signal` | On detecting a decision / rejection / constraint | Routes through TrustRouter, logs governance result |
-| `cairn_observe` | Before every git commit | Extracts and routes candidate signals from recent work |
-| `cairn_session_end` | Session close with summary | Git scan → decay → calibration → stage inference → DNA compression |
-| `cairn_session_recover` | When stale session detected | Runs session_end pipeline to close an interrupted session |
-| `cairn_status` | Mid-session health check | Snapshot of blood / staged / DNA / phase |
-| `cairn_stage_list` | Reviewing pending events | Lists staged evolution candidates awaiting ratification |
-| `cairn_stage_accept` | Approve event candidate | Promotes to blood, applies stage transition, logs audit |
-| `cairn_stage_reject` | Decline event candidate | Rejects entry, logs governance decision |
-| `cairn_dna_list` | Reviewing DNA candidates | Lists trait candidates from compression |
-| `cairn_dna_accept` | Approve trait | Writes trait to identity, regenerates views |
-| `cairn_dna_reject` | Decline trait | Marks rejected in staged store |
-| `cairn_init_status` | Startup or recovery | Checks init, version mismatch, incomplete sessions |
-| `cairn_init_commit` | Bootstrap after analysis | Writes initial config, skeleton, blood, DNA |
-| `cairn_doctor` | Diagnostics / troubleshooting *(maintenance)* | Consistency checks, decay actions, resurrection candidates |
+| Command | When | What it does |
+|---------|------|--------------|
+| `cairn context` | At task start (session guard) | Creates session, activates constraints, detects stale sessions |
+| `cairn plan` | Before architecture work | Surfaces historical constraints + DNA guidance |
+| `cairn signal` | On decision / rejection / constraint | Routes through TrustRouter |
+| `cairn observe` | Before git commit | Extracts and routes candidate signals |
+| `cairn session-end` | Session close | Git scan → decay → calibration → stage → DNA compression |
+| `cairn session-recover` | When stale session detected | Runs session-end pipeline for interrupted session |
 
-**Mandatory every flow**: `cairn_context` (start) + `cairn_session_end` (close). `cairn_context` acts as the session guard — it tracks an active session state machine and detects interrupted sessions. `cairn_plan` will reject if called without prior `cairn_context`; `cairn_signal` warns but continues.
+**Mandatory every session**: `cairn context` (start) + `cairn session-end` (close). `cairn context` acts as the session guard — it tracks an active session state machine and detects interrupted sessions.
+
+<details>
+<summary><strong>Advanced: MCP mode</strong></summary>
+
+MCP tools (`cairn_context`, `cairn_plan`, etc.) map 1:1 to CLI commands. Add to `.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "cairn": { "command": "cairn-mcp-server" }
+  }
+}
+```
+
+MCP mode provides tool-level integration for AI runtimes that support the Model Context Protocol. The protocol and behavior are identical to skill + CLI mode.
+
+</details>
 
 ---
 
@@ -73,7 +80,7 @@ More diagrams: [Integration overview](./docs/diagrams/03-integration-overview.pn
 ## Quick Start — Claude Code
 
 ```bash
-# 1. Install the CLI
+# 1. Install the CLI (provides the `cairn` command)
 npm install -g cairn-mcp-server
 
 # 2. Install the protocol skill
@@ -87,9 +94,9 @@ Then tell Claude Code:
 The AI analyzes your project, proposes initial cognition for your review, and writes it after you confirm. Takes about 2 minutes.
 
 <details>
-<summary><strong>Alternative: MCP mode</strong></summary>
+<summary><strong>Optional: MCP mode (for runtimes that support MCP)</strong></summary>
 
-Instead of (or in addition to) the skill, add Cairn to `.claude/mcp.json`:
+If your AI runtime supports MCP natively, you can also add Cairn to `.claude/mcp.json`:
 
 ```json
 {
@@ -99,7 +106,7 @@ Instead of (or in addition to) the skill, add Cairn to `.claude/mcp.json`:
 }
 ```
 
-MCP tools (`cairn_context`, `cairn_plan`, etc.) map 1:1 to CLI commands. The protocol is identical.
+MCP tools map 1:1 to CLI commands. The skill + CLI path above is the recommended default.
 
 </details>
 
