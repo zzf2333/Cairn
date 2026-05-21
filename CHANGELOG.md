@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-05-21 (Cognitive Runtime Protocol + compliance telemetry)
+
+0.4.4 completed the cognitive breakthrough test suite (T8–T10). 0.4.5 restructures the skill system into a **Cognitive Runtime Protocol** — a layered, adapter-agnostic architecture that any AI platform can consume — and adds **compliance telemetry** so lifecycle adherence is observable across sessions.
+
+### Added
+
+**Cognitive Runtime Protocol** (`skills/`)
+
+The monolithic `SKILL.md` is replaced by a structured protocol tree:
+
+- **`skills/protocol/`** (9 files) — adapter-agnostic "constitution": `core.md` (6-step behavioral protocol), `lifecycle.md` (detailed semantics), `runtime-rules.md` (DNA/trauma/debt processing), `tool-contracts.md` (16 tool specifications), `escalation-model.md` (suggestion/reflective_challenge/hard_constraint), `minimal-intervention.md` (when NOT to invoke Cairn), `reasoning-examples.md` (behavioral examples), `cognition-philosophy.md` (mental model), `mcp-instructions.md` (loaded by MCP server at startup).
+- **`skills/adapters/`** (3 files) — platform-specific rules for Claude Code, Codex, and Cursor.
+- **`skills/modes/`** (3 files) — cognitive mode adjustments: `strict.md`, `balanced.md`, `lightweight.md`.
+- **`skills/compliance/`** (2 files) — `metrics.md` (6 observable compliance rates), `anti-patterns.md` (10 dangerous behaviors).
+- **`skills/examples/`** (5 files) — lifecycle walkthroughs: architecture, refactor, debugging, incident, migration.
+- **`skills/_assembly-order.json`** — protocol assembly manifest for `cairn skill install`.
+
+**Compliance Tracking**
+
+- **Compliance JSONL logger** — `cairn_session_end` appends to `.cairn/runtime/compliance.jsonl` with per-session metrics (context, plan, observe, signals, degraded, domains, duration). Enables `grep`/`jq` analysis across sessions.
+- **`cairn_status` compliance rates** — new `compliance` object with `context_rate`, `plan_rate`, `observe_rate`, `signal_avg`, `degraded_rate` computed from last 10 sessions.
+- **`cairn_observe` stats tracking** — tracks `observed_candidates_count` vs `captured_candidates_count` separately; increments `signals_count` by actual captured count.
+- **`cairn_session_recover` compliance flag** — sets `recovered: true` on recovered session; returns compliance aggregation.
+- **`session_end` highlights array** — top-of-response `highlights: string[]` surfacing reevaluation triggers, stage transitions, archived events, DNA candidates, and pending reviews. Fixes friction finding F1.
+
+**L3 Skill Compliance Scenarios** (T11–T14)
+
+- **T11: Architecture Context + Plan** — architecture task triggers context + plan, respects constraints.
+- **T12: Blocked → Recover → Context** — stale session recovery flow.
+- **T13: Explicit Rejection Signal** — user rejection captured via `cairn_signal`.
+- **T14: Typo Minimal Intervention** — trivial task with minimal lifecycle calls.
+- Test hierarchy updated with L3 level: 39 scenarios across 9 categories, 78 runs per full pass (×2 platforms).
+
+**Compliance integration tests** — 3 new tests: tracking flow (context → plan → observe → session_end), JSONL appending, and status aggregation.
+
+### Changed
+
+- **MCP instructions** — loaded from `skills/protocol/mcp-instructions.md` at startup via `skill-paths.ts`; falls back to minimal hardcoded version if missing.
+- **`ActiveSession` schema** — 4 new fields: `plan_called`, `observe_called`, `observed_candidates_count`, `captured_candidates_count`, `recovered`.
+- **`SessionRecord` compliance object** — expanded with `observed_candidates_count`, `captured_candidates_count`, `recovered`.
+
+### Verification
+
+- `npm run build` clean.
+- `npm test` 454/454 passing (21 test files).
+
 ## [0.4.4] - 2026-05-19 (evolution breakthrough tests + trauma recovery)
 
 0.4.3 completed the cognitive maintenance test suite (T1–T7). 0.4.4 adds the missing counterpart: **cognitive breakthrough** — tests that verify Cairn can evolve past its own historical constraints rather than becoming a conservatism engine. Also introduces `BloodEngine.downgradeTrauma()`, the first mechanism for trauma recovery.
