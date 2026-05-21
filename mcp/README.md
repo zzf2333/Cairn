@@ -1,391 +1,202 @@
 [中文](README.zh.md) | English
 
-# Cairn MCP Server
+# Cairn
 
-An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that provides
-AI tools with typed access to Cairn's engineering cognition engine — signal capture,
-gravity-based trust routing, and constraint views.
+**Cognitive runtime for AI-native engineering.** Cairn keeps a project's reasoning history alive across AI sessions — decisions, rejections, constraints, and trade-offs are captured, routed through a trust system, and enforced as active cognition.
 
-## Why
+## Quick Start
 
-Cairn is an AI-native engineering cognition engine: project signals are captured
-automatically from Git history, AI conversations, and calibration checks, routed
-through a Gravity system (G0–G3), and consolidated into blood events (evolution
-records). The MCP Server is the primary interface — AI tools call typed tools
-instead of reading raw files.
+```bash
+# 1. Install the CLI (provides the `cairn` command)
+npm install -g cairn-rt
 
-For tools that don't support MCP, `views/` provides a read-only fallback (see
-[Degraded Mode](#degraded-mode)).
+# 2. Install the protocol skill (Claude Code)
+npx skills add zzf2333/Cairn
+```
 
-## Tools
+Then tell your AI tool:
 
-Fourteen MCP tools across five phases:
+> Initialize Cairn for this project
+
+## How it works
+
+Cairn works through two layers:
+
+**Skill Runtime Protocol** — behavioral rules installed as a native skill. The protocol defines *when* each command must run, how to process constraints, and when lifecycle steps can be skipped.
+
+**CLI Runtime** — the commands the protocol calls:
+
+| Command | When | What it does |
+|---------|------|--------------|
+| `cairn context` | At task start (session guard) | Creates session, activates constraints, detects stale sessions |
+| `cairn plan` | Before architecture work | Surfaces historical constraints + DNA guidance |
+| `cairn signal` | On decision / rejection / constraint | Routes through TrustRouter |
+| `cairn observe` | Before git commit | Extracts and routes candidate signals |
+| `cairn session-end` | Session close | Git scan → decay → calibration → stage → DNA compression |
+| `cairn session-recover` | When stale session detected | Runs session-end pipeline for interrupted session |
+
+**Mandatory every session**: `cairn context` (start) + `cairn session-end` (close).
+
+## MCP Mode (optional)
+
+For AI runtimes that support the Model Context Protocol, Cairn also exposes 16 MCP tools that map 1:1 to CLI commands.
+
+Add to your MCP config (e.g. `.claude/mcp.json`):
+
+```json
+{
+    "mcpServers": {
+        "cairn": { "command": "cairn-rt" }
+    }
+}
+```
+
+<details>
+<summary><strong>MCP Tools Reference</strong></summary>
 
 ### Initialization
 
-| Tool | Description | Writes Data? |
-|------|-------------|-------------|
-| `cairn_init_status` | Check Cairn initialization status. Returns whether `.cairn/` exists, has config, and has been populated. | No (read-only) |
-| `cairn_init_commit` | Batch write initial cognition after project analysis. Accepts config, skeleton nodes, blood candidates, stage, and DNA traits. | Yes (writes all stores) |
+| Tool | Description |
+|------|-------------|
+| `cairn_init_status` | Check initialization status |
+| `cairn_init_commit` | Write initial cognition after project analysis |
 
 ### Core Workflow
 
-| Tool | Description | Writes Data? |
-|------|-------------|-------------|
-| `cairn_context` | Activate relevant cognition for the current task. Returns: stage advisory, no-go list, relevant domains, active debt, challenges. | No (read-only) |
-| `cairn_signal` | Report a conversation signal: user rejection, decision, constraint, historical reference, debt acceptance. Routed through Trust Router. | Indirect (via Trust Router) |
-| `cairn_session_end` | End-of-session processing: batch signals, create session record, regenerate views. | Indirect (via Trust Router) |
-| `cairn_status` | System status overview: blood count, staged count, signal count, stage advisory, DNA status. | No (read-only) |
-| `cairn_plan` | History-aware planning framework. Returns historical constraints and recommended direction for a task. | No (read-only) |
+| Tool | Description |
+|------|-------------|
+| `cairn_context` | Activate relevant cognition for current task |
+| `cairn_plan` | History-aware planning with constraints and DNA guidance |
+| `cairn_signal` | Report a conversation signal (rejection, decision, constraint) |
+| `cairn_observe` | Batch-capture signals before commit |
+| `cairn_session_end` | End-of-session processing pipeline |
+| `cairn_session_recover` | Recover interrupted session |
+| `cairn_status` | System status overview |
 
 ### Staged Review
 
-EvolutionEvent candidates pending human ratification (including `stage_transition` entries):
-
-| Tool | Description | Writes Data? |
-|------|-------------|-------------|
-| `cairn_stage_list` | List pending staged entries for review. | No (read-only) |
-| `cairn_stage_accept` | Accept a staged entry into blood. If the entry is a `stage_transition`, also updates `state.stage`. | Yes (writes blood / state) |
-| `cairn_stage_reject` | Reject a staged entry with reason. | Yes (updates staged) |
+| Tool | Description |
+|------|-------------|
+| `cairn_stage_list` | List pending staged entries |
+| `cairn_stage_accept` | Accept a staged entry into blood |
+| `cairn_stage_reject` | Reject a staged entry with reason |
 
 ### DNA Emergence
 
-DNA trait candidates produced by `CompressionEngine` during `cairn_session_end`. Always require human ratification — a wrong trait silently distorts every future decision until removed.
-
-| Tool | Description | Writes Data? |
-|------|-------------|-------------|
-| `cairn_dna_list` | List pending DNA trait candidates from `.cairn/dna/staged/`. | No (read-only) |
-| `cairn_dna_accept` | Confirm a DNA trait candidate; writes to `dna/identity.yaml` and starts modulating routing. | Yes (writes DNA identity + audit) |
-| `cairn_dna_reject` | Reject a DNA trait candidate with reason. | Yes (updates DNA staged + audit) |
+| Tool | Description |
+|------|-------------|
+| `cairn_dna_list` | List pending DNA trait candidates |
+| `cairn_dna_accept` | Confirm a DNA trait candidate |
+| `cairn_dna_reject` | Reject a DNA trait candidate |
 
 ### Diagnostics
 
-| Tool | Description | Writes Data? |
-|------|-------------|-------------|
-| `cairn_doctor` | Run 5 cross-system consistency checks (skeleton drift, blood conflicts, orphan domains, DNA coherence, archived-overactivation). **Side effect**: auto-resurrects archived G0/G1 events with ≥5 hits in 30 days; G2+ surface as `resurrection_candidates`. | Yes (resurrection writes) |
+| Tool | Description |
+|------|-------------|
+| `cairn_doctor` | Consistency checks + auto-resurrection |
 
-> `cairn_status` is also a diagnostic surface — it's listed under Core Workflow above because it's read frequently by every session.
+</details>
 
-### Input Schemas
+## CLI
 
-**`cairn_init_status`** — no input
+**Runtime commands** (called by AI / scripts, all support `--json`):
 
-**`cairn_init_commit`**
-```json
-{
-    "config": {
-        "project_name": "string",
-        "domains": "string[]",
-        "cognitive_mode": "lightweight | standard | institutional"
-    },
-    "skeleton": [{
-        "domain": "string",
-        "role": "string",
-        "owns": "string[]",
-        "does_not_own": "string[]",
-        "causal_keywords": "string[]",
-        "dependencies": "string[] (optional)"
-    }],
-    "blood_candidates": "object[] — draft evolution events",
-    "stage": {
-        "phase": "exploration | growth | maturity | maintenance",
-        "confidence": "number (0–1)",
-        "evidence": "string[]"
-    },
-    "dna": {
-        "traits": [{
-            "name": "string",
-            "level": "low | medium | high",
-            "confidence": "number (0–1)",
-            "reasoning": "string"
-        }]
-    }
-}
-```
+| Command | What it does |
+|---------|--------------|
+| `cairn context [--task <t>]` | Creates session, activates constraints |
+| `cairn plan --task <t>` | Surfaces historical constraints + DNA guidance |
+| `cairn signal --type <t> --what <w>` | Routes through TrustRouter |
+| `cairn observe --summary <s>` | Extracts and routes candidate signals |
+| `cairn session-end --summary <s>` | Git scan → decay → calibration → stage → DNA compression |
+| `cairn session-recover` | Runs session-end pipeline for interrupted session |
 
-**`cairn_context`**
-```json
-{
-    "task": "string (optional) — current task description",
-    "files": "string[] (optional) — files being worked on"
-}
-```
+**Management commands**:
 
-**`cairn_signal`**
-```json
-{
-    "signal_type": "string — user_rejection | constraint_declaration | historical_reference | decision | debt_acceptance | stage_constraint",
-    "domain": "string (optional) — affected domain",
-    "details": {
-        "what": "string — what happened",
-        "reason": "string (optional) — why",
-        "rejected_alternatives": [{ "path": "string", "reason": "string" }],
-        "revisit_when": "string[] (optional)"
-    },
-    "evidence": {
-        "user_said": "string (optional)",
-        "files": "string[] (optional)",
-        "commit_ref": "string (optional)"
-    }
-}
-```
+| Command | What it does |
+|---------|--------------|
+| `cairn init [--empty]` | Initialize `.cairn/` scaffold |
+| `cairn status` | Cognitive status snapshot |
+| `cairn doctor [--fix\|--recover\|--metrics]` | Consistency checks, repairs |
+| `cairn review` | List pending staged entries |
+| `cairn audit` | Governance audit log |
+| `cairn dna show \| list \| accept \| reject \| reevaluate` | DNA trait management |
+| `cairn skeleton show` | Domain map |
+| `cairn blood list \| show \| archive \| resurrect \| trauma` | Event management |
+| `cairn stage confirm \| list \| accept \| reject` | Event ratification |
+| `cairn skill show [platform]` | Print assembled protocol |
+| `cairn migrate` | Apply pending migrations after upgrade |
 
-**`cairn_session_end`**
-```json
-{
-    "summary": "string — session summary",
-    "changed_domains": "string[] (optional)",
-    "decisions_made": "string[] (optional)",
-    "unresolved": "string[] (optional)"
-}
-```
+Full reference: `cairn --help`.
 
-**`cairn_plan`**
-```json
-{
-    "task": "string — task to plan for"
-}
-```
+## Configuration
 
-**`cairn_status`** — no input
+### Platform setup
 
-**`cairn_stage_list`** — no input
-
-**`cairn_stage_accept`**
-```json
-{
-    "id": "string — staged entry ID"
-}
-```
-
-**`cairn_stage_reject`**
-```json
-{
-    "id": "string — staged entry ID",
-    "reason": "string — rejection reason"
-}
-```
-
-**`cairn_doctor`** — no input
-
-**`cairn_dna_list`** — no input
-
-**`cairn_dna_accept`**
-```json
-{
-    "id": "string — DNA staged candidate ID"
-}
-```
-
-**`cairn_dna_reject`**
-```json
-{
-    "id": "string — DNA staged candidate ID",
-    "reason": "string — rejection reason"
-}
-```
-
-## Recommended Workflow
-
-```
-First session (initialization):
-  cairn_init_status()
-  → Returns: not initialized / empty scaffold / ready
-
-  cairn_init_commit({ config, skeleton, blood_candidates, stage, dna })
-  → Writes initial cognition: skeleton nodes, blood events, DNA traits, stage
-
-Session start:
-  cairn_context({ task: "refactor auth module" })
-  → Returns constraints: no-go list, relevant domains, active debt, challenges
-
-During work:
-  cairn_signal({ signal_type: "user_rejection", domain: "auth", details: { what: "OAuth2 PKCE", reason: "too complex for current team size" } })
-  → Trust Router routes: G0 drop / G1 suggestion / G2 staged / G3 blood
-
-  cairn_signal({ signal_type: "decision", domain: "api-layer", details: { what: "REST stays", rejected_alternatives: [{ path: "GraphQL", reason: "insufficient tooling" }] } })
-  → Routed based on gravity
-
-Before design tasks:
-  cairn_plan({ task: "redesign notification system" })
-  → Returns historical constraints and recommended direction
-
-Session end:
-  cairn_session_end({ summary: "Refactored auth, rejected OAuth2 PKCE", changed_domains: ["auth"] })
-  → Batch processes signals, regenerates views, creates session record
-
-Reviewing staged entries (EvolutionEvent candidates, including stage_transition):
-  cairn_stage_list()
-  → Returns pending entries with draft event details
-  cairn_stage_accept({ id: "staged_..." })
-  → Accepts entry into blood (and updates state.stage if it's a stage_transition)
-  cairn_stage_reject({ id: "staged_...", reason: "not relevant" })
-  → Rejects entry
-
-Reviewing DNA trait candidates (emerge from cairn_session_end → CompressionEngine):
-  cairn_dna_list()
-  → Returns pending candidates with trait_name, level, confidence, evidence_events, reasoning
-  cairn_dna_accept({ id: "dna_..." })
-  → Confirms trait; starts modulating routing, challenges, and gravity
-  cairn_dna_reject({ id: "dna_...", reason: "premature pattern" })
-  → Discards candidate (always require human ratification — never auto-accept)
-
-Diagnostics (any time):
-  cairn_status()
-  cairn_doctor()   # has side effect: auto-resurrects archived G0/G1 events
-```
-
-## Installation
-
-### From npm (recommended)
+<details>
+<summary><strong>Claude Code</strong></summary>
 
 ```bash
 npm install -g cairn-rt
+npx skills add zzf2333/Cairn
 ```
 
-### From source
+Optional MCP — add to `.claude/mcp.json`:
+
+```json
+{
+    "mcpServers": {
+        "cairn": { "command": "cairn-rt" }
+    }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Codex</strong></summary>
 
 ```bash
-cd mcp/
-npm install
-npm run build
+npm install -g cairn-rt
+cairn skill show codex >> AGENTS.md
 ```
 
-Requires Node.js 18+.
-
-### Configuration
-
-#### Claude Code
-
-Add to `~/.claude/mcp.json` (global) or `.claude/mcp.json` (project):
-
-```json
-{
-    "mcpServers": {
-        "cairn": {
-            "command": "cairn-rt"
-        }
-    }
-}
-```
-
-From source:
-```json
-{
-    "mcpServers": {
-        "cairn": {
-            "command": "node",
-            "args": ["/path/to/cairn/mcp/dist/index.js"]
-        }
-    }
-}
-```
-
-#### Cursor
-
-Add to `.cursor/mcp.json` in your project:
-
-```json
-{
-    "mcpServers": {
-        "cairn": {
-            "command": "cairn-rt"
-        }
-    }
-}
-```
-
-#### Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
-
-```json
-{
-    "mcpServers": {
-        "cairn": {
-            "command": "cairn-rt"
-        }
-    }
-}
-```
-
-#### Codex CLI
-
-Add to `~/.codex/config.toml` or `.codex/config.toml`:
+Add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.cairn]
 command = "cairn-rt"
 ```
 
-### Project root detection
+</details>
 
-The server resolves the `.cairn/` directory in this order:
+<details>
+<summary><strong>Cursor</strong></summary>
 
-1. `CAIRN_ROOT` environment variable (set in MCP config if needed)
-2. Walk up from `process.cwd()` until `.cairn/` is found
+```bash
+npm install -g cairn-rt
+cairn skill show cursor >> .cursorrules
+```
 
-If neither finds a `.cairn/` directory, the server auto-initializes one on first tool call.
-
-To pin the server to a specific project:
+Add to `.cursor/mcp.json`:
 
 ```json
 {
     "mcpServers": {
-        "cairn": {
-            "command": "cairn-rt",
-            "env": {
-                "CAIRN_ROOT": "/path/to/your/project"
-            }
-        }
+        "cairn": { "command": "cairn-rt" }
     }
 }
 ```
 
-## CLI
+</details>
 
-```
-cairn <command> [options]
+### Project root detection
 
-Commands:
-  init                     Initialize .cairn/ scaffold and print setup guide
-  init --empty             Initialize .cairn/ scaffold (silent, for scripts)
-  status                   Show project cognitive status (DNA mode, drift, stage)
-  doctor                   Consistency checks + auto-resurrect low-gravity archived events
-  review                   List pending staged entries
-  audit                    Show governance audit log
-  dna show                 Show DNA traits + drift warnings + reevaluation_mode
-  dna reevaluate           Toggle DNA reevaluation_mode
-  dna list                 List pending DNA trait candidates
-  dna accept <id>          Confirm a DNA trait candidate
-  dna reject <id> <reason> Reject a DNA trait candidate
-  skeleton show            Show skeleton nodes
-  blood show [id]          Show blood events
-  blood archive <id>       Archive a blood event
-  blood resurrect <id>     Resurrect an archived event
-  blood trauma <id>        Mark event as trauma
-  stage confirm            Confirm stage advisory as official
-  stage list               List pending stage_transition entries
-  stage accept <id>        Accept a stage transition (applies new phase)
-  stage reject <id> <reason> Reject a stage transition
+The runtime resolves `.cairn/` in this order:
 
-Options:
-  --version                Show version
-```
+1. `CAIRN_ROOT` environment variable
+2. Walk up from `process.cwd()` until `.cairn/` is found
 
-## Degraded Mode
-
-For AI tools that don't support MCP, `views/` provides read-only access:
-
-- `views/output.md` — global constraints
-- `views/domains/*.md` — per-domain summaries
-- `views/stage.md` — stage advisory details
-
-Views are auto-generated from blood events whenever data changes. They are always
-a consistent snapshot of the last known state.
-
-Skill adapter files for non-MCP tools read `views/` directly. See each adapter
-in the `skills/` directory.
+To pin to a specific project, set `CAIRN_ROOT` in your MCP config or shell environment.
 
 ## Development
 
@@ -398,94 +209,49 @@ npm run dev           # Run server directly (tsx, no build needed)
 
 ### Reverse-regression scenarios
 
-25 end-to-end scenarios verify Cairn's core promise — "AI does not walk into the same wall twice" — against real Claude Code and Codex sessions. Each scenario boots a fixture `.cairn/`, spawns the real MCP server, and asserts the model's tool-call trace and text response.
+25 end-to-end scenarios verify Cairn's core promise — "AI does not walk into the same wall twice" — against real Claude Code and Codex sessions.
 
 ```bash
 export ANTHROPIC_API_KEY=...
 export OPENAI_API_KEY=...
 npm run scenarios            # both platforms × 25 scenarios
-npm run scenarios -- a1      # filter
 npm run scenarios:cc         # Claude Code only
 npm run scenarios:codex      # Codex only
 ```
 
-Framework smoke test (no LLM, validates fixtures + MCP wiring):
-```bash
-npx tsx tests/scenarios/runner/smoke-all.ts
-```
-
-See `tests/scenarios/README.md` for the full coverage matrix and authoring guide.
+See `tests/scenarios/README.md` for the full coverage matrix.
 
 ## Architecture
 
 ```
 mcp/src/
 ├── index.ts                 # MCP stdio entry point
-├── constants.ts             # Version, gravity constants, cognitive mode parameters
-├── context.ts               # CairnContext factory: wires all stores and engines
-├── bootstrap.ts             # Empty scaffold creation
-├── server.ts                # McpServer factory: registers 14 tools
-├── paths.ts                 # .cairn/ root detection + path resolution
-├── tokens.ts                # Token counting utilities
-├── errors.ts                # Typed error codes
-├── schemas/                 # Zod schemas for all data types
-│   ├── shared.ts            # Gravity, Source, Subject, BehaviorEffect, Lifecycle, Trauma, Revisit, Health
-│   ├── evolution-event.ts   # EvolutionEvent (blood entries)
-│   ├── skeleton.ts          # SkeletonNode (domain ownership)
-│   ├── dna.ts               # DNAIdentity, DNAImprint, DNATrait
-│   ├── domain-capillary.ts  # DomainConstraints, DomainAcceptedDebt, DomainRejectedPaths
-│   ├── signal.ts            # GitSignal, ConversationSignal, CalibrationSignal
-│   ├── staged-entry.ts      # StagedEntry (pending human review)
-│   ├── config.ts            # Config (cognitive_mode, domains, tech_stack)
-│   ├── state.ts             # State (stage snapshot, last session)
-│   ├── governance.ts        # GovernancePolicy, AuditEntry
-│   └── session-record.ts    # SessionRecord
-├── stores/                  # YAML file read/write layer
-│   ├── blood-store.ts       # blood/*.yaml CRUD + duplicate detection
-│   ├── skeleton-store.ts    # skeleton/*.yaml CRUD
-│   ├── dna-store.ts         # dna/identity.yaml + dna/imprint.yaml
-│   ├── domain-store.ts      # domains/*/constraints.yaml, accepted_debt.yaml, rejected_paths.yaml
-│   ├── signal-store.ts      # signals/raw_git/, raw_conversation/, raw_calibration/
-│   ├── staged-store.ts      # staged/*.yaml CRUD + accept/reject
-│   ├── state-store.ts       # state.yaml read/write
-│   ├── config-store.ts      # config.yaml read/write
-│   ├── governance-store.ts  # governance/policy.yaml + audit.yaml
-│   └── session-store.ts     # sessions/*.yaml
+├── server.ts                # McpServer factory
+├── actions/                 # Shared business logic (MCP + CLI)
+│   ├── context-action.ts
+│   ├── plan-action.ts
+│   ├── signal-action.ts
+│   ├── observe-action.ts
+│   ├── session-end-action.ts
+│   └── session-recover-action.ts
+├── tools/                   # MCP tool wrappers (thin, delegate to actions/)
+├── cli/                     # CLI subcommands + runtime commands
+│   ├── index.ts             # CLI router
+│   ├── runtime-*.ts         # Runtime commands (delegate to actions/)
+│   └── *.ts                 # Management commands
 ├── engines/                 # Core processing engines
 │   ├── activation-engine.ts # Context-aware cognition activation
-│   ├── challenge-engine.ts  # Reflective challenge generation
 │   ├── trust-router.ts      # G0–G3 gravity-based signal routing
-│   ├── git-ear.ts           # Git history signal detection
-│   ├── calibration-ear.ts   # Consistency drift detection
-│   ├── stage-engine.ts      # Project stage inference (rule-based)
-│   ├── blood-engine.ts      # Blood event management + domain capillary sync
-│   ├── decay-engine.ts      # Stale event aging by cognitive mode
-│   ├── compression-engine.ts # DNA trait candidate identification
-│   ├── resurrection-engine.ts # Archived event resurrection detection
-│   ├── consistency-engine.ts # Cross-subsystem consistency validation
-│   ├── governance-engine.ts # 3-tier governance permission checks
-│   └── views-engine.ts     # Generates views/ from blood (token-budget-aware)
-├── tools/                   # MCP tool implementations
-│   ├── cairn-init-status.ts
-│   ├── cairn-init-commit.ts
-│   ├── cairn-context.ts
-│   ├── cairn-signal.ts
-│   ├── cairn-session-end.ts
-│   ├── cairn-status.ts
-│   ├── cairn-plan.ts
-│   ├── cairn-stage-list.ts
-│   ├── cairn-stage-accept.ts
-│   ├── cairn-stage-reject.ts
-│   └── cairn-doctor.ts
-└── cli/                     # CLI subcommands
-    ├── index.ts
-    ├── init.ts
-    ├── status.ts
-    ├── doctor.ts
-    ├── review.ts
-    ├── audit.ts
-    ├── dna.ts
-    ├── skeleton.ts
-    ├── blood.ts
-    └── stage.ts
+│   ├── challenge-engine.ts  # Reflective challenge generation
+│   ├── compression-engine.ts # DNA trait identification
+│   ├── decay-engine.ts      # Stale event aging
+│   ├── views-engine.ts      # Generates views/ from blood
+│   └── ...
+├── stores/                  # YAML file read/write layer
+├── schemas/                 # Zod schemas for all data types
+└── utils/                   # Shared utilities
 ```
+
+## License
+
+MIT — [github.com/zzf2333/Cairn](https://github.com/zzf2333/Cairn)
