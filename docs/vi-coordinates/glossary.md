@@ -104,7 +104,7 @@ Project phase. Inferred by `StageEngine` from commit cadence (14-day hysteresis,
 Cognition directory. YAML, git-tracked by design. Top-level: `config.yaml`, `state.yaml`, `skeleton/`, `blood/`, `staged/`, `domains/`, `dna/`, `signals/`, `governance/`, `views/`, `sessions/`, `logs/`. See [`stability.md`](./stability.md) for the stability contract per directory.
 
 ### Views
-Auto-generated markdown projections at `.cairn/views/`. Consumed by AI tools in degraded mode (no MCP). Regenerated on every `cairn_session_end` and `cairn doctor`. Never hand-edit.
+Auto-generated markdown projections at `.cairn/views/`. Consumed by AI tools in degraded mode (when CLI is unavailable). Regenerated on every `cairn_session_end` and `cairn doctor`. Never hand-edit.
 
 ### Imprint
 DNA inheritance from a forked parent project (`.cairn/dna/imprint.yaml`). Carries `inherited_constraints` + `inherited_warnings`.
@@ -126,7 +126,7 @@ DNA inheritance from a forked parent project (`.cairn/dna/imprint.yaml`). Carrie
 ## Acronyms
 
 - **ADR** — Architecture Decision Record
-- **MCP** — Model Context Protocol (historical; Cairn no longer uses MCP as a transport layer)
+- **MCP** — Model Context Protocol (historical; Cairn used MCP as transport in v0.1–v0.4, replaced by Skill + CLI in v0.5)
 - **G0–G3** — Gravity levels
 - **SLO** — Service-level objective
 

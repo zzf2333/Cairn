@@ -107,7 +107,7 @@ A reasonable engineering reflex says: "this should be a SQL view, not a stored p
 
 1. **Git-tracked.** A SQL view doesn't live in git. Capillary YAML files do, which means PR reviews show capillary changes as a diff. "This PR adds a new rejected path under `data`" is visible in plain text in code review.
 
-2. **Degraded-mode usable.** When MCP is unavailable and the AI is reading `.cairn/views/output.md` directly (or even the raw YAML), capillaries are flat, simple, and don't require executing a query engine.
+2. **Degraded-mode usable.** When the `cairn` CLI is unavailable and the AI is reading `.cairn/views/output.md` directly (or even the raw YAML), capillaries are flat, simple, and don't require executing a query engine.
 
 3. **Schema-validated.** Each capillary file is a typed Zod schema. The discipline of "this is real data with a real shape" propagates outward — you can write a small script that reads `accepted_debt.yaml` and produces a debt-aging report; nobody had to design an API for that.
 

@@ -32,7 +32,7 @@ Tests that Cairn's returned cognition actually changes AI decision-making — no
 
 Tests that the Skill Runtime drives a complete Cairn lifecycle for realistic task types: architecture planning, stale session recovery, explicit rejection capture, and minimal intervention for trivial tasks.
 
-Each scenario boots a fresh `.cairn/` fixture, spawns a real Cairn MCP server, drives a real LLM through a controlled prompt, and asserts the resulting tool-call trace and assistant text against `expected.yaml`.
+Each scenario boots a fresh `.cairn/` fixture, starts the Cairn runtime, drives a real LLM through a controlled prompt, and asserts the resulting tool-call trace and assistant text against `expected.yaml`.
 
 Two platforms are exercised side-by-side:
 - **Claude Code** — Anthropic Messages API + the `skills/claude-code/SKILL.md` protocol as system prompt
@@ -50,7 +50,7 @@ tests/scenarios/
 │   ├── types.ts              — shared types
 │   ├── discover.ts           — find scenarios by directory naming convention
 │   ├── fixture-builder.ts    — YAML spec → real .cairn/ directory
-│   ├── mcp-bridge.ts         — spawn MCP server + stdio client
+│   ├── mcp-bridge.ts         — spawn Cairn server + stdio client (legacy, to be migrated)
 │   ├── platform-claude-code.ts — Anthropic SDK driver
 │   ├── platform-codex.ts     — OpenAI SDK driver
 │   ├── assertions.ts         — expected.yaml evaluator
@@ -312,7 +312,7 @@ const ov = (a.id && overrides[a.id]) || overrides[a.name];
 ## Why this approach
 
 - **Real LLMs, not mocks.** The promise being tested is "the actual model respects Cairn protocol." Mocking the LLM erases the only meaningful signal.
-- **Real MCP server, not a stub.** We spawn `dist/index.js` and connect via stdio — same path real users hit. Schema bugs in tools surface here first.
+- **Real Cairn runtime, not a stub.** We exercise the actual tool handlers — same path real users hit. Schema bugs surface here first.
 - **Per-platform protocol injection.** Each platform's `skills/*.md` is loaded as the system prompt. Tests fail when those docs diverge from runtime expectations — they are the contract.
 - **Assertion-style, not snapshot.** We do not pin the assistant's exact wording (it varies run-to-run). We pin behavioral invariants: did it call the tool, did it surface the historical reason, did it refuse implementation code.
 

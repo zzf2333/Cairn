@@ -25,7 +25,7 @@ Method: Real dogfood session on Cairn itself + code analysis of all 6 lifecycle 
 
 ### F3: Recovery flow requires 3 round-trips
 
-**Problem**: Stale session detection flow: `context → blocked → recover → context again`. That's 3 MCP calls before work can start.
+**Problem**: Stale session detection flow: `context → blocked → recover → context again`. That's 3 CLI calls before work can start.
 
 **Mitigating factors**: 
 - Only triggers when previous session had signals (signals_count > 0) AND is stale (>60 min)

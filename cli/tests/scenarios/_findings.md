@@ -36,7 +36,7 @@
 
 ```bash
 cd /path/to/Cairn
-node mcp/dist/cli/index.js init   # 在本仓库根创建 .cairn/
+node cli/dist/cli/index.js init   # 在本仓库根创建 .cairn/
 git add .cairn/
 git commit -m "chore: enable dogfood"
 ```
