@@ -40,10 +40,10 @@ cd "$REPO_ROOT"
 npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
 echo "  [OK] package.json (root)"
 
-# 2. cli/package.json + mcp/package-lock.json
+# 2. cli/package.json + cli/package-lock.json
 cd "$REPO_ROOT/cli"
 npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
-echo "  [OK] cli/package.json and mcp/package-lock.json"
+echo "  [OK] cli/package.json and cli/package-lock.json"
 
 # 3. cli/src/server.ts — replace hardcoded version: "x.y.z..."
 SERVER_TS="$REPO_ROOT/cli/src/server.ts"

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2026-05-21 (directory rename + OIDC publish)
+
+### Changed
+
+- **Directory rename** — `mcp/` → `cli/`, aligning with Skill-first + CLI-backed product direction. All CI workflows, scripts, and documentation updated.
+- **npm README** — rewritten from MCP-first "Cairn MCP Server" to "Cairn" cognitive runtime. MCP tools folded into optional reference section.
+- **CI publish** — `release.yml` → `publish.yml`, switched from `NPM_TOKEN` secret to npm Trusted Publisher (OIDC provenance).
+
 ## [0.4.7] - 2026-05-21 (Skill-first + CLI-backed, package rename)
 
 0.4.6 aligned docs to position Protocol as the primary lifecycle driver. 0.4.7 completes the migration: the default product path is now **Skill Runtime Protocol + CLI commands**, MCP is demoted to optional/advanced, and the npm package is renamed from `cairn-mcp-server` to `cairn-rt`.

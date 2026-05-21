@@ -1,4 +1,4 @@
-name: Release
+name: Publish
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   test:
@@ -31,15 +32,15 @@ jobs:
       - name: Verify version consistency
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          MCP_VERSION=$(node -p "require('./cli/package.json').version")
+          PKG_VERSION=$(node -p "require('./cli/package.json').version")
           CONSTANTS_VERSION=$(grep 'export const VERSION' cli/src/constants.ts | grep -oP '"[^"]*"' | tr -d '"')
 
           echo "Tag version:       $TAG_VERSION"
-          echo "MCP version:       $MCP_VERSION"
+          echo "Package version:   $PKG_VERSION"
           echo "Constants version: $CONSTANTS_VERSION"
 
-          if [ "$TAG_VERSION" != "$MCP_VERSION" ]; then
-            echo "::error::Tag $TAG_VERSION does not match cli/package.json $MCP_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag $TAG_VERSION does not match cli/package.json $PKG_VERSION"
             exit 1
           fi
           if [ "$TAG_VERSION" != "$CONSTANTS_VERSION" ]; then
@@ -60,6 +61,9 @@ jobs:
     name: Publish to npm
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -78,9 +82,7 @@ jobs:
 
       - name: Publish
         working-directory: cli
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
 
   github-release:
     name: Create GitHub Release
