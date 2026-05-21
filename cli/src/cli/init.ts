@@ -12,18 +12,15 @@ export async function runInit(args: string[]): Promise<void> {
 
     console.log("Cairn initialized — .cairn/ scaffold created.");
     console.log("");
-    console.log("Note: the MCP server auto-bootstraps on startup if .cairn/ is missing,");
-    console.log("so this step is optional. It is useful for pre-creating the directory");
-    console.log("structure before configuring your AI tool.");
+    console.log("Note: the cairn CLI auto-bootstraps .cairn/ on first use,");
+    console.log("so this step is optional. It is useful for pre-creating the");
+    console.log("directory structure before your first AI session.");
     console.log("");
-    console.log("Next: configure cairn-rt in your AI tool's MCP settings:");
+    console.log("Next: install the protocol skill if you haven't already:");
     console.log("");
-    console.log('  { "mcpServers": { "cairn": { "command": "cairn-rt" } } }');
+    console.log("  npx skills add zzf2333/Cairn           # Claude Code");
+    console.log("  cairn skill show codex >> AGENTS.md     # Codex");
+    console.log("  cairn skill show cursor >> .cursorrules  # Cursor");
     console.log("");
-    console.log("  Claude Code  — .claude/mcp.json");
-    console.log("  Cursor       — .cursor/mcp.json");
-    console.log("  Codex CLI    — codex --mcp-server cairn=cairn-rt");
-    console.log("");
-    console.log("On first use, the AI will call cairn_init_status() to get a structured");
-    console.log("initialization guide with analysis steps and valid enum values.");
+    console.log("Then tell your AI tool: Initialize Cairn for this project");
 }
