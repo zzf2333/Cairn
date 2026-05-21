@@ -108,7 +108,7 @@ The decay windows are not universal. They scale with cognitive_mode:
 
 A `lightweight` project forgets fast — appropriate for short-lived experiments. An `institutional` project keeps things alive longer — appropriate for compliance / regulated / long-tail-critical projects.
 
-The threshold is in `mcp/src/constants.ts.COGNITIVE_MODE_PARAMS`. Tuning per project is possible (custom `cognitive_mode`-equivalent values) but not exposed via config yet; on the 0.5 roadmap.
+The threshold is in `cli/src/constants.ts.COGNITIVE_MODE_PARAMS`. Tuning per project is possible (custom `cognitive_mode`-equivalent values) but not exposed via config yet; on the 0.5 roadmap.
 
 ---
 

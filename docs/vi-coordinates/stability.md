@@ -69,7 +69,7 @@ session_in_progress?: { started_at, step }     # 0.4.0+
 These can change with prominent CHANGELOG callouts. Not SemVer-protected.
 
 - **DNA trait name set.** Today: `simplicity_bias` and `infra_aggressiveness`. More trait kinds planned for 0.5+. Existing trait semantics may also refine.
-- **Decay / Resurrection thresholds.** Constants in `mcp/src/constants.ts.COGNITIVE_MODE_PARAMS`. Long-horizon dogfood data may justify tuning.
+- **Decay / Resurrection thresholds.** Constants in `cli/src/constants.ts.COGNITIVE_MODE_PARAMS`. Long-horizon dogfood data may justify tuning.
 - **Governance policy format.** `governance/policy.yaml` may grow per-tool quota fields.
 - **Calibration signal types.** `no_go_violation | skeleton_drift | debt_resolution | dna_drift` — additions possible.
 

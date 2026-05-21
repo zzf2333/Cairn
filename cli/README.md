@@ -224,7 +224,7 @@ See `tests/scenarios/README.md` for the full coverage matrix.
 ## Architecture
 
 ```
-mcp/src/
+cli/src/
 ├── index.ts                 # MCP stdio entry point
 ├── server.ts                # McpServer factory
 ├── actions/                 # Shared business logic (MCP + CLI)

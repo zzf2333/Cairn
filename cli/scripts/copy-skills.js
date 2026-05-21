@@ -17,4 +17,4 @@ if (existsSync(dest)) {
 }
 
 cpSync(src, dest, { recursive: true });
-console.log("skills/ copied into mcp/skills/ for packaging");
+console.log("skills/ copied into cli/skills/ for packaging");

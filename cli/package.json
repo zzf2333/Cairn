@@ -8,9 +8,9 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/zzf2333/Cairn.git",
-        "directory": "mcp"
+        "directory": "cli"
     },
-    "homepage": "https://github.com/zzf2333/Cairn/tree/main/mcp",
+    "homepage": "https://github.com/zzf2333/Cairn/tree/main/cli",
     "bugs": {
         "url": "https://github.com/zzf2333/Cairn/issues"
     },

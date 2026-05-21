@@ -11,14 +11,14 @@
 | `cairn_context` activate p99 | ≤ 1,000 blood events | ≤ 500 ms | ~15 ms (33× headroom) |
 | `cairn_session_end` full pipeline | ≤ 1,000 blood events | ≤ 5,000 ms | ~115 ms (43× headroom) |
 
-`npm run bench` (in `mcp/`) fails the build if either SLO regresses.
+`npm run bench` (in `cli/`) fails the build if either SLO regresses.
 
 ---
 
 ## Benchmark methodology
 
 ```bash
-cd mcp
+cd cli
 npm run bench
 ```
 
@@ -49,9 +49,9 @@ These are the numbers the SLO is tuned against. Your machine will vary; what mat
 
 | Change | File | Impact |
 |--------|------|--------|
-| `BloodStore` in-memory cache | `mcp/src/stores/blood-store.ts` | 1k-scale p99 from 1715 ms → 14.8 ms (~**115× speedup**); cache invalidates on `save` / `remove` |
-| `StateStore.recordActivationBatch` | `mcp/src/stores/state-store.ts` + activation engine | Eliminates N writes to `state.yaml` per activation |
-| `atomicWriteFile` (write + rename) | `mcp/src/utils/atomic-write.ts` | Concurrent-safe; no measurable perf regression |
+| `BloodStore` in-memory cache | `cli/src/stores/blood-store.ts` | 1k-scale p99 from 1715 ms → 14.8 ms (~**115× speedup**); cache invalidates on `save` / `remove` |
+| `StateStore.recordActivationBatch` | `cli/src/stores/state-store.ts` + activation engine | Eliminates N writes to `state.yaml` per activation |
+| `atomicWriteFile` (write + rename) | `cli/src/utils/atomic-write.ts` | Concurrent-safe; no measurable perf regression |
 
 Cache lives in process, invalidates on Blood store mutations, shared across all tool calls in one MCP server lifetime. Multiple host restarts each spawn a fresh process, hence a cold cache; this is acceptable since the cache rebuilds in milliseconds.
 
@@ -83,11 +83,11 @@ Until then: 10k scale is unconstrained but believed safe based on the BloodStore
 ## What to do if performance regresses
 
 1. Re-run `npm run bench` after a clean checkout — confirm regression is real
-2. Check `mcp/src/stores/blood-store.ts` — has cache invalidation become too aggressive?
+2. Check `cli/src/stores/blood-store.ts` — has cache invalidation become too aggressive?
 3. Check `ActivationEngine.activate()` — has the call chain gained an extra `loadAll`?
-4. Check `mcp/src/observability/logger.ts` — is the wrapper synchronously blocking?
+4. Check `cli/src/observability/logger.ts` — is the wrapper synchronously blocking?
 
-Then file the regression in `mcp/tests/scenarios/_findings.md` with the bench output before and after.
+Then file the regression in `cli/tests/scenarios/_findings.md` with the bench output before and after.
 
 ---
 

@@ -136,7 +136,7 @@ These test whether the Skill Runtime drives a complete Cairn lifecycle for reali
 
 ```bash
 # install once
-cd mcp
+cd cli
 npm install
 
 # requires API keys

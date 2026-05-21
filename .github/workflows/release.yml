@@ -19,10 +19,10 @@ jobs:
         with:
           node-version: 18
           cache: npm
-          cache-dependency-path: mcp/package-lock.json
+          cache-dependency-path: cli/package-lock.json
 
       - name: Install, build, and test
-        working-directory: mcp
+        working-directory: cli
         run: |
           npm ci
           npm run build
@@ -31,19 +31,19 @@ jobs:
       - name: Verify version consistency
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          MCP_VERSION=$(node -p "require('./mcp/package.json').version")
-          CONSTANTS_VERSION=$(grep 'export const VERSION' mcp/src/constants.ts | grep -oP '"[^"]*"' | tr -d '"')
+          MCP_VERSION=$(node -p "require('./cli/package.json').version")
+          CONSTANTS_VERSION=$(grep 'export const VERSION' cli/src/constants.ts | grep -oP '"[^"]*"' | tr -d '"')
 
           echo "Tag version:       $TAG_VERSION"
           echo "MCP version:       $MCP_VERSION"
           echo "Constants version: $CONSTANTS_VERSION"
 
           if [ "$TAG_VERSION" != "$MCP_VERSION" ]; then
-            echo "::error::Tag $TAG_VERSION does not match mcp/package.json $MCP_VERSION"
+            echo "::error::Tag $TAG_VERSION does not match cli/package.json $MCP_VERSION"
             exit 1
           fi
           if [ "$TAG_VERSION" != "$CONSTANTS_VERSION" ]; then
-            echo "::error::Tag $TAG_VERSION does not match mcp/src/constants.ts $CONSTANTS_VERSION"
+            echo "::error::Tag $TAG_VERSION does not match cli/src/constants.ts $CONSTANTS_VERSION"
             exit 1
           fi
 
@@ -68,16 +68,16 @@ jobs:
           node-version: 18
           registry-url: https://registry.npmjs.org
           cache: npm
-          cache-dependency-path: mcp/package-lock.json
+          cache-dependency-path: cli/package-lock.json
 
       - name: Install and build
-        working-directory: mcp
+        working-directory: cli
         run: |
           npm ci
           npm run build
 
       - name: Publish
-        working-directory: mcp
+        working-directory: cli
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

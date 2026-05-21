@@ -109,7 +109,7 @@ Symptom: `cairn_context` takes seconds instead of milliseconds.
 
 Check:
 
-1. Run `npm run bench` (in the `mcp/` directory) on a clean tmpdir at your blood-event scale. Compare to `docs/vi-coordinates/performance.md` numbers.
+1. Run `npm run bench` (in the `cli/` directory) on a clean tmpdir at your blood-event scale. Compare to `docs/vi-coordinates/performance.md` numbers.
 2. Confirm the BloodStore cache is alive — restart the MCP server (the cache is in-process; multiple host restarts each spawn a fresh process).
 3. Check `.cairn/blood/` file count. If it's grown into the tens of thousands, decay isn't running enough — either `cairn_session_end` is being skipped, or the cognitive mode is too institutional for the activity rate.
 

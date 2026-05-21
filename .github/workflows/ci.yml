@@ -21,16 +21,16 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-          cache-dependency-path: mcp/package-lock.json
+          cache-dependency-path: cli/package-lock.json
 
       - name: Install dependencies
-        working-directory: mcp
+        working-directory: cli
         run: npm ci
 
       - name: Build
-        working-directory: mcp
+        working-directory: cli
         run: npm run build
 
       - name: Test
-        working-directory: mcp
+        working-directory: cli
         run: npm test

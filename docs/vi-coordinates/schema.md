@@ -2,7 +2,7 @@
 
 > Canonical field-level reference for every yaml file under `.cairn/`. Look up on demand.
 
-Zod types live in `mcp/src/schemas/`. This doc mirrors them in human-readable form.
+Zod types live in `cli/src/schemas/`. This doc mirrors them in human-readable form.
 
 ---
 

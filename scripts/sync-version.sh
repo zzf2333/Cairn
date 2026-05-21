@@ -10,10 +10,10 @@
 #
 # Updates version in:
 #   - package.json              (root — skill discovery)
-#   - mcp/package.json          (via npm version --no-git-tag-version)
+#   - cli/package.json          (via npm version --no-git-tag-version)
 #   - mcp/package-lock.json     (updated automatically by npm)
-#   - mcp/src/server.ts         (hardcoded version field in createCairnServer)
-#   - mcp/src/constants.ts      (VERSION constant)
+#   - cli/src/server.ts         (hardcoded version field in createCairnServer)
+#   - cli/src/constants.ts      (VERSION constant)
 # =============================================================================
 
 set -euo pipefail
@@ -40,27 +40,27 @@ cd "$REPO_ROOT"
 npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
 echo "  [OK] package.json (root)"
 
-# 2. mcp/package.json + mcp/package-lock.json
-cd "$REPO_ROOT/mcp"
+# 2. cli/package.json + mcp/package-lock.json
+cd "$REPO_ROOT/cli"
 npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
-echo "  [OK] mcp/package.json and mcp/package-lock.json"
+echo "  [OK] cli/package.json and mcp/package-lock.json"
 
-# 3. mcp/src/server.ts — replace hardcoded version: "x.y.z..."
-SERVER_TS="$REPO_ROOT/mcp/src/server.ts"
+# 3. cli/src/server.ts — replace hardcoded version: "x.y.z..."
+SERVER_TS="$REPO_ROOT/cli/src/server.ts"
 sed -i.bak "s/version: \"[0-9]*\.[0-9]*\.[0-9]*[^\"]*\"/version: \"$VERSION\"/" "$SERVER_TS"
 rm -f "${SERVER_TS}.bak"
-echo "  [OK] mcp/src/server.ts"
+echo "  [OK] cli/src/server.ts"
 
-# 4. mcp/src/constants.ts — replace VERSION constant
-CONSTANTS_TS="$REPO_ROOT/mcp/src/constants.ts"
+# 4. cli/src/constants.ts — replace VERSION constant
+CONSTANTS_TS="$REPO_ROOT/cli/src/constants.ts"
 sed -i.bak "s/const VERSION = \"[^\"]*\"/const VERSION = \"$VERSION\"/" "$CONSTANTS_TS"
 rm -f "${CONSTANTS_TS}.bak"
-echo "  [OK] mcp/src/constants.ts"
+echo "  [OK] cli/src/constants.ts"
 
 echo ""
 echo "Done. All files updated to version $VERSION."
 echo ""
 echo "Verify with:"
-echo "  grep '\"version\"' package.json mcp/package.json"
-echo "  grep 'version:' mcp/src/server.ts"
-echo "  grep 'VERSION' mcp/src/constants.ts"
+echo "  grep '\"version\"' package.json cli/package.json"
+echo "  grep 'version:' cli/src/server.ts"
+echo "  grep 'VERSION' cli/src/constants.ts"
