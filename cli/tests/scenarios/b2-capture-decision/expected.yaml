@@ -9,8 +9,8 @@ required_tool_calls:
   - tool: cairn_signal
     must_be_called: true
     args_match:
-      signal_type: "decision"
-      "details.what": "(?i)postgres|postgresql"
+      type: "decision"
+      what: "(?i)postgres|postgresql"
 
 required_text_patterns:
   - pattern: "(?i)record|noted|captur|signal|memory|cairn|logg|track|filed|记录|登记"

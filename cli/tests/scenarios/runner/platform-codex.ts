@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import type { McpBridge, McpTool } from "./mcp-bridge.js";
+import type { CliBridge } from "./cli-bridge.js";
+import { parseCairnCommand } from "./parse-cairn-command.js";
 import type { RunRecord, ToolCallRecord } from "./types.js";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -10,40 +11,38 @@ const VERBOSE = process.env.CAIRN_SCENARIO_VERBOSE === "1";
 
 const PLATFORM_LABEL = "codex";
 
-function buildPlatformSystemPrompt(skillText: string, mcpInstructions: string): string {
+function buildPlatformSystemPrompt(skillText: string): string {
     return [
         "You are GPT running inside the **OpenAI Codex CLI**. The user is a software engineer working on a real project.",
         "Codex sessions follow the instructions in `AGENTS.md` at the project root; the relevant Cairn block from that file is included below.",
-        "You have access to a set of Cairn tools as OpenAI function tools. Use them according to the Cairn protocol below.",
+        "You have a bash function tool. Use it to run cairn CLI commands according to the Cairn protocol below.",
         "Behave like Codex: be precise, action-oriented, use the tools when the protocol calls for it, communicate succinctly.",
         "",
-        "When the Cairn protocol says 'call cairn_context before responding', that means: emit a function call for cairn_context BEFORE producing your textual answer. Do the same for cairn_session_end at the end of a session.",
-        "Always respect every constraint returned by cairn_context for the remainder of this session.",
+        "When the Cairn protocol says 'call cairn_context before responding', that means: call the bash function with `cairn context --task \"<task>\" --json` BEFORE producing your textual answer.",
+        "Always respect every constraint returned by cairn context for the remainder of this session.",
         "",
         "==== AGENTS.md — CAIRN BLOCK (from skills/cairn/SKILL.md) ====",
         skillText,
-        ...(mcpInstructions
-            ? ["", "==== MCP SERVER INSTRUCTIONS ====", mcpInstructions]
-            : []),
     ].join("\n");
 }
 
-function toOpenAiTool(t: McpTool): OpenAI.Chat.Completions.ChatCompletionTool {
-    return {
-        type: "function",
-        function: {
-            name: t.name,
-            description: t.description,
-            parameters: (t.inputSchema as Record<string, unknown>) ?? {
-                type: "object",
-                properties: {},
+const BASH_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+    type: "function",
+    function: {
+        name: "bash",
+        description: "Execute a bash command. Use this to run cairn CLI commands (e.g. `cairn context --task \"...\" --json`).",
+        parameters: {
+            type: "object",
+            properties: {
+                command: { type: "string", description: "The bash command to execute" },
             },
+            required: ["command"],
         },
-    };
-}
+    },
+};
 
 interface DriverArgs {
-    bridge: McpBridge;
+    bridge: CliBridge;
     scenarioId: string;
     userTurns: string[];
 }
@@ -56,9 +55,9 @@ export async function runCodex({ bridge, scenarioId, userTurns }: DriverArgs): P
 
     const skillPath = resolve(import.meta.dirname, "../../../../skills/cairn/SKILL.md");
     const skillText = await readFile(skillPath, "utf8");
-    const systemPrompt = buildPlatformSystemPrompt(skillText, bridge.instructions);
+    const systemPrompt = buildPlatformSystemPrompt(skillText);
 
-    const tools = bridge.tools.map(toOpenAiTool);
+    const tools = [BASH_TOOL];
     const startedAt = new Date();
     const toolCalls: ToolCallRecord[] = [];
     let order = 0;
@@ -93,31 +92,40 @@ export async function runCodex({ bridge, scenarioId, userTurns }: DriverArgs): P
 
             for (const call of calls) {
                 if (call.type !== "function") continue;
-                order += 1;
-                let parsed: Record<string, unknown> = {};
+                let rawArgs: Record<string, unknown> = {};
                 try {
-                    parsed = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+                    rawArgs = call.function.arguments ? JSON.parse(call.function.arguments) : {};
                 } catch {
-                    parsed = {};
+                    rawArgs = {};
                 }
-                if (VERBOSE) console.log(`  [Cdx][tool] ${call.function.name} ${JSON.stringify(parsed).slice(0, 200)}`);
+                const command = typeof rawArgs.command === "string" ? rawArgs.command : "";
+                if (VERBOSE) console.log(`  [Cdx][bash] ${command.slice(0, 200)}`);
+
+                const parsed = parseCairnCommand(command);
                 let resultText = "";
                 let isError = false;
-                try {
-                    const r = await bridge.callTool(call.function.name, parsed);
-                    resultText = r.text;
-                    isError = r.isError;
-                } catch (e) {
-                    resultText = `tool error: ${(e as Error).message}`;
-                    isError = true;
+
+                if (parsed) {
+                    order += 1;
+                    try {
+                        const r = await bridge.callTool(parsed.tool, parsed.args);
+                        resultText = r.text;
+                        isError = r.isError;
+                    } catch (e) {
+                        resultText = `tool error: ${(e as Error).message}`;
+                        isError = true;
+                    }
+                    toolCalls.push({
+                        name: parsed.tool,
+                        args: parsed.args,
+                        result_text: resultText,
+                        result_is_error: isError,
+                        order,
+                    });
+                } else {
+                    resultText = "";
                 }
-                toolCalls.push({
-                    name: call.function.name,
-                    args: parsed,
-                    result_text: resultText,
-                    result_is_error: isError,
-                    order,
-                });
+
                 messages.push({
                     role: "tool",
                     tool_call_id: call.id,

@@ -8,8 +8,8 @@ required_tool_calls:
   - tool: cairn_signal
     must_be_called: true
     args_match:
-      signal_type: "stage_constraint"
-      "details.what": "(?i)billing|refactor"
+      type: "stage_constraint"
+      what: "(?i)billing|refactor"
 
 required_text_patterns:
   - pattern: "(?i)pricing|route|page"

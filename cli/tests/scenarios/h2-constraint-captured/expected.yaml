@@ -11,8 +11,8 @@ required_tool_calls:
   - tool: cairn_signal
     must_be_called: true
     args_match:
-      signal_type: "constraint_declaration"
-      "details.what": "(?i)ORM|SQL|raw|no.*ORM"
+      type: "constraint_declaration"
+      what: "(?i)ORM|SQL|raw|no.*ORM"
     description: must signal the constraint declaration
 
 required_sequence:

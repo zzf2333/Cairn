@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Deterministic session guard lifecycle smoke test.
-// Spawns a real MCP server, exercises the session state machine via direct tool calls.
+// Exercises the session state machine via direct CLI bridge calls.
 // No LLM required — purely tests framework + state transitions.
 
 import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse as yamlParse, stringify as yamlStringify } from "yaml";
-import { startMcp } from "./mcp-bridge.js";
+import { startCliBridge } from "./cli-bridge.js";
 import { buildFixture, loadFixtureSpec } from "./fixture-builder.js";
 
 const GREEN = "\x1b[32m";
@@ -39,10 +39,6 @@ function assert(condition: boolean, msg: string): void {
     if (!condition) throw new Error(msg);
 }
 
-function parseJson(text: string): Record<string, unknown> {
-    return JSON.parse(text) as Record<string, unknown>;
-}
-
 async function readStateYaml(projectRoot: string): Promise<string> {
     return readFile(join(projectRoot, ".cairn", "state.yaml"), "utf8");
 }
@@ -50,7 +46,6 @@ async function readStateYaml(projectRoot: string): Promise<string> {
 async function main(): Promise<void> {
     console.log("Session guard lifecycle smoke test\n");
 
-    // Use the a1 fixture as a base — it has a fully initialized .cairn/
     const fixturePath = join(import.meta.dirname, "../a1-no-go-direct-hit/fixture.yaml");
     const spec = await loadFixtureSpec(fixturePath);
 
@@ -61,7 +56,7 @@ async function main(): Promise<void> {
             const tmp = await mkdtemp(join(tmpdir(), "cairn-smoke-lc-1-"));
             try {
                 await buildFixture(tmp, spec);
-                const bridge = await startMcp(tmp);
+                const bridge = await startCliBridge(tmp);
                 try {
                     const r = await bridge.callTool("cairn_context", { task: "lifecycle smoke" });
                     assert(!r.isError, `cairn_context returned error: ${r.text.slice(0, 200)}`);
@@ -84,14 +79,14 @@ async function main(): Promise<void> {
             const tmp = await mkdtemp(join(tmpdir(), "cairn-smoke-lc-2-"));
             try {
                 await buildFixture(tmp, spec);
-                const bridge = await startMcp(tmp);
+                const bridge = await startCliBridge(tmp);
                 try {
                     await bridge.callTool("cairn_context", { task: "signal count test" });
 
                     await bridge.callTool("cairn_signal", {
-                        signal_type: "decision",
-                        details: { what: "smoke test decision", reason: "lifecycle test" },
-                        evidence: {},
+                        type: "decision",
+                        what: "smoke test decision",
+                        reason: "lifecycle test",
                     });
 
                     const state = await readStateYaml(tmp);
@@ -112,7 +107,7 @@ async function main(): Promise<void> {
             const tmp = await mkdtemp(join(tmpdir(), "cairn-smoke-lc-3-"));
             try {
                 await buildFixture(tmp, spec);
-                const bridge = await startMcp(tmp);
+                const bridge = await startCliBridge(tmp);
                 try {
                     await bridge.callTool("cairn_context", { task: "observe count test" });
 
@@ -145,7 +140,7 @@ async function main(): Promise<void> {
             const tmp = await mkdtemp(join(tmpdir(), "cairn-smoke-lc-4-"));
             try {
                 await buildFixture(tmp, spec);
-                const bridge = await startMcp(tmp);
+                const bridge = await startCliBridge(tmp);
                 try {
                     await bridge.callTool("cairn_context", { task: "session end test" });
 
@@ -174,7 +169,7 @@ async function main(): Promise<void> {
             const tmp = await mkdtemp(join(tmpdir(), "cairn-smoke-lc-5-"));
             try {
                 await buildFixture(tmp, spec);
-                const bridge = await startMcp(tmp);
+                const bridge = await startCliBridge(tmp);
                 try {
                     const r = await bridge.callTool("cairn_plan", { task: "should be rejected" });
                     assert(r.isError, "cairn_plan without prior cairn_context should return an error");
@@ -200,20 +195,18 @@ async function main(): Promise<void> {
             try {
                 await buildFixture(tmp, spec);
 
-                // Create a session with signals, then kill without session_end
-                const bridge1 = await startMcp(tmp);
+                const bridge1 = await startCliBridge(tmp);
                 try {
                     await bridge1.callTool("cairn_context", { task: "stale session setup" });
                     await bridge1.callTool("cairn_signal", {
-                        signal_type: "decision",
-                        details: { what: "stale decision", reason: "will become stale" },
-                        evidence: {},
+                        type: "decision",
+                        what: "stale decision",
+                        reason: "will become stale",
                     });
                 } finally {
                     await bridge1.close();
                 }
 
-                // Manually backdate last_touched_at to trigger stale detection (threshold = 120 min)
                 const statePath = join(tmp, ".cairn", "state.yaml");
                 const stateRaw = await readFile(statePath, "utf8");
                 const stateObj = yamlParse(stateRaw) as Record<string, unknown>;
@@ -221,8 +214,7 @@ async function main(): Promise<void> {
                 session.last_touched_at = "2024-01-01T00:00:00.000Z";
                 await writeFile(statePath, yamlStringify(stateObj), "utf8");
 
-                // Second server: cairn_context should detect stale and block
-                const bridge2 = await startMcp(tmp);
+                const bridge2 = await startCliBridge(tmp);
                 try {
                     const r = await bridge2.callTool("cairn_context", { task: "new session after stale" });
                     assert(!r.isError, `cairn_context returned error: ${r.text.slice(0, 200)}`);
@@ -248,21 +240,19 @@ async function main(): Promise<void> {
             try {
                 await buildFixture(tmp, spec);
 
-                // Create a session with signals, then kill without session_end
-                const bridge1 = await startMcp(tmp);
+                const bridge1 = await startCliBridge(tmp);
                 try {
                     await bridge1.callTool("cairn_context", { task: "will become stale" });
                     await bridge1.callTool("cairn_signal", {
-                        signal_type: "decision",
-                        details: { what: "stale decision 2", reason: "test recover" },
-                        evidence: {},
+                        type: "decision",
+                        what: "stale decision 2",
+                        reason: "test recover",
                     });
                 } finally {
                     await bridge1.close();
                 }
 
-                // Recover with a new server (no need to backdate — recover works on any active session)
-                const bridge2 = await startMcp(tmp);
+                const bridge2 = await startCliBridge(tmp);
                 try {
                     const r = await bridge2.callTool("cairn_session_recover", {});
                     assert(!r.isError, `cairn_session_recover returned error: ${r.text.slice(0, 200)}`);
@@ -286,14 +276,13 @@ async function main(): Promise<void> {
             try {
                 await buildFixture(tmp, spec);
 
-                // Create session, signal, then backdate to stale
-                const bridge1 = await startMcp(tmp);
+                const bridge1 = await startCliBridge(tmp);
                 try {
                     await bridge1.callTool("cairn_context", { task: "will become stale" });
                     await bridge1.callTool("cairn_signal", {
-                        signal_type: "decision",
-                        details: { what: "chain test decision", reason: "test" },
-                        evidence: {},
+                        type: "decision",
+                        what: "chain test decision",
+                        reason: "test",
                     });
                 } finally {
                     await bridge1.close();
@@ -306,18 +295,15 @@ async function main(): Promise<void> {
                 session.last_touched_at = "2024-01-01T00:00:00.000Z";
                 await writeFile(statePath, yamlStringify(stateObj), "utf8");
 
-                const bridge2 = await startMcp(tmp);
+                const bridge2 = await startCliBridge(tmp);
                 try {
-                    // Step 1: context should be blocked
                     const r1 = await bridge2.callTool("cairn_context", { task: "after stale" });
                     const lower1 = r1.text.toLowerCase();
                     assert(lower1.includes("blocked") || lower1.includes("unclosed"), "should be blocked");
 
-                    // Step 2: recover
                     const r2 = await bridge2.callTool("cairn_session_recover", {});
                     assert(!r2.isError, `recover failed: ${r2.text.slice(0, 200)}`);
 
-                    // Step 3: context should now succeed with a new active session
                     const r3 = await bridge2.callTool("cairn_context", { task: "fresh start" });
                     assert(!r3.isError, `context after recover failed: ${r3.text.slice(0, 200)}`);
                     assert(r3.text.includes('"status":"active"') || r3.text.includes('"status": "active"'),

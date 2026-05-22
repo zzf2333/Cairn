@@ -8,8 +8,8 @@ required_tool_calls:
   - tool: cairn_signal
     must_be_called: true
     args_match:
-      signal_type: "debt_acceptance"
-      "details.what": "(?i)n\\+1|feed|/api/feed"
+      type: "debt_acceptance"
+      what: "(?i)n\\+1|feed|/api/feed"
 
 required_text_patterns:
   - pattern: "(?i)recorded|noted|captured|accepted|signal|memory|cairn|记录"

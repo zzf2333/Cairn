@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Smoke-test ALL scenarios: build fixture, spawn MCP, call a few read-only tools,
+// Smoke-test ALL scenarios: build fixture, call a few read-only cairn commands,
 // verify no errors. Does NOT invoke any LLM — purely tests the framework + fixtures.
 
 import { mkdtemp, rm } from "node:fs/promises";
@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { discoverScenarios } from "./discover.js";
 import { buildFixture, loadFixtureSpec } from "./fixture-builder.js";
-import { startMcp } from "./mcp-bridge.js";
+import { startCliBridge } from "./cli-bridge.js";
 
 const PROBE_TOOLS = [
     { name: "cairn_init_status", args: {} },
@@ -23,7 +23,7 @@ async function smokeOne(scenarioId: string, fixturePath: string): Promise<{ ok: 
             const spec = await loadFixtureSpec(fixturePath);
             await buildFixture(tmp, spec);
         }
-        const bridge = await startMcp(tmp);
+        const bridge = await startCliBridge(tmp);
         try {
             for (const probe of PROBE_TOOLS) {
                 const r = await bridge.callTool(probe.name, probe.args);

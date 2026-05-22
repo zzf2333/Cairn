@@ -1,41 +1,29 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { parseCairnCommand } from "./parse-cairn-command.js";
 import type { RunRecord, ToolCallRecord } from "./types.js";
 
-// Empty default: respect the user's ~/.codex/config.toml `model` setting.
-// Override via `CAIRN_SCENARIO_MODEL_CODEX=…` to pin a specific model.
 const DEFAULT_MODEL = process.env.CAIRN_SCENARIO_MODEL_CODEX ?? "";
 const MAX_TURNS = Number(process.env.CAIRN_SCENARIO_MAX_TURNS ?? 24);
 const VERBOSE = process.env.CAIRN_SCENARIO_VERBOSE === "1";
 const CODEX_BIN = process.env.CAIRN_SCENARIO_CODEX_BIN ?? "codex";
 
 const PLATFORM_LABEL = "codex";
-const CAIRN_SERVER = "cairn";
 
 interface DriverArgs {
     scenarioId: string;
     userTurns: string[];
-    /** Absolute path to the fixture project root. */
     projectRoot: string;
-    /** Absolute path to `mcp/dist/index.js`. */
-    mcpServerPath: string;
 }
 
-/**
- * Run a scenario through the real Codex CLI in non-interactive `exec` mode.
- * Injects the Cairn MCP server via inline `-c mcp_servers.cairn.*=…` overrides
- * so we don't disturb the user's global config.
- */
 export async function runCodexCli({
     scenarioId,
     userTurns,
     projectRoot,
-    mcpServerPath,
 }: DriverArgs): Promise<RunRecord> {
     const startedAt = new Date();
 
-    // Inject the Cairn SKILL block as the appended instructions so the model sees the protocol.
     const skillPath = resolve(import.meta.dirname, "../../../../skills/cairn/SKILL.md");
     const skillText = await readFile(skillPath, "utf8");
 
@@ -44,8 +32,8 @@ export async function runCodexCli({
     let assistantText = "";
     const rawMessages: unknown[] = [];
     let actualModel = "";
-    let threadId: string | undefined;
     let driverError: string | undefined;
+    let threadId: string | undefined;
 
     try {
         for (let turnIdx = 0; turnIdx < userTurns.length; turnIdx++) {
@@ -60,21 +48,12 @@ export async function runCodexCli({
             }
             args.push("--json");
             args.push("--skip-git-repo-check");
-            // NOTE: do NOT pass --ephemeral here — it disables session persistence,
-            // which makes `exec resume <thread_id>` lose all prior context. The B3
-            // multi-turn scenario depends on resume preserving turn-1 history.
             args.push("-C", projectRoot);
             args.push("-s", "read-only");
             args.push("--dangerously-bypass-approvals-and-sandbox");
             if (DEFAULT_MODEL) {
                 args.push("-m", DEFAULT_MODEL);
             }
-            // Inject Cairn MCP server (inline TOML override, doesn't touch ~/.codex/config.toml)
-            args.push("-c", `mcp_servers.cairn.command="${process.execPath}"`);
-            args.push("-c", `mcp_servers.cairn.args=["${mcpServerPath.replace(/\\/g, "\\\\")}"]`);
-            args.push("-c", `mcp_servers.cairn.env={ CAIRN_ROOT = "${projectRoot.replace(/\\/g, "\\\\")}" }`);
-            // Inject the Cairn protocol as additional instructions only on the first turn.
-            // On resume, Codex carries forward the system prompt from the original exec.
             if (!isResume) {
                 const escaped = JSON.stringify(skillText);
                 args.push("-c", `instructions=${escaped}`);
@@ -112,6 +91,9 @@ export async function runCodexCli({
                     const item = ev.item as {
                         type?: string;
                         text?: string;
+                        command?: string[] | string;
+                        output?: string;
+                        exit_code?: number;
                         server?: string;
                         tool?: string;
                         arguments?: Record<string, unknown> | string;
@@ -125,15 +107,29 @@ export async function runCodexCli({
                         continue;
                     }
 
-                    if (item.type === "mcp_tool_call" && item.server === CAIRN_SERVER && item.tool) {
+                    if (item.type === "shell" || item.type === "command") {
+                        const cmd = Array.isArray(item.command) ? item.command.join(" ") : (item.command ?? "");
+                        const parsed = parseCairnCommand(cmd);
+                        if (parsed) {
+                            order += 1;
+                            toolCalls.push({
+                                name: parsed.tool,
+                                args: parsed.args,
+                                result_text: item.output ?? "",
+                                result_is_error: (item.exit_code ?? 0) !== 0,
+                                order,
+                            });
+                            if (VERBOSE) console.log(`  [Cdx-CLI][cairn] ${parsed.tool} ${JSON.stringify(parsed.args).slice(0, 200)}`);
+                        }
+                        continue;
+                    }
+
+                    // Fallback: MCP-style tool calls from Codex (if MCP is still configured)
+                    if (item.type === "mcp_tool_call" && item.tool) {
                         order += 1;
                         let argsObj: Record<string, unknown> = {};
                         if (typeof item.arguments === "string") {
-                            try {
-                                argsObj = JSON.parse(item.arguments);
-                            } catch {
-                                argsObj = {};
-                            }
+                            try { argsObj = JSON.parse(item.arguments); } catch { argsObj = {}; }
                         } else if (item.arguments && typeof item.arguments === "object") {
                             argsObj = item.arguments;
                         }
@@ -192,7 +188,7 @@ function runCodex(args: string[], cwd: string): Promise<{ stdout: string; stderr
     return new Promise((resolveP, rejectP) => {
         const child = spawn(CODEX_BIN, args, {
             cwd,
-            env: process.env,
+            env: { ...process.env, CAIRN_ROOT: cwd },
             stdio: ["ignore", "pipe", "pipe"],
         });
         let stdout = "";

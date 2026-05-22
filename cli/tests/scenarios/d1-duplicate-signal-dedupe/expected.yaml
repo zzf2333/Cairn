@@ -9,7 +9,7 @@ required_tool_calls:
   - tool: cairn_signal
     must_be_called: true
     args_match:
-      "details.what": "(?i)redis"
+      what: "(?i)redis"
 
 required_text_patterns:
   - pattern: "(?i)duplicate|already.*recorded|already.*in.*memory|already.*exists|no.?op|dropped|already.*captured|重复|已经.*记录"

@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { existsSync } from "node:fs";
 import { discoverScenarios } from "./discover.js";
 import { buildFixture, loadFixtureSpec } from "./fixture-builder.js";
-import { startMcp } from "./mcp-bridge.js";
+import { startCliBridge } from "./cli-bridge.js";
 import { loadExpected, evaluate, allPassed, getPlatformOverride } from "./assertions.js";
 import { printResult, printSummary } from "./reporter.js";
 import { runClaudeCode } from "./platform-claude-code.js";
@@ -59,7 +59,6 @@ async function runOnePlatform(
     saveLogs: boolean,
 ): Promise<ScenarioResult> {
     const tmp = await mkdtemp(join(tmpdir(), `cairn-scenario-${scenario.id}-${platform}-`));
-    const mcpServerPath = resolve(import.meta.dirname, "../../../dist/index.js");
     try {
         if (existsSync(scenario.fixturePath)) {
             const spec = await loadFixtureSpec(scenario.fixturePath);
@@ -90,25 +89,21 @@ async function runOnePlatform(
         let run: RunRecord;
         try {
             if (driver === "cli") {
-                // CLI driver — each CLI spawns its own MCP server via inline config.
                 if (platform === "claude-code") {
                     run = await runClaudeCodeCli({
                         scenarioId: scenario.id,
                         userTurns,
                         projectRoot: tmp,
-                        mcpServerPath,
                     });
                 } else {
                     run = await runCodexCli({
                         scenarioId: scenario.id,
                         userTurns,
                         projectRoot: tmp,
-                        mcpServerPath,
                     });
                 }
             } else {
-                // SDK driver — we run the MCP server ourselves and bridge tool calls into the SDK.
-                const bridge = await startMcp(tmp);
+                const bridge = await startCliBridge(tmp);
                 try {
                     if (platform === "claude-code") {
                         run = await runClaudeCode({ bridge, scenarioId: scenario.id, userTurns });

@@ -20,7 +20,7 @@ required_text_patterns:
 forbidden_tool_calls:
   - tool: cairn_signal
     args_match:
-      signal_type: "user_rejection"
+      type: "user_rejection"
     description: should not re-signal a rejection already in memory
 
 forbidden_text_patterns:

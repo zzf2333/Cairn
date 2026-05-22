@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { parseCairnCommand } from "./parse-cairn-command.js";
 import type { RunRecord, ToolCallRecord } from "./types.js";
 
 const DEFAULT_MODEL = process.env.CAIRN_SCENARIO_MODEL_CC ?? "sonnet";
@@ -11,68 +11,21 @@ const CLAUDE_BIN = process.env.CAIRN_SCENARIO_CLAUDE_BIN ?? "claude";
 
 const PLATFORM_LABEL = "claude-code";
 
-const MCP_PREFIX = "mcp__cairn__";
-
-function stripMcpPrefix(name: string): string {
-    return name.startsWith(MCP_PREFIX) ? name.slice(MCP_PREFIX.length) : name;
-}
-
 interface DriverArgs {
     scenarioId: string;
     userTurns: string[];
-    /** Absolute path to the fixture project root (we set Claude's cwd here so it won't pick up the cairn repo's CLAUDE.md). */
     projectRoot: string;
-    /** Absolute path to `mcp/dist/index.js`. */
-    mcpServerPath: string;
 }
 
-/**
- * Run a scenario end-to-end through the real Claude Code CLI in print mode.
- * Spawns one `claude -p ...` per user turn; multi-turn scenarios chain via
- * `--continue` (resume the prior session in the same cwd).
- */
 export async function runClaudeCodeCli({
     scenarioId,
     userTurns,
     projectRoot,
-    mcpServerPath,
 }: DriverArgs): Promise<RunRecord> {
     const startedAt = new Date();
 
-    // Build a per-run MCP config that pins the server to the fixture root.
-    const mcpConfigDir = await mkdtemp(join(tmpdir(), "cairn-cc-mcp-"));
-    const mcpConfigPath = join(mcpConfigDir, "mcp.json");
-    await writeFile(
-        mcpConfigPath,
-        JSON.stringify(
-            {
-                mcpServers: {
-                    cairn: {
-                        command: process.execPath,
-                        args: [mcpServerPath],
-                        env: { CAIRN_ROOT: projectRoot },
-                    },
-                },
-            },
-            null,
-            2,
-        ),
-        "utf8",
-    );
-
-    // Inject the Cairn SKILL as the appended system prompt so the model sees the protocol.
     const skillPath = resolve(import.meta.dirname, "../../../../skills/cairn/SKILL.md");
     const skillText = await readFile(skillPath, "utf8");
-
-    // All 16 cairn tools, behind the mcp__cairn__ prefix Claude Code uses.
-    const cairnToolNames = [
-        "cairn_init_status", "cairn_init_commit", "cairn_context", "cairn_signal",
-        "cairn_observe", "cairn_session_end", "cairn_session_recover",
-        "cairn_status", "cairn_plan",
-        "cairn_stage_list", "cairn_stage_accept", "cairn_stage_reject",
-        "cairn_doctor", "cairn_dna_list", "cairn_dna_accept", "cairn_dna_reject",
-    ];
-    const allowedTools = cairnToolNames.map((n) => `${MCP_PREFIX}${n}`).join(",");
 
     const toolCalls: ToolCallRecord[] = [];
     let order = 0;
@@ -87,13 +40,10 @@ export async function runClaudeCodeCli({
 
             const args = [
                 "-p", turn,
-                "--mcp-config", mcpConfigPath,
-                "--strict-mcp-config",
                 "--output-format", "stream-json",
                 "--verbose",
                 "--include-partial-messages",
-                "--tools", "",
-                "--allowed-tools", allowedTools,
+                "--allowed-tools", "Bash(*)",
                 "--permission-mode", "bypassPermissions",
                 "--append-system-prompt", skillText,
                 "--model", DEFAULT_MODEL,
@@ -102,7 +52,6 @@ export async function runClaudeCodeCli({
                 "--disable-slash-commands",
             ];
             if (turnIdx > 0) {
-                // Continue the prior turn's session so the model sees full history.
                 args.push("--continue");
             }
 
@@ -117,7 +66,6 @@ export async function runClaudeCodeCli({
                 }
             }
 
-            // Parse JSON Lines, harvest tool calls and assistant text.
             for (const line of stdout.split(/\r?\n/)) {
                 if (!line.trim()) continue;
                 let ev: { [k: string]: unknown };
@@ -133,9 +81,6 @@ export async function runClaudeCodeCli({
                     continue;
                 }
 
-                // Assistant messages: tool_use and text blocks. We use the
-                // FULL assistant message (not stream_event deltas) because
-                // it has the complete, parsed content array.
                 if (ev.type === "assistant" && typeof ev.message === "object" && ev.message) {
                     const msg = ev.message as { content?: unknown[] };
                     if (Array.isArray(msg.content)) {
@@ -145,29 +90,30 @@ export async function runClaudeCodeCli({
                             if (b.type === "text" && typeof b.text === "string") {
                                 assistantText += b.text + "\n";
                                 if (VERBOSE) console.log(`  [CC-CLI][asst] ${b.text.slice(0, 200)}`);
-                            } else if (b.type === "tool_use" && b.name) {
-                                // de-dup: assistant messages may be emitted both
-                                // mid-stream and at end-of-message; we keyed by tool_use id.
+                            } else if (b.type === "tool_use" && b.name === "Bash") {
                                 if (toolCalls.some((c) => (c as ToolCallRecord & { _id?: string })._id === b.id)) continue;
-                                order += 1;
-                                const argsObj = (b.input as Record<string, unknown>) ?? {};
-                                const record: ToolCallRecord & { _id?: string } = {
-                                    name: stripMcpPrefix(b.name),
-                                    args: argsObj,
-                                    result_text: "",
-                                    result_is_error: false,
-                                    order,
-                                };
-                                record._id = b.id;
-                                toolCalls.push(record);
-                                if (VERBOSE) console.log(`  [CC-CLI][tool] ${record.name} ${JSON.stringify(argsObj).slice(0, 200)}`);
+                                const input = (b.input as Record<string, unknown>) ?? {};
+                                const command = typeof input.command === "string" ? input.command : "";
+                                const parsed = parseCairnCommand(command);
+                                if (parsed) {
+                                    order += 1;
+                                    const record: ToolCallRecord & { _id?: string } = {
+                                        name: parsed.tool,
+                                        args: parsed.args,
+                                        result_text: "",
+                                        result_is_error: false,
+                                        order,
+                                    };
+                                    record._id = b.id;
+                                    toolCalls.push(record);
+                                    if (VERBOSE) console.log(`  [CC-CLI][cairn] ${parsed.tool} ${JSON.stringify(parsed.args).slice(0, 200)}`);
+                                }
                             }
                         }
                     }
                     continue;
                 }
 
-                // Tool results arrive as type=user with content[].type=tool_result.
                 if (ev.type === "user" && typeof ev.message === "object" && ev.message) {
                     const msg = ev.message as { content?: unknown[] };
                     if (Array.isArray(msg.content)) {
@@ -188,18 +134,7 @@ export async function runClaudeCodeCli({
                                 }
                             }
                             matched.result_text = text;
-                            matched.result_is_error = Boolean(b.is_error);
-                        }
-                    }
-                    continue;
-                }
-
-                if (ev.type === "result") {
-                    // Final result block — end-of-turn summary, also includes the final assistant text.
-                    if (typeof ev.is_error === "boolean" && ev.is_error) {
-                        const text = typeof ev.result === "string" ? ev.result : JSON.stringify(ev.result);
-                        if (text.toLowerCase().includes("not logged in") || text.toLowerCase().includes("authentication")) {
-                            driverError = `Claude CLI auth failed: ${text}`;
+                            matched.result_is_error = b.is_error ?? false;
                         }
                     }
                 }
@@ -210,20 +145,15 @@ export async function runClaudeCodeCli({
         }
     } catch (e) {
         driverError = (e as Error).message;
-    } finally {
-        await rm(mcpConfigDir, { recursive: true, force: true });
     }
 
-    // Drop the internal _id we attached for matching.
-    for (const c of toolCalls as Array<ToolCallRecord & { _id?: string }>) {
-        delete c._id;
-    }
+    if (!actualModel) actualModel = DEFAULT_MODEL;
 
     const finishedAt = new Date();
     return {
         scenarioId,
         platform: PLATFORM_LABEL,
-        model: actualModel || DEFAULT_MODEL,
+        model: actualModel,
         started_at: startedAt.toISOString(),
         finished_at: finishedAt.toISOString(),
         duration_ms: finishedAt.getTime() - startedAt.getTime(),
@@ -239,7 +169,7 @@ function runClaude(args: string[], cwd: string): Promise<{ stdout: string; stder
     return new Promise((resolveP, rejectP) => {
         const child = spawn(CLAUDE_BIN, args, {
             cwd,
-            env: process.env,
+            env: { ...process.env, CAIRN_ROOT: cwd },
             stdio: ["ignore", "pipe", "pipe"],
         });
         let stdout = "";

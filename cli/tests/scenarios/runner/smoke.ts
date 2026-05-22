@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Smoke test for the scenario harness — exercises fixture-builder + MCP bridge
+// Smoke test for the scenario harness — exercises fixture-builder + CLI bridge
 // against a real scenario directory, WITHOUT invoking any LLM. Use this to
 // confirm the runtime works before spending API credits on real runs.
 //
@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { discoverScenarios } from "./discover.js";
 import { buildFixture, loadFixtureSpec } from "./fixture-builder.js";
-import { startMcp } from "./mcp-bridge.js";
+import { startCliBridge } from "./cli-bridge.js";
 
 async function main(): Promise<void> {
     const filter = process.argv[2];
@@ -30,14 +30,12 @@ async function main(): Promise<void> {
             await buildFixture(tmp, spec);
             console.log(`  fixture built at ${tmp}/.cairn/`);
         } else {
-            console.log("  no fixture.yaml — starting MCP against empty project");
+            console.log("  no fixture.yaml — starting against empty project");
         }
-        const bridge = await startMcp(tmp);
-        console.log(`  MCP bridge online; ${bridge.tools.length} tools exposed:`);
-        for (const t of bridge.tools) console.log(`    - ${t.name}`);
+        const bridge = await startCliBridge(tmp);
 
         const ctxResult = await bridge.callTool("cairn_context", { task: "smoke" });
-        console.log(`  cairn_context returned ${ctxResult.text.length} chars, isError=${ctxResult.is_error ?? false}`);
+        console.log(`  cairn_context returned ${ctxResult.text.length} chars, isError=${ctxResult.isError}`);
         console.log(`  ${ctxResult.text.slice(0, 400).replace(/\n/g, " ")}...`);
 
         await bridge.close();
