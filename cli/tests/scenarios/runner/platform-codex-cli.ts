@@ -36,7 +36,7 @@ export async function runCodexCli({
     const startedAt = new Date();
 
     // Inject the Cairn SKILL block as the appended instructions so the model sees the protocol.
-    const skillPath = resolve(import.meta.dirname, "../../../../skills/codex.md");
+    const skillPath = resolve(import.meta.dirname, "../../../../skills/cairn/SKILL.md");
     const skillText = await readFile(skillPath, "utf8");
 
     const toolCalls: ToolCallRecord[] = [];

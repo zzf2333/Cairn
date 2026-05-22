@@ -13,13 +13,13 @@ const PLATFORM_LABEL = "claude-code";
 function buildPlatformSystemPrompt(skillText: string, mcpInstructions: string): string {
     return [
         "You are Claude running inside the **Claude Code** CLI. The user is a software engineer working on a real project.",
-        "You have access to a set of Cairn MCP tools. Use them according to the Cairn protocol below.",
+        "You have access to a set of Cairn tools. Use them according to the Cairn protocol below.",
         "Behave like Claude Code: be direct, terse, take action via tools when appropriate, communicate succinctly.",
         "",
         "When the Cairn protocol says 'call cairn_context before responding', that means: emit a tool_use for cairn_context BEFORE producing your textual answer. Do the same for cairn_session_end at the end of a session.",
         "Always respect every constraint returned by cairn_context for the remainder of this session.",
         "",
-        "==== CAIRN PROTOCOL (from skills/claude-code/SKILL.md) ====",
+        "==== CAIRN PROTOCOL (from skills/cairn/SKILL.md) ====",
         skillText,
         ...(mcpInstructions
             ? ["", "==== MCP SERVER INSTRUCTIONS ====", mcpInstructions]
@@ -50,7 +50,7 @@ export async function runClaudeCode({ bridge, scenarioId, userTurns }: DriverArg
 
     const client = new Anthropic({ apiKey });
 
-    const skillPath = resolve(import.meta.dirname, "../../../../skills/claude-code/SKILL.md");
+    const skillPath = resolve(import.meta.dirname, "../../../../skills/cairn/SKILL.md");
     const skillText = await readFile(skillPath, "utf8");
     const systemPrompt = buildPlatformSystemPrompt(skillText, bridge.instructions);
 

@@ -4,7 +4,7 @@
     "private": true,
     "type": "module",
     "description": "Cairn Cognitive Runtime Protocol",
-    "main": "SKILL.md",
+    "main": "skills/cairn/SKILL.md",
     "license": "MIT",
     "repository": {
         "type": "git",

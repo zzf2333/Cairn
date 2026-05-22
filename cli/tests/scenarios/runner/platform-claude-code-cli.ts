@@ -61,7 +61,7 @@ export async function runClaudeCodeCli({
     );
 
     // Inject the Cairn SKILL as the appended system prompt so the model sees the protocol.
-    const skillPath = resolve(import.meta.dirname, "../../../../skills/claude-code/SKILL.md");
+    const skillPath = resolve(import.meta.dirname, "../../../../skills/cairn/SKILL.md");
     const skillText = await readFile(skillPath, "utf8");
 
     // All 16 cairn tools, behind the mcp__cairn__ prefix Claude Code uses.

@@ -14,13 +14,13 @@ function buildPlatformSystemPrompt(skillText: string, mcpInstructions: string): 
     return [
         "You are GPT running inside the **OpenAI Codex CLI**. The user is a software engineer working on a real project.",
         "Codex sessions follow the instructions in `AGENTS.md` at the project root; the relevant Cairn block from that file is included below.",
-        "You have access to a set of Cairn MCP tools as OpenAI function tools. Use them according to the Cairn protocol below.",
+        "You have access to a set of Cairn tools as OpenAI function tools. Use them according to the Cairn protocol below.",
         "Behave like Codex: be precise, action-oriented, use the tools when the protocol calls for it, communicate succinctly.",
         "",
         "When the Cairn protocol says 'call cairn_context before responding', that means: emit a function call for cairn_context BEFORE producing your textual answer. Do the same for cairn_session_end at the end of a session.",
         "Always respect every constraint returned by cairn_context for the remainder of this session.",
         "",
-        "==== AGENTS.md — CAIRN BLOCK (from skills/codex.md) ====",
+        "==== AGENTS.md — CAIRN BLOCK (from skills/cairn/SKILL.md) ====",
         skillText,
         ...(mcpInstructions
             ? ["", "==== MCP SERVER INSTRUCTIONS ====", mcpInstructions]
@@ -54,7 +54,7 @@ export async function runCodex({ bridge, scenarioId, userTurns }: DriverArgs): P
 
     const client = new OpenAI({ apiKey });
 
-    const skillPath = resolve(import.meta.dirname, "../../../../skills/codex.md");
+    const skillPath = resolve(import.meta.dirname, "../../../../skills/cairn/SKILL.md");
     const skillText = await readFile(skillPath, "utf8");
     const systemPrompt = buildPlatformSystemPrompt(skillText, bridge.instructions);
 
