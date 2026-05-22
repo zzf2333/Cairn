@@ -194,7 +194,7 @@ Cairn is the layer that remembers.
 ## Contributing
 
 - Issues + PRs: https://github.com/zzf2333/Cairn
-- Protocol: [`SKILL.md`](./SKILL.md)
+- Protocol: [`SKILL.md`](./skills/cairn/SKILL.md)
 - Release checklist (contributor-facing, internal): see `docs/internal/` in repo
 
 ---

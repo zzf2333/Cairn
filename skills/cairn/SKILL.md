@@ -64,12 +64,12 @@ Cairn stores project decisions, rejections, and constraints in `.cairn/`. Intera
 
 Load these files when you need detailed guidance on a specific topic:
 
-- `skills/protocol/lifecycle.md` — detailed semantics for each lifecycle step, recovery procedures
-- `skills/protocol/escalation-model.md` — challenge levels, response templates, archived downgrade rules
-- `skills/protocol/runtime-rules.md` — constraint processing, DNA, trauma, debt, stage, reevaluation, degraded mode
-- `skills/protocol/minimal-intervention.md` — when to skip lifecycle steps
-- `skills/protocol/reasoning-examples.md` — behavioral examples showing correct lifecycle execution
-- `skills/compliance/anti-patterns.md` — common failure modes to avoid
+- `protocol/lifecycle.md` — detailed semantics for each lifecycle step, recovery procedures
+- `protocol/escalation-model.md` — challenge levels, response templates, archived downgrade rules
+- `protocol/runtime-rules.md` — constraint processing, DNA, trauma, debt, stage, reevaluation, degraded mode
+- `protocol/minimal-intervention.md` — when to skip lifecycle steps
+- `protocol/reasoning-examples.md` — behavioral examples showing correct lifecycle execution
+- `compliance/anti-patterns.md` — common failure modes to avoid
 
 ## Initialization
 

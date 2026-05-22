@@ -105,7 +105,7 @@ Until 1.0, these are best-effort but not strict.
 
 Things explicitly not covered by stability commitments at any phase:
 
-- Skill adapter files (`skills/claude-code/SKILL.md`, `skills/codex.md`) — these are the protocol; they iterate.
+- Skill protocol (`skills/cairn/SKILL.md` and `skills/cairn/protocol/`) — these are the protocol; they iterate.
 - Test fixtures, scenarios, internal benchmarks.
 - Anything in `CLAUDE.md`, `docs/internal/`, plan files.
 

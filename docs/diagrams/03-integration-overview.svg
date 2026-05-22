@@ -12,12 +12,12 @@
   <!-- Two host AIs (top) -->
   <rect x="100" y="110" width="320" height="100" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5"/>
   <text x="260" y="142" text-anchor="middle" font-size="16" font-weight="600" fill="#1a1a1a">Claude Code</text>
-  <text x="260" y="166" text-anchor="middle" font-size="12" fill="#1a1a1a">Protocol: skills/claude-code/SKILL.md</text>
+  <text x="260" y="166" text-anchor="middle" font-size="12" fill="#1a1a1a">Protocol: skills/cairn/SKILL.md</text>
   <text x="260" y="186" text-anchor="middle" font-size="12" fill="#1a1a1a">Config: ~/.claude.json mcpServers.cairn</text>
 
   <rect x="540" y="110" width="320" height="100" rx="12" fill="#a8c5e6" stroke="#4a4a4a" stroke-width="2.5"/>
   <text x="700" y="142" text-anchor="middle" font-size="16" font-weight="600" fill="#1a1a1a">Codex</text>
-  <text x="700" y="166" text-anchor="middle" font-size="12" fill="#1a1a1a">Protocol: skills/codex.md (append to AGENTS.md)</text>
+  <text x="700" y="166" text-anchor="middle" font-size="12" fill="#1a1a1a">Protocol: skills/cairn/SKILL.md</text>
   <text x="700" y="186" text-anchor="middle" font-size="12" fill="#1a1a1a">Config: ~/.codex/config.toml mcp_servers.cairn</text>
 
   <!-- Arrows from both to MCP -->

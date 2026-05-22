@@ -40,15 +40,7 @@ Method: Real dogfood session on Cairn itself + code analysis of all 6 lifecycle 
 
 Obsolete after MCP removal in v0.5.0.
 
-**Problem**: Both define the lifecycle. MCP instructions load via server.ts into the MCP protocol description. SKILL.md loads via the platform adapter (Claude Code). If they drift, conflicting signals.
-
-**Current state**: 
-- `mcp-instructions.md` — dense, tool-focused, all 6 steps + initialization + review + diagnostics
-- `SKILL.md` — inlined core.md (behavior-focused) + reference index
-
-**Risk**: Low right now (both were updated in the same session) but will grow over time.
-
-**Recommendation**: Add a CI check or `cairn doctor` rule that validates mcp-instructions.md mentions the same lifecycle steps as protocol/core.md. Or consider making mcp-instructions.md auto-generated from core.md.
+**Problem**: Resolved. MCP server removed in v0.5.0. Single protocol source: `skills/cairn/SKILL.md` with reference files in `skills/cairn/protocol/`.
 
 ---
 

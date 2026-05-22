@@ -70,7 +70,7 @@ See [`../iv-self/trust-router.md`](../iv-self/trust-router.md) for the full rout
 
 ## How gravity is initially assigned
 
-The Host AI proposes a gravity level on every `cairn_signal` call, guided by the protocol in `skills/claude-code/SKILL.md` or `skills/codex.md`:
+The Host AI proposes a gravity level on every `cairn_signal` call, guided by the protocol in `skills/cairn/SKILL.md`:
 
 - "User rejected X with a stated reason" → typically G2 (G3 if the reason involves incident / compliance / structural decision)
 - "User mentioned past attempt at X" → G1 (raise via TrustRouter if it merges with an existing G2 event)

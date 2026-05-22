@@ -157,7 +157,7 @@ The tradeoff: large projects produce many Blood files (hundreds, possibly low th
 ## Failure modes
 
 - **Blood inflation** — every conversation produces a signal, signals all auto-confirm, Blood directory bloats to thousands of low-value events. Mitigation: TrustRouter dedup, gravity-based filtering, decay.
-- **Blood drought** — AI doesn't call `cairn_signal` despite the skill protocol asking it to. Mitigation: explicit triggers in `skills/*.md`, dogfood findings (`tests/scenarios/_findings.md`) to catch missed captures.
+- **Blood drought** — AI doesn't call `cairn_signal` despite the skill protocol asking it to. Mitigation: explicit triggers in `skills/cairn/SKILL.md`, dogfood findings (`tests/scenarios/_findings.md`) to catch missed captures.
 - **Reasoning rot** — `reasoning` field becomes "we decided X" with no actual reasoning. Mitigation: human ratification gate; CalibrationEar warns when events' `reasoning` is too short.
 
 ---
