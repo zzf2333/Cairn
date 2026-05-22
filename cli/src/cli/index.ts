@@ -10,7 +10,7 @@ import { runSkeleton } from "./skeleton.js";
 import { runBlood } from "./blood.js";
 import { runStage } from "./stage.js";
 import { runMigrate } from "./migrate.js";
-import { runSkill } from "./skill.js";
+
 import { runRuntimeContext } from "./runtime-context.js";
 import { runRuntimePlan } from "./runtime-plan.js";
 import { runRuntimeSignal } from "./runtime-signal.js";
@@ -44,7 +44,6 @@ Commands:
   stage accept <id>             Accept a stage transition (applies new phase)
   stage reject <id> <reason>    Reject a stage transition
   migrate                       Stamp .cairn/state.yaml with current cairn_version, apply pending migrations
-  skill show [platform]         Print assembled protocol to stdout
 
 Runtime commands (for AI / scripts):
   context [--task <t>] [--files <f1,f2>] [--json]
@@ -53,8 +52,6 @@ Runtime commands (for AI / scripts):
   observe --summary <s> [--candidates-file <path>] [--json]
   session-end --summary <s> [--domains <d>] [--json]
   session-recover [--json]
-
-Install as Claude Code skill:   npx skills add zzf2333/Cairn
 
 Options:
   --version                     Show version
@@ -105,9 +102,6 @@ async function main() {
                 break;
             case "migrate":
                 await runMigrate();
-                break;
-            case "skill":
-                await runSkill(args.slice(1));
                 break;
             case "context":
                 await runRuntimeContext(args.slice(1));

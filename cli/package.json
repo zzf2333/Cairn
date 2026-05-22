@@ -24,9 +24,6 @@
     "files": [
         "dist/**/*.js",
         "dist/**/*.d.ts",
-        "skills/**/*.md",
-        "skills/**/*.json",
-        "skill-dist/**/*",
         "README.md"
     ],
     "publishConfig": {
@@ -36,7 +33,6 @@
         "cairn": "dist/cli/index.js"
     },
     "scripts": {
-        "prebuild": "node scripts/copy-skills.js",
         "build": "tsc",
         "postinstall": "node dist/postinstall.js 2>/dev/null || true",
         "dev": "tsx src/index.ts",
