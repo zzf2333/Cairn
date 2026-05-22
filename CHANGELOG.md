@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.9] - 2026-05-22 (MCP removal, pure CLI + Skill architecture)
+
+0.4.8 renamed the directory and switched CI to OIDC. 0.4.9 completes the architectural pivot: **MCP is fully removed** — the runtime is now exclusively CLI commands + Agent Skill protocol. The `@modelcontextprotocol/sdk` dependency is gone, the MCP server is deleted, and all test infrastructure is realigned to the CLI execution model.
+
+### Removed
+
+- **MCP server** — `cli/src/server.ts` and all 16 MCP tool registrations deleted. The `cairn-mcp-server` binary alias is removed.
+- **MCP SDK dependency** — `@modelcontextprotocol/sdk` removed from `package.json`. No MCP code remains in the project.
+- **MCP tool contracts** — `skills/protocol/tool-contracts.md` and `skills/protocol/mcp-instructions.md` deleted. Tool semantics are now defined by the CLI `--help` and SKILL.md.
+- **Skill assembly pipeline** — `skill-assembler.ts`, `skill-paths.ts`, `skill-dist/`, `skills/_assembly-order.json`, `skills/modes/` (strict/balanced/lightweight), `cli/scripts/copy-skills.js` all deleted. Skills are now consumed directly from the `skills/cairn/` directory.
+- **Platform adapters** — `skills/adapters/claude-code.md`, `skills/adapters/codex.md`, `skills/adapters/cursor.md`, `skills/codex.md` deleted. The unified SKILL.md serves all platforms.
+- **`cairn skill show`** CLI subcommand removed (no assembly to preview).
+- **MCP bridge in test runner** — `mcp-bridge.ts` deleted, replaced by `cli-bridge.ts`.
+
+### Changed
+
+- **Skills directory** — restructured from flat `skills/{protocol,adapters,modes,compliance,examples}/` to standard Agent Skills layout `skills/cairn/SKILL.md` with nested protocol/compliance/examples. Root `package.json` `main` field updated to `skills/cairn/SKILL.md`.
+- **Test scenario runners** — all 4 platform drivers (claude-code SDK, codex SDK, claude-code CLI, codex CLI) rewritten from MCP tool simulation to CLI Bash tool execution. New `parse-cairn-command.ts` shared utility extracts cairn invocations from bash commands.
+- **Test CLI bridge** — new `cli-bridge.ts` replaces `mcp-bridge.ts`. Executes `node dist/cli/index.js` with `CAIRN_ROOT` env var, maps tool names to CLI subcommands and flags.
+- **9 scenario expected.yaml files** — assertion keys updated from MCP arg format (`signal_type`, `details.what`) to CLI flag format (`type`, `what`).
+- **Smoke tests** — `smoke.ts`, `smoke-all.ts`, `smoke-lifecycle.ts` all switched from MCP bridge to CLI bridge.
+- **postinstall** — simplified to CLI-only messaging, removed MCP configuration guidance.
+- **Documentation** — remaining MCP references cleaned from docs, scenario README, and stability docs.
+
+### Fixed
+
+- **Root `package.json` `main`** — pointed to nonexistent `SKILL.md` instead of `skills/cairn/SKILL.md`, breaking `npx skills add zzf2333/Cairn`.
+- **`cli/package.json` dev script** — pointed to nonexistent `src/index.ts` instead of `src/cli/index.ts`, breaking `npm run dev`.
+- **Root `package.json`** — added `"private": true` to prevent accidental `npm publish` of the monorepo root.
+- **Skill paths in test runners** — 4 runner files referenced deleted skill paths (`skills/claude-code/SKILL.md`, `skills/codex.md`), now corrected to `skills/cairn/SKILL.md`.
+
+### Verification
+
+- `npm run build` — compilation clean
+- `npm test` — 440/440 unit tests passing
+- `npm run smoke` — 39/39 scenario probes passing
+- `npm run smoke:lifecycle` — 8/8 state machine checks passing
+
 ## [0.4.8] - 2026-05-21 (directory rename + OIDC publish)
 
 ### Changed
