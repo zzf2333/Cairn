@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, access } from "node:fs/promises";
+import { readFile, writeFile, access } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 

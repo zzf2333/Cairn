@@ -27,8 +27,8 @@ export async function runInit(args: string[]): Promise<void> {
     if (acted.length > 0) {
         console.log("Global instructions:");
         for (const r of acted) {
-            const verb = r.action === "injected" ? "写入" : "更新";
-            console.log(`  ${GREEN}✓${RESET} ${r.target}: 协议已${verb} ${DIM}${r.path}${RESET}`);
+            const verb = r.action === "injected" ? "injected" : "updated";
+            console.log(`  ${GREEN}✓${RESET} ${r.target}: protocol ${verb} ${DIM}${r.path}${RESET}`);
         }
     }
 
@@ -49,7 +49,7 @@ export async function runUninstall(): Promise<void> {
     const acted = results.filter(r => r.action !== "skipped");
     if (acted.length > 0) {
         for (const r of acted) {
-            console.log(`${GREEN}✓${RESET} ${r.target}: 协议已移除 ${DIM}${r.path}${RESET}`);
+            console.log(`${GREEN}✓${RESET} ${r.target}: protocol removed ${DIM}${r.path}${RESET}`);
         }
     } else {
         console.log("No global instructions found to remove.");
