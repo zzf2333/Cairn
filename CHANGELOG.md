@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.10] - 2026-05-23 (Global instructions auto-injection)
+
+`cairn init` and `npm install cairn-rt` now automatically inject the Cairn lifecycle protocol into the global instruction files of supported AI coding tools. This ensures the cognitive runtime protocol is enforced without relying on the AI to remember to load the skill.
+
+### Added
+
+- **Global instructions injection** — on install or `cairn init`, the Cairn lifecycle protocol is written to `~/.claude/CLAUDE.md` (Claude Code) and `~/.codex/AGENTS.md` (Codex CLI). Uses `<!-- cairn:start/end -->` markers for idempotent updates.
+- **`cairn uninstall`** — removes Cairn protocol blocks from all supported AI tool global configs.
+- **Legacy marker cleanup** — automatically strips old `<!-- cairn:global-protocol:start/end -->` blocks during injection.
+
+### Changed
+
+- **`cairn init` output** — now reports which AI tools received protocol injection and which were skipped (tool not installed).
+- **`postinstall`** — triggers global instructions injection on `npm install cairn-rt`, with silent failure to avoid blocking installation.
+
+### Context
+
+Investigation showed that the Cairn skill lifecycle was not being followed in real projects because Claude Code's skill system only loads the skill description (not the full protocol) at session start, and AI auto-invocation is probabilistic. Injecting the protocol into global instruction files (which are always loaded into context) solves this by making the lifecycle rules visible to the AI in every session.
+
 ## [0.4.9] - 2026-05-22 (MCP removal, pure CLI + Skill architecture)
 
 0.4.8 renamed the directory and switched CI to OIDC. 0.4.9 completes the architectural pivot: **MCP is fully removed** — the runtime is now exclusively CLI commands + Agent Skill protocol. The `@modelcontextprotocol/sdk` dependency is gone, the MCP server is deleted, and all test infrastructure is realigned to the CLI execution model.

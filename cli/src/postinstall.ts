@@ -18,8 +18,8 @@ async function main() {
         if (acted.length > 0) {
             console.log("");
             for (const r of acted) {
-                const verb = r.action === "injected" ? "写入" : "更新";
-                console.log(`  ${GREEN}✓${RESET} ${r.target}: 协议已${verb} ${DIM}${r.path}${RESET}`);
+                const verb = r.action === "injected" ? "injected" : "updated";
+                console.log(`  ${GREEN}✓${RESET} ${r.target}: protocol ${verb} ${DIM}${r.path}${RESET}`);
             }
         }
     } catch {
