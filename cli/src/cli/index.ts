@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { VERSION } from "../constants.js";
-import { runInit } from "./init.js";
+import { runInit, runUninstall } from "./init.js";
 import { runStatus } from "./status.js";
 import { runDoctor } from "./doctor.js";
 import { runReview } from "./review.js";
@@ -23,8 +23,9 @@ const USAGE = `cairn v${VERSION}
 Usage: cairn <command> [options]
 
 Commands:
-  init                          Initialize .cairn/ scaffold and print setup guide
+  init                          Initialize .cairn/ scaffold + inject global instructions
   init --empty                  Initialize .cairn/ scaffold (silent, for scripts)
+  uninstall                     Remove Cairn global instructions from AI tools
   status                        Show project cognitive status (DNA mode, drift, stage transitions)
   doctor                        Run consistency checks + auto-resurrect low-gravity archived events
   doctor --fix                  Scan for corrupted yaml files + orphan refs; quarantine broken files
@@ -99,6 +100,9 @@ async function main() {
                 break;
             case "stage":
                 await runStage(args.slice(1));
+                break;
+            case "uninstall":
+                await runUninstall();
                 break;
             case "migrate":
                 await runMigrate();
