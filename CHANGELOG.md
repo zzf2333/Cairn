@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.11] - 2026-06-09 (Runtime signal quality and auditability)
+
+This release turns the runtime from a passive logger into a more reviewable cognitive system. It was validated against a long-running real project `.cairn/` directory from Meitheal, where historical noisy staged entries, weak domain attribution, missing evidence, and stalled stage/DNA signals were visible.
+
+### Added
+
+- **Evidence-based git signal mapping** — generated git events now include mapper version, routing reason, confidence, domain confidence, domain evidence, and compact signal snapshots.
+- **Review queue clustering** — `cairn review --clusters [--json]` groups legacy noisy staged entries by safe review action.
+- **Safe legacy backlog dismissal** — `cairn review dismiss --cluster noisy-large-refactor --dry-run|--yes [--json]` previews or removes known legacy large-refactor noise while writing governance audit records.
+- **Runtime audit command** — `cairn doctor --runtime-audit [--json]` reports telemetry consistency, lifecycle coverage, generated-event evidence gaps, processed archive coverage, and duplicate compliance entries.
+- **Processed signal archive** — `session-end` writes processed git/calibration/safety-valve observations under `.cairn/signals/processed/YYYY-MM/`, including dropped and merged observations.
+- **Fast-cycle DNA candidates** — compression can propose project-specific staged DNA from repeated runtime corrections and session summaries before full long-horizon DNA emerges.
+- **Evidence-based stage inference** — stage confidence now considers recent session summaries, test/acceptance evidence, docs presence, and bugfix/review cadence in addition to git metrics.
+- **Operational Runtime Health views** — generated views now surface pending review, missing evidence, processed archive counts, missing archive counts, Emerging DNA, and Runtime Health sections.
+- **Meitheal replay acceptance tests** — real-world replay coverage guards against returning to 50-item noisy architecture review backlogs.
+
+### Changed
+
+- **Large-refactor handling** — file count alone no longer creates a G2 architecture decision. Staging now requires semantic evidence such as architecture-like commit messages, architecture docs, API/runtime boundary changes, or strong owned-domain path evidence.
+- **Domain attribution** — git signals now score domains using skeleton `owns` / `does_not_own` path evidence before keyword fallback, with `global` / `multi` outcomes for ambiguous commits.
+- **Telemetry vocabulary** — session telemetry now uses source-specific counters such as `explicit_signals`, `git_signals_detected`, `git_signals_routed`, `events_staged`, and `events_dropped`.
+- **Pending review counts** — staged counts now mean pending staged entries, not every YAML file ever written.
+
+### Fixed
+
+- **False pending counts after batch dismissal** — known-noise batch dismissal now removes staged files and preserves the rejection trail in governance audit.
+- **Runtime-audit false positives** — human conversation-sourced staged entries are no longer reported as missing generated mapper evidence.
+- **Docs/config large commits** — docs/config/generated-only churn no longer gets misclassified as feature-domain architecture decisions.
+- **Review output** — pending staged entries now expose routing reason, confidence, domain evidence, and suggested action in JSON.
+- **Package lock version drift** — `cli/package-lock.json` is refreshed for the release version.
+
+### Verification
+
+- `npm run build` — compilation clean.
+- `npm test` — 457/457 tests passing.
+- `npm audit --json` — 0 vulnerabilities.
+- `npm pack --dry-run` — package contents verified.
+- Meitheal read-only replay — legacy 50-item staged backlog clusters into actionable review groups; stage inference produces evidence-backed growth confidence instead of 0-confidence exploration.
+
 ## [0.4.10] - 2026-05-23 (Global instructions auto-injection)
 
 `cairn init` and `npm install cairn-rt` now automatically inject the Cairn lifecycle protocol into the global instruction files of supported AI coding tools. This ensures the cognitive runtime protocol is enforced without relying on the AI to remember to load the skill.
