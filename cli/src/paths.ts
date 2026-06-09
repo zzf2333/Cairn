@@ -17,6 +17,7 @@ export interface CairnPaths {
     signalsGit: string;
     signalsCalibration: string;
     signalsConversation: string;
+    signalsProcessed: string;
     governance: string;
     governancePolicy: string;
     governanceAudit: string;
@@ -56,6 +57,7 @@ export function buildPaths(projectRoot: string): CairnPaths {
         signalsGit: join(signals, "raw_git"),
         signalsCalibration: join(signals, "raw_calibration"),
         signalsConversation: join(signals, "raw_conversation"),
+        signalsProcessed: join(signals, "processed"),
         governance,
         governancePolicy: join(governance, "policy.yaml"),
         governanceAudit: join(governance, "audit.yaml"),
@@ -82,6 +84,7 @@ export const ALL_DIRS = (p: CairnPaths): string[] => [
     p.signalsGit,
     p.signalsCalibration,
     p.signalsConversation,
+    p.signalsProcessed,
     p.governance,
     p.views,
     p.viewsDomains,

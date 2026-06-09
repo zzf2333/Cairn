@@ -68,7 +68,7 @@ beforeEach(async () => {
     const skeletonStore = new SkeletonStore(paths.skeleton);
     const dnaStore = new DnaStore(paths.dnaIdentity, paths.dnaImprint);
     const domainStore = new DomainStore(paths.domains);
-    const signalStore = new SignalStore(paths.signalsGit, paths.signalsCalibration, paths.signalsConversation);
+    const signalStore = new SignalStore(paths.signalsGit, paths.signalsCalibration, paths.signalsConversation, paths.signalsProcessed);
     const stagedStore = new StagedStore(paths.staged);
     const dnaStagedStore = new DnaStagedStore(paths.dnaStaged);
     const stateStore = new StateStore(paths.state);
@@ -910,6 +910,21 @@ describe("cairn_session_end", () => {
         expect(data.git_signals.scanned).toBeGreaterThanOrEqual(1);
         const totalRouted = data.git_signals.new_blood + data.git_signals.new_staged + data.git_signals.dropped;
         expect(totalRouted).toBeGreaterThanOrEqual(1);
+    });
+
+    it("archives processed git signals during session_end", async () => {
+        await handleSessionEnd(ctx, { summary: "first session" });
+
+        execSync("git -c user.email=test@cairn.local -c user.name=cairn-test commit --allow-empty -m 'feat: try thing'", { cwd: tmpDir });
+        execSync("git -c user.email=test@cairn.local -c user.name=cairn-test commit --allow-empty -m 'Revert feat: try thing'", { cwd: tmpDir });
+
+        await handleSessionEnd(ctx, { summary: "second session" });
+
+        const records = await ctx.signalStore.loadAllProcessedSignals();
+        const gitRecord = records.find(record => record.source === "git" && record.signal_id.startsWith("sig_git_"));
+        expect(gitRecord).toBeDefined();
+        expect(["auto_confirmed", "staged", "dropped", "merged"]).toContain(gitRecord!.outcome);
+        expect(gitRecord!.signal.signal_type).toBeDefined();
     });
 
     it("includes stage output shape with current phase and confidence", async () => {

@@ -80,6 +80,8 @@ describe.skipIf(!existsSync(CLI))("CLI E2E smoke", () => {
         expect(data.sessions.total).toBe(0);
         expect(data.compliance.context_rate).toBe(0);
         expect(data.evidence.missing_generated_event_evidence).toEqual([]);
+        expect(data.evidence.missing_processed_archive).toEqual([]);
+        expect(data.signals.processed_archive_total).toBe(0);
     });
 
     it("doctor --recover with no checkpoint exits 0", () => {

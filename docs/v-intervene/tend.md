@@ -83,6 +83,22 @@ cairn session-end --summary "close current work"
 
 Stage inference now combines git age/activity with recent session summaries, test/acceptance evidence, docs presence, and bugfix/review cadence. Phase changes still go through hysteresis and staged human review, but confidence and evidence update on every session close.
 
+### "A staged event exists, but I can't tell where it came from"
+
+Symptom: a generated Blood/Staged event has weak or missing audit trail, or `signals/raw_*` is empty after a session.
+
+```bash
+cairn doctor --runtime-audit --json
+```
+
+Check:
+
+- `evidence.missing_generated_event_evidence` — generated events without embedded mapper evidence.
+- `evidence.missing_processed_archive` — generated events that reference a source signal but have no processed archive.
+- `signals.processed_by_outcome` — whether signals became staged/auto-confirmed, were dropped, merged, or only observed.
+
+Processed archives live under `.cairn/signals/processed/YYYY-MM/`. They include dropped and merged observations, so a reviewer can audit threshold behavior without rereading git history.
+
 ### "DNA emerged, then immediately drifted"
 
 Symptom: `cairn doctor --metrics` shows `DNA reevaluation: ACTIVE`.

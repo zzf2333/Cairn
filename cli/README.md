@@ -56,7 +56,7 @@ Cairn works through two layers:
 |---------|--------------|
 | `cairn init [--empty]` | Initialize `.cairn/` scaffold |
 | `cairn status` | Cognitive status snapshot |
-| `cairn doctor [--fix\|--recover\|--metrics]` | Consistency checks, repairs |
+| `cairn doctor [--fix\|--recover\|--metrics\|--runtime-audit]` | Consistency checks, repairs, runtime audit coverage |
 | `cairn review [--json]` | List pending staged entries with confidence and evidence |
 | `cairn review --clusters [--json]` | Group review backlog by safe human action |
 | `cairn review dismiss --cluster noisy-large-refactor --dry-run\|--yes [--json]` | Reject legacy large-refactor noise after preview |

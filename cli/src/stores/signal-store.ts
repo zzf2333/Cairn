@@ -6,9 +6,11 @@ import {
     GitSignalSchema,
     CalibrationSignalSchema,
     ConversationSignalSchema,
+    ProcessedSignalRecordSchema,
     type GitSignal,
     type CalibrationSignal,
     type ConversationSignal,
+    type ProcessedSignalRecord,
 } from "../schemas/index.js";
 
 export class SignalStore {
@@ -16,6 +18,7 @@ export class SignalStore {
         private readonly gitDir: string,
         private readonly calibrationDir: string,
         private readonly conversationDir: string,
+        private readonly processedDir: string,
     ) {}
 
     async ensureDirs(): Promise<void> {
@@ -23,6 +26,7 @@ export class SignalStore {
             mkdir(this.gitDir, { recursive: true }),
             mkdir(this.calibrationDir, { recursive: true }),
             mkdir(this.conversationDir, { recursive: true }),
+            mkdir(this.processedDir, { recursive: true }),
         ]);
     }
 
@@ -50,6 +54,16 @@ export class SignalStore {
         );
     }
 
+    async saveProcessedSignal(record: ProcessedSignalRecord): Promise<void> {
+        const month = record.processed_at.slice(0, 7);
+        const dir = join(this.processedDir, month);
+        await mkdir(dir, { recursive: true });
+        await atomicWriteFile(
+            join(dir, `${record.id}.yaml`),
+            yamlStringify(ProcessedSignalRecordSchema.parse(record)),
+        );
+    }
+
     async loadAllGitSignals(): Promise<GitSignal[]> {
         return this.loadAllFromDir(this.gitDir, GitSignalSchema);
     }
@@ -60,6 +74,22 @@ export class SignalStore {
 
     async loadAllConversationSignals(): Promise<ConversationSignal[]> {
         return this.loadAllFromDir(this.conversationDir, ConversationSignalSchema);
+    }
+
+    async loadAllProcessedSignals(): Promise<ProcessedSignalRecord[]> {
+        let months: string[];
+        try {
+            months = await readdir(this.processedDir);
+        } catch (err: unknown) {
+            if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+            throw err;
+        }
+
+        const records: ProcessedSignalRecord[] = [];
+        for (const month of months) {
+            records.push(...await this.loadAllFromDir(join(this.processedDir, month), ProcessedSignalRecordSchema));
+        }
+        return records;
     }
 
     async clearProcessed(ids: string[]): Promise<void> {

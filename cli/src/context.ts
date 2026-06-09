@@ -52,7 +52,7 @@ export async function createContext(projectRoot: string): Promise<CairnContext> 
     const skeletonStore = new SkeletonStore(paths.skeleton);
     const dnaStore = new DnaStore(paths.dnaIdentity, paths.dnaImprint);
     const domainStore = new DomainStore(paths.domains);
-    const signalStore = new SignalStore(paths.signalsGit, paths.signalsCalibration, paths.signalsConversation);
+    const signalStore = new SignalStore(paths.signalsGit, paths.signalsCalibration, paths.signalsConversation, paths.signalsProcessed);
     const stagedStore = new StagedStore(paths.staged);
     const dnaStagedStore = new DnaStagedStore(paths.dnaStaged);
     const stateStore = new StateStore(paths.state);

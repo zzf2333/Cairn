@@ -30,11 +30,13 @@ export async function runDoctor(args: string[] = []): Promise<void> {
 }
 
 async function runRuntimeAudit(ctx: Awaited<ReturnType<typeof createContext>>, asJson: boolean): Promise<void> {
-    const [sessions, staged, blood] = await Promise.all([
+    const [sessions, allStaged, blood, processedSignals] = await Promise.all([
         ctx.sessionStore.loadAll(),
-        ctx.stagedStore.findPending(),
+        ctx.stagedStore.loadAll(),
         ctx.bloodStore.loadAll(),
+        ctx.signalStore.loadAllProcessedSignals(),
     ]);
+    const staged = allStaged.filter(entry => entry.review_status === "pending");
 
     const complianceLines = await loadComplianceLines(ctx.paths.complianceLog);
     const mismatchedSessions = sessions
@@ -56,10 +58,27 @@ async function runRuntimeAudit(ctx: Awaited<ReturnType<typeof createContext>>, a
         ...blood
             .filter(event => event.source.type !== "conversation" && !event.evidence)
             .map(event => event.id),
-        ...staged
+        ...allStaged
             .filter(entry => !entry.draft_event.evidence)
             .map(entry => entry.id),
     ];
+    const processedSignalIds = new Set(processedSignals.map(record => record.signal_id));
+    const missingProcessedArchive = [
+        ...blood
+            .filter(event => event.evidence?.source_signal_id && !processedSignalIds.has(event.evidence.source_signal_id))
+            .map(event => event.id),
+        ...allStaged
+            .filter(entry => entry.draft_event.evidence?.source_signal_id && !processedSignalIds.has(entry.draft_event.evidence.source_signal_id))
+            .map(entry => entry.id),
+    ];
+    const processedByOutcome = processedSignals.reduce<Record<string, number>>((acc, record) => {
+        acc[record.outcome] = (acc[record.outcome] ?? 0) + 1;
+        return acc;
+    }, {});
+    const processedBySource = processedSignals.reduce<Record<string, number>>((acc, record) => {
+        acc[record.source] = (acc[record.source] ?? 0) + 1;
+        return acc;
+    }, {});
 
     const complianceCount = complianceLines.length;
     const pct = (count: number): number => complianceCount === 0 ? 0 : Number((count / complianceCount).toFixed(3));
@@ -92,6 +111,12 @@ async function runRuntimeAudit(ctx: Awaited<ReturnType<typeof createContext>>, a
         },
         evidence: {
             missing_generated_event_evidence: missingEvidence,
+            missing_processed_archive: missingProcessedArchive,
+        },
+        signals: {
+            processed_archive_total: processedSignals.length,
+            processed_by_source: processedBySource,
+            processed_by_outcome: processedByOutcome,
         },
         staged: {
             pending: staged.length,
@@ -101,6 +126,7 @@ async function runRuntimeAudit(ctx: Awaited<ReturnType<typeof createContext>>, a
             ...mismatchedSessions.map(id => `session telemetry mismatch: ${id}`),
             ...duplicateComplianceSessions.map(id => `duplicate compliance entry: ${id}`),
             ...missingEvidence.map(id => `generated event missing evidence: ${id}`),
+            ...missingProcessedArchive.map(id => `generated event missing processed signal archive: ${id}`),
         ],
     };
 
@@ -121,6 +147,8 @@ async function runRuntimeAudit(ctx: Awaited<ReturnType<typeof createContext>>, a
     console.log(`  domain attribution:    ${result.compliance.domain_attribution_rate}`);
     console.log(`  staged pending:        ${result.staged.pending}`);
     console.log(`  missing evidence:      ${result.evidence.missing_generated_event_evidence.length}`);
+    console.log(`  processed archives:    ${result.signals.processed_archive_total}`);
+    console.log(`  missing archives:      ${result.evidence.missing_processed_archive.length}`);
     if (result.issues.length > 0) {
         console.log("\nIssues:");
         for (const issue of result.issues) console.log(`  - ${issue}`);

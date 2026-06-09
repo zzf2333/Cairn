@@ -191,7 +191,7 @@ describe("DomainStore", () => {
 describe("SignalStore", () => {
     let store: SignalStore;
     beforeEach(async () => {
-        store = new SignalStore(paths.signalsGit, paths.signalsCalibration, paths.signalsConversation);
+        store = new SignalStore(paths.signalsGit, paths.signalsCalibration, paths.signalsConversation, paths.signalsProcessed);
         await store.ensureDirs();
     });
 
@@ -221,6 +221,32 @@ describe("SignalStore", () => {
         await store.clearProcessed(["sig_git_001"]);
         const signals = await store.loadAllGitSignals();
         expect(signals).toHaveLength(0);
+    });
+
+    it("archives processed signal records by month", async () => {
+        await store.saveProcessedSignal({
+            id: "proc_git_staged_sig_git_001",
+            source: "git",
+            signal_id: "sig_git_001",
+            processed_at: "2026-05-15T10:00:00Z",
+            outcome: "staged",
+            event_id: "evt_git_001",
+            reason: "test route",
+            signal: {
+                id: "sig_git_001",
+                signal_type: "revert",
+            },
+        });
+
+        const records = await store.loadAllProcessedSignals();
+        expect(records).toHaveLength(1);
+        expect(records[0]).toMatchObject({
+            id: "proc_git_staged_sig_git_001",
+            source: "git",
+            signal_id: "sig_git_001",
+            outcome: "staged",
+            event_id: "evt_git_001",
+        });
     });
 });
 

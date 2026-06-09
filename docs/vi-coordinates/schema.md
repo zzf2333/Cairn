@@ -367,6 +367,29 @@ telemetry:
 
 ---
 
+## `signals/processed/YYYY-MM/<id>.yaml`
+
+Processed signal archive. This is the audit trail for generated, dropped, and merged runtime observations.
+
+```yaml
+id: "proc_git_staged_sig_git_001"
+source: "git"                       # git | calibration | safety_valve | conversation
+signal_id: "sig_git_001"
+processed_at: "2026-05-17T18:00:00Z"
+outcome: "staged"                   # auto_confirmed | staged | dropped | merged | observed | no_event
+event_id: "evt_git_runtime_refactor_abc1234"
+reason: "G2 requires human ratification"
+signal:
+  id: "sig_git_001"
+  signal_type: "large_refactor"
+  raw_data:
+    commits: ["abc1234..."]
+```
+
+Generated Blood/Staged events still embed compact `evidence.signal_snapshot`. The processed archive is broader: it also records observations that produced no durable event. `cairn doctor --runtime-audit --json` reports `signals.processed_archive_total`, grouped source/outcome counts, and generated events whose `evidence.source_signal_id` has no matching processed archive.
+
+---
+
 ## `views/output.md` and friends
 
 Auto-generated markdown. Read-only artifact for degraded mode. Regenerated on every `cairn_session_end` and `cairn doctor`. Never hand-edit.

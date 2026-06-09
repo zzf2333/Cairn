@@ -88,3 +88,22 @@ export const CalibrationSignalSchema = z.object({
 export type CalibrationSignal = z.infer<typeof CalibrationSignalSchema>;
 
 export type Signal = GitSignal | ConversationSignal | CalibrationSignal;
+
+export const ProcessedSignalRecordSchema = z.object({
+    id: z.string(),
+    source: z.enum(["git", "calibration", "safety_valve", "conversation"]),
+    signal_id: z.string(),
+    processed_at: z.string(),
+    outcome: z.enum([
+        "auto_confirmed",
+        "staged",
+        "dropped",
+        "merged",
+        "observed",
+        "no_event",
+    ]),
+    event_id: z.string().nullable().default(null),
+    reason: z.string().optional(),
+    signal: z.record(z.unknown()),
+});
+export type ProcessedSignalRecord = z.infer<typeof ProcessedSignalRecordSchema>;

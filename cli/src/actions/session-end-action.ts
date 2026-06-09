@@ -1,7 +1,7 @@
 import { appendFile, mkdir, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { CairnContext } from "../context.js";
-import type { SessionRecord, State, EvolutionEvent } from "../schemas/index.js";
+import type { SessionRecord, State, EvolutionEvent, GitSignal, CalibrationSignal, ProcessedSignalRecord } from "../schemas/index.js";
 import { downgradeGravity, type GravityLevel } from "../constants.js";
 import { mapGitSignalToEvent } from "../engines/git-signal-mapper.js";
 import { generateSessionId, checkContext } from "../utils/session-guard.js";
@@ -29,6 +29,33 @@ interface RuntimeMaturitySignals {
     acceptanceEvidenceCount: number;
     docsEvidenceCount: number;
     bugfixSessionCount: number;
+}
+
+function archiveId(source: ProcessedSignalRecord["source"], signalId: string, outcome: ProcessedSignalRecord["outcome"]): string {
+    return `proc_${source}_${outcome}_${signalId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+}
+
+async function archiveProcessedSignal(
+    ctx: CairnContext,
+    args: {
+        source: ProcessedSignalRecord["source"];
+        signal: GitSignal | CalibrationSignal;
+        outcome: ProcessedSignalRecord["outcome"];
+        nowIso: string;
+        eventId?: string | null;
+        reason?: string;
+    },
+): Promise<void> {
+    await ctx.signalStore.saveProcessedSignal({
+        id: archiveId(args.source, args.signal.id, args.outcome),
+        source: args.source,
+        signal_id: args.signal.id,
+        processed_at: args.nowIso,
+        outcome: args.outcome,
+        event_id: args.eventId ?? null,
+        reason: args.reason,
+        signal: args.signal as unknown as Record<string, unknown>,
+    });
 }
 
 function countMatchingSessions(summaries: string[], pattern: RegExp): number {
@@ -375,6 +402,13 @@ export async function sessionEndAction(ctx: CairnContext, args: SessionEndArgs):
         const event = mapGitSignalToEvent(signal, nowIso);
         if (!event) {
             gitDropped.push(signal.id);
+            await archiveProcessedSignal(ctx, {
+                source: "git",
+                signal,
+                outcome: "dropped",
+                nowIso,
+                reason: "mapper returned no event",
+            });
             continue;
         }
 
@@ -388,11 +422,27 @@ export async function sessionEndAction(ctx: CairnContext, args: SessionEndArgs):
         signalsRouted[routing.gravity as keyof typeof signalsRouted] += 1;
 
         if (routing.merged_with) {
+            await archiveProcessedSignal(ctx, {
+                source: "git",
+                signal,
+                outcome: "merged",
+                nowIso,
+                eventId: routing.merged_with,
+                reason: routing.reason,
+            });
             continue;
         }
 
         if (routing.destination === "dropped") {
             gitDropped.push(event.id);
+            await archiveProcessedSignal(ctx, {
+                source: "git",
+                signal,
+                outcome: "dropped",
+                nowIso,
+                eventId: event.id,
+                reason: routing.reason,
+            });
             continue;
         }
 
@@ -402,6 +452,14 @@ export async function sessionEndAction(ctx: CairnContext, args: SessionEndArgs):
             event.governance_status = "auto_confirmed";
             await ctx.bloodEngine.commit(event);
             gitNewBlood.push(event.id);
+            await archiveProcessedSignal(ctx, {
+                source: "git",
+                signal,
+                outcome: "auto_confirmed",
+                nowIso,
+                eventId: event.id,
+                reason: routing.reason,
+            });
         } else if (routing.destination === "staged") {
             event.governance_status = "pending";
             await ctx.stagedStore.save({
@@ -417,6 +475,14 @@ export async function sessionEndAction(ctx: CairnContext, args: SessionEndArgs):
                 created_at: nowIso,
             });
             gitNewStaged.push(event.id);
+            await archiveProcessedSignal(ctx, {
+                source: "git",
+                signal,
+                outcome: "staged",
+                nowIso,
+                eventId: event.id,
+                reason: routing.reason,
+            });
         }
     }
 
@@ -462,6 +528,24 @@ export async function sessionEndAction(ctx: CairnContext, args: SessionEndArgs):
 
     const calibration = await ctx.calibrationEar.calibrate();
     const safetyValve = await ctx.calibrationEar.applySafetyValve(calibration.signals);
+    for (const signal of calibration.signals) {
+        await archiveProcessedSignal(ctx, {
+            source: "calibration",
+            signal,
+            outcome: "observed",
+            nowIso,
+            reason: "calibration signal evaluated",
+        });
+    }
+    for (const signal of safetyValve.signals) {
+        await archiveProcessedSignal(ctx, {
+            source: "safety_valve",
+            signal,
+            outcome: "observed",
+            nowIso,
+            reason: "DNA safety valve signal emitted",
+        });
+    }
 
     const calibrationByType: Record<string, number> = {};
     for (const sig of calibration.signals) {

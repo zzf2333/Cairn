@@ -44,7 +44,7 @@ function buildContext(p: ReturnType<typeof buildPaths>): CairnContext {
     const skeletonStore = new SkeletonStore(p.skeleton);
     const dnaStore = new DnaStore(p.dnaIdentity, p.dnaImprint);
     const domainStore = new DomainStore(p.domains);
-    const signalStore = new SignalStore(p.signalsGit, p.signalsCalibration, p.signalsConversation);
+    const signalStore = new SignalStore(p.signalsGit, p.signalsCalibration, p.signalsConversation, p.signalsProcessed);
     const stagedStore = new StagedStore(p.staged);
     const stateStore = new StateStore(p.state);
     const configStore = new ConfigStore(p.config);
