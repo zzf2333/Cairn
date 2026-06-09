@@ -60,12 +60,6 @@ export class StagedStore {
     }
 
     async count(): Promise<number> {
-        try {
-            const entries = await readdir(this.dir);
-            return entries.filter(f => f.endsWith(".yaml")).length;
-        } catch (err: unknown) {
-            if ((err as NodeJS.ErrnoException).code === "ENOENT") return 0;
-            throw err;
-        }
+        return (await this.findPending()).length;
     }
 }

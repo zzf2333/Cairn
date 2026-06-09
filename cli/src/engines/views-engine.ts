@@ -155,7 +155,9 @@ export class ViewsEngine {
         if (this.stagedStore) {
             const allStaged = await this.stagedStore.loadAll();
             const pending = allStaged.filter(entry => entry.review_status === "pending");
-            const missingEvidence = allStaged.filter(entry => !entry.draft_event.evidence).length
+            const missingEvidence = allStaged.filter(entry =>
+                entry.draft_event.source.type !== "conversation" && !entry.draft_event.evidence,
+            ).length
                 + allEvents.filter(event => event.source.type !== "conversation" && !event.evidence).length;
             output += `- **Pending review**: ${pending.length}\n`;
             output += `- **Generated events missing evidence**: ${missingEvidence}\n`;

@@ -59,7 +59,7 @@ async function runRuntimeAudit(ctx: Awaited<ReturnType<typeof createContext>>, a
             .filter(event => event.source.type !== "conversation" && !event.evidence)
             .map(event => event.id),
         ...allStaged
-            .filter(entry => !entry.draft_event.evidence)
+            .filter(entry => entry.draft_event.source.type !== "conversation" && !entry.draft_event.evidence)
             .map(entry => entry.id),
     ];
     const processedSignalIds = new Set(processedSignals.map(record => record.signal_id));

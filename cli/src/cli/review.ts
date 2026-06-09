@@ -100,12 +100,11 @@ export async function runReview(args: string[] = []): Promise<void> {
         if (!dryRun) {
             const nowIso = new Date().toISOString();
             for (const entry of matches) {
-                entry.review_status = "rejected";
-                await ctx.stagedStore.save(entry);
+                await ctx.stagedStore.remove(entry.id);
                 await ctx.governanceStore.appendAudit({
                     time: nowIso,
                     action: "rejected",
-                    target: entry.id,
+                    target: entry.draft_event.id,
                     actor: "system",
                     reason: "batch dismissed noisy legacy large-refactor review cluster",
                 });

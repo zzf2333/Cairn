@@ -88,12 +88,13 @@ describe("review clustering", () => {
         expect(await governanceStore.loadAuditLog()).toHaveLength(0);
 
         await runReview(["dismiss", "--cluster", "noisy-large-refactor", "--yes", "--json"]);
-        expect((await stagedStore.load("stg_dismiss"))?.review_status).toBe("rejected");
+        expect(await stagedStore.load("stg_dismiss")).toBeNull();
+        expect(await stagedStore.count()).toBe(0);
         const audit = await governanceStore.loadAuditLog();
         expect(audit).toHaveLength(1);
         expect(audit[0]).toMatchObject({
             action: "rejected",
-            target: "stg_dismiss",
+            target: "evt_dismiss",
             actor: "system",
         });
     });

@@ -69,7 +69,7 @@ cairn review dismiss --cluster noisy-large-refactor --dry-run
 cairn review dismiss --cluster noisy-large-refactor --yes
 ```
 
-The dismiss command only supports known legacy noise clusters. It marks entries `rejected` and writes governance audit records; it does not delete staged files.
+The dismiss command only supports known legacy noise clusters. It removes matching staged files and writes governance audit records so backlog counts stay accurate.
 
 ### "Stage is stuck at exploration"
 

@@ -271,11 +271,12 @@ describe("StagedStore", () => {
         expect(pending).toHaveLength(1);
     });
 
-    it("counts entries", async () => {
+    it("counts pending entries", async () => {
         await store.save(makeStagedEntry("staged_001"));
-        await store.save(makeStagedEntry("staged_002"));
+        await store.save(makeStagedEntry("staged_002", { review_status: "accepted" }));
+        await store.save(makeStagedEntry("staged_003", { review_status: "rejected" }));
         const count = await store.count();
-        expect(count).toBe(2);
+        expect(count).toBe(1);
     });
 });
 

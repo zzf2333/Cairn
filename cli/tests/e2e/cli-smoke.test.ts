@@ -84,6 +84,26 @@ describe.skipIf(!existsSync(CLI))("CLI E2E smoke", () => {
         expect(data.signals.processed_archive_total).toBe(0);
     });
 
+    it("doctor --runtime-audit does not flag conversation staged entries as missing generated evidence", () => {
+        runCli(["init", "--empty"], tmpDir);
+        runCli(["context", "--task", "capture constraint", "--json"], tmpDir);
+        const signal = runCli([
+            "signal",
+            "--type", "constraint_declaration",
+            "--what", "Use English commit messages",
+            "--reason", "project convention",
+            "--json",
+        ], tmpDir);
+        expect(signal.code).toBe(0);
+        expect(JSON.parse(signal.stdout).routing.destination).toBe("staged");
+
+        const r = runCli(["doctor", "--runtime-audit", "--json"], tmpDir);
+        expect(r.code).toBe(0);
+        const data = JSON.parse(r.stdout);
+        expect(data.staged.pending).toBe(1);
+        expect(data.evidence.missing_generated_event_evidence).toEqual([]);
+    });
+
     it("doctor --recover with no checkpoint exits 0", () => {
         runCli(["init", "--empty"], tmpDir);
         const r = runCli(["doctor", "--recover"], tmpDir);
