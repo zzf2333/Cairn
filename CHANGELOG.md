@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Global instruction architecture** — injected Claude/Codex blocks now present themselves as a Cairn Skill bootstrap guard instead of a complete protocol replacement. The block explicitly states that the Skill owns lifecycle semantics and the CLI is only the runtime actuator.
+- **Global instruction architecture** — injected Claude/Codex blocks now stay short and only bootstrap the Cairn Skill instead of becoming a second protocol surface. Detailed lifecycle semantics remain in the Skill, while the CLI is only the runtime actuator.
 
 ## [0.4.11] - 2026-06-09 (Runtime signal quality and auditability)
 

@@ -6,43 +6,22 @@ const MARKER_START = "<!-- cairn:start -->";
 const MARKER_END = "<!-- cairn:end -->";
 
 const PROTOCOL_BLOCK = `${MARKER_START}
-## Cairn Skill Bootstrap (Mandatory Guard)
+## Cairn Skill Bootstrap
 
-When the project root contains a \`.cairn/\` directory, Cairn is active and the rules below are **mandatory**. If \`.cairn/\` does not exist, ignore this section entirely.
+If the project root contains \`.cairn/\`, Cairn is active.
 
-### Architecture
+Use the Cairn Skill for all technical work. The Skill owns lifecycle semantics, constraints, review queues, DNA, recovery, and session closure. The \`cairn\` CLI is only the runtime actuator invoked by the Skill.
 
-- **Cairn Skill = protocol owner.** Use the Cairn skill when available; it defines lifecycle semantics, constraints, recovery, review queues, DNA, trauma, degraded mode, and anti-patterns.
-- **Cairn CLI = runtime actuator.** The skill calls \`cairn ...\` commands to read/write \`.cairn/\` state. Do not treat the commands below as a replacement for the skill.
-- **This block = bootstrap guard.** Its job is to ensure the skill-driven lifecycle starts even when a host does not auto-load skills reliably.
+Required behavior:
 
-### Minimal Lifecycle Guard
+- Before technical work: activate/use the Cairn Skill and load context.
+- Before architecture decisions: follow the Skill planning flow.
+- When user decisions or constraints appear: capture them through the Skill.
+- Before commits and at session end: follow the Skill observation/closure flow.
 
-Every technical session MUST follow the Cairn skill lifecycle. At minimum, the skill must invoke these runtime commands in order:
+If the Cairn Skill is unavailable, fall back to \`cairn context --task "<task>" --json\` and read \`.cairn/views/*.md\`.
 
-1. **Start** — Before any technical work, use the Cairn skill and run \`cairn context --task "<task>" --json\`. No context loaded = no technical advice allowed. If the response contains \`recovery_required\`, run \`cairn session-recover --json\` first, then re-run context.
-2. **Before architecture decisions** — Follow the skill's planning rules and run \`cairn plan --task "<task>" --json\` to check for conflicts with historical decisions. Required for framework selection, module boundary changes, and infrastructure work.
-3. **Capture cognition** — When the user rejects a proposal, declares a constraint, accepts technical debt, or makes an architectural choice, follow the skill's signal rules and run \`cairn signal --type <type> --what "<description>" --json\`. Acknowledging verbally without signaling = cognition lost.
-4. **Before commit** — Follow the skill's observation rules and run \`cairn observe --summary "<summary>" --json\` before git commit to capture implicit decisions not explicitly signaled during the session.
-5. **End** — When the task completes or the topic changes, follow the skill's closure rules and run \`cairn session-end --summary "<summary>" --json\`. Skipping this causes git scanning, decay checks, and DNA compression to be missed entirely.
-
-### Constraints
-
-Constraints returned by context remain in effect for the entire session and must be interpreted using the Cairn skill:
-
-- \`no_go\` → never suggest this direction
-- \`accepted_debt\` → do not fix; work within the constraint
-- \`challenges\` → \`suggestion\`: may proceed; \`reflective_challenge\`: must justify in writing before proceeding; \`hard_constraint\`: do not proceed
-
-### When to skip
-
-Typo fixes, formatting, pure Q&A, non-technical conversation → skip the entire lifecycle. The test: would a future AI session benefit from knowing what happened here?
-
-### If the Skill Is Unavailable
-
-Use this block as the fallback lifecycle, and read \`.cairn/views/output.md\`, \`.cairn/views/stage.md\`, and \`.cairn/views/domains/*.md\` for context. Signal capture is degraded without the skill semantics.
-
-**Bypassing the Cairn skill when it is available, or skipping any mandatory lifecycle step, means the task is incomplete.**
+Bypassing the Cairn Skill when it is available means the task is incomplete.
 ${MARKER_END}`;
 
 export function getGlobalInstructionBlock(): string {
