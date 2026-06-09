@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Global instruction architecture** — injected Claude/Codex blocks now present themselves as a Cairn Skill bootstrap guard instead of a complete protocol replacement. The block explicitly states that the Skill owns lifecycle semantics and the CLI is only the runtime actuator.
+
 ## [0.4.11] - 2026-06-09 (Runtime signal quality and auditability)
 
 This release turns the runtime from a passive logger into a more reviewable cognitive system. It was validated against a long-running real project `.cairn/` directory from Meitheal, where historical noisy staged entries, weak domain attribution, missing evidence, and stalled stage/DNA signals were visible.

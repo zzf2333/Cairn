@@ -19,7 +19,7 @@ async function main() {
             console.log("");
             for (const r of acted) {
                 const verb = r.action === "injected" ? "injected" : "updated";
-                console.log(`  ${GREEN}✓${RESET} ${r.target}: protocol ${verb} ${DIM}${r.path}${RESET}`);
+                console.log(`  ${GREEN}✓${RESET} ${r.target}: skill bootstrap ${verb} ${DIM}${r.path}${RESET}`);
             }
         }
     } catch {

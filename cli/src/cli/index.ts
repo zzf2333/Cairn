@@ -23,7 +23,7 @@ const USAGE = `cairn v${VERSION}
 Usage: cairn <command> [options]
 
 Commands:
-  init                          Initialize .cairn/ scaffold + inject global instructions
+  init                          Initialize .cairn/ scaffold + inject global skill bootstrap
   init --empty                  Initialize .cairn/ scaffold (silent, for scripts)
   uninstall                     Remove Cairn global instructions from AI tools
   status                        Show project cognitive status (DNA mode, drift, stage transitions)
