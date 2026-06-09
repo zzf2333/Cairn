@@ -266,6 +266,26 @@ describe("StageEngine", () => {
         expect(result.phase).toBe("growth");
     });
 
+    it("uses delivery evidence to avoid keeping active young projects in exploration", () => {
+        const result = engine.infer({
+            projectAgeMonths: 1,
+            commitCount30d: 30,
+            projectAvgCommits30d: 20,
+            dependencyChangeRate: 0.08,
+            newFileRatio: 0.7,
+            contributorCount: 2,
+            implementationSessionCount: 6,
+            reviewSessionCount: 3,
+            discussionSessionCount: 2,
+            acceptanceEvidenceCount: 5,
+            docsEvidenceCount: 4,
+            bugfixSessionCount: 1,
+        });
+        expect(result.phase).toBe("growth");
+        expect(result.confidence).toBeGreaterThanOrEqual(0.7);
+        expect(result.evidence.some(e => e.source === "session_maturity")).toBe(true);
+    });
+
     it("infers maturity for low-change projects", () => {
         const result = engine.infer({
             projectAgeMonths: 18,

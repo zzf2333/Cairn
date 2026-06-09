@@ -33,6 +33,8 @@ Commands:
   doctor --metrics              Print .cairn/ health snapshot (blood/DNA/staged/last session)
   doctor --runtime-audit [--json] Report lifecycle telemetry consistency and coverage
   review                        List pending staged entries
+  review --clusters [--json]    Group pending staged entries by review action
+  review dismiss --cluster noisy-large-refactor [--dry-run|--yes] [--json]
   audit                         Show governance audit log
   dna show                      List current DNA traits
   dna reevaluate                Toggle reevaluation_mode

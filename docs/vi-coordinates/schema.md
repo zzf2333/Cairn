@@ -219,6 +219,10 @@ created_at: "2026-05-17T10:00:00Z"
 
 `cairn_stage_accept` promotes `draft_event` to Blood; `cairn_stage_reject` writes to audit and removes. `cairn review --json` exposes confidence, domain evidence, and suggested action for each pending entry.
 
+`cairn review --clusters` groups pending entries by review action. The only batch-dismissable cluster today is `noisy-large-refactor`, which covers legacy runtime-observed architecture candidates that lack mapper evidence. `cairn review dismiss --cluster noisy-large-refactor --dry-run` previews matches; `--yes` marks them `rejected` and appends governance audit entries. Rejected files remain in `staged/` for traceability but are excluded from pending review.
+
+Stage inference evidence is refreshed during `session-end`. It combines git metrics with recent session summaries, test/acceptance files, documentation presence, and bugfix/review cadence. A phase transition still becomes a staged `stage_transition` event when confidence and hysteresis thresholds are met.
+
 ---
 
 ## `domains/<domain>/{constraints,accepted_debt,rejected_paths}.yaml`

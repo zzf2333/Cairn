@@ -7,6 +7,12 @@ export interface StageInput {
     dependencyChangeRate: number;
     newFileRatio: number;
     contributorCount: number;
+    implementationSessionCount?: number;
+    reviewSessionCount?: number;
+    discussionSessionCount?: number;
+    acceptanceEvidenceCount?: number;
+    docsEvidenceCount?: number;
+    bugfixSessionCount?: number;
 }
 
 export interface StageResult {
@@ -30,6 +36,42 @@ export class StageEngine {
         const commitRatio = input.projectAvgCommits30d > 0
             ? input.commitCount30d / input.projectAvgCommits30d
             : 0;
+        const implementationSessionCount = input.implementationSessionCount ?? 0;
+        const reviewSessionCount = input.reviewSessionCount ?? 0;
+        const discussionSessionCount = input.discussionSessionCount ?? 0;
+        const acceptanceEvidenceCount = input.acceptanceEvidenceCount ?? 0;
+        const docsEvidenceCount = input.docsEvidenceCount ?? 0;
+        const bugfixSessionCount = input.bugfixSessionCount ?? 0;
+        const deliveryLoopEvidence = implementationSessionCount >= 3
+            && acceptanceEvidenceCount >= 2
+            && docsEvidenceCount >= 1;
+        const operatingCadenceEvidence = reviewSessionCount + discussionSessionCount >= 3
+            && bugfixSessionCount >= 1;
+
+        if (
+            (input.projectAgeMonths < 3 || input.newFileRatio > 0.6)
+            && deliveryLoopEvidence
+            && input.commitCount30d >= 10
+        ) {
+            evidence.push({ source: "session_maturity", signal: `${implementationSessionCount} implementation session(s) with ${acceptanceEvidenceCount} validation signal(s)` });
+            evidence.push({ source: "documentation_maturity", signal: `${docsEvidenceCount} documentation signal(s)` });
+            evidence.push({ source: "commit_activity", signal: `${input.commitCount30d} commits in 30 days` });
+            confidence += 0.18;
+            if (operatingCadenceEvidence) {
+                evidence.push({ source: "operating_cadence", signal: `${reviewSessionCount + discussionSessionCount} review/discussion session(s), ${bugfixSessionCount} bugfix session(s)` });
+                confidence += 0.07;
+            }
+            if (input.dependencyChangeRate < 0.2) {
+                evidence.push({ source: "dependency_change_rate", signal: `dependency change rate ${input.dependencyChangeRate} < 0.2` });
+                confidence += 0.05;
+            }
+            return {
+                phase: "growth",
+                confidence: Math.min(confidence, 1),
+                evidence,
+                guidance: GUIDANCE.growth,
+            };
+        }
 
         if (input.projectAgeMonths < 3 || input.newFileRatio > 0.6) {
             if (input.projectAgeMonths < 3) {

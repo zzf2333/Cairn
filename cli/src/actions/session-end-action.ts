@@ -1,5 +1,5 @@
-import { appendFile, mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
+import { appendFile, mkdir, readdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type { CairnContext } from "../context.js";
 import type { SessionRecord, State, EvolutionEvent } from "../schemas/index.js";
 import { downgradeGravity, type GravityLevel } from "../constants.js";
@@ -8,6 +8,7 @@ import { generateSessionId, checkContext } from "../utils/session-guard.js";
 
 const STAGE_HYSTERESIS_DAYS = 14;
 const STAGE_MIN_CONFIDENCE = 0.6;
+const STAGE_EVIDENCE_FILE_LIMIT = 400;
 
 interface StageInferenceResult {
     inferred_phase: string;
@@ -19,6 +20,104 @@ interface StageInferenceResult {
 interface CompressionInferenceResult {
     candidates_detected: number;
     new_staged: string[];
+}
+
+interface RuntimeMaturitySignals {
+    implementationSessionCount: number;
+    reviewSessionCount: number;
+    discussionSessionCount: number;
+    acceptanceEvidenceCount: number;
+    docsEvidenceCount: number;
+    bugfixSessionCount: number;
+}
+
+function countMatchingSessions(summaries: string[], pattern: RegExp): number {
+    return summaries.filter(summary => pattern.test(summary)).length;
+}
+
+async function countProjectFiles(root: string, matcher: (relativePath: string) => boolean): Promise<number> {
+    let count = 0;
+    const queue = [root];
+    const skipped = new Set([".git", ".cairn", "node_modules", "dist", "build", "coverage"]);
+
+    while (queue.length > 0 && count < STAGE_EVIDENCE_FILE_LIMIT) {
+        const current = queue.shift()!;
+        let entries;
+        try {
+            entries = await readdir(current, { withFileTypes: true });
+        } catch {
+            continue;
+        }
+
+        for (const entry of entries) {
+            const fullPath = join(current, entry.name);
+            const relativePath = fullPath.slice(root.length + 1);
+            if (entry.isDirectory()) {
+                if (!skipped.has(entry.name)) queue.push(fullPath);
+                continue;
+            }
+            if (!entry.isFile()) continue;
+            if (matcher(relativePath)) count += 1;
+            if (count >= STAGE_EVIDENCE_FILE_LIMIT) break;
+        }
+    }
+
+    return count;
+}
+
+async function collectRuntimeMaturitySignals(ctx: CairnContext): Promise<RuntimeMaturitySignals> {
+    const recentSessions = await ctx.sessionStore.loadRecent(80);
+    const summaries = recentSessions.map(session =>
+        [
+            session.summary,
+            ...session.decisions_made,
+            ...session.unresolved,
+            ...session.domains_touched,
+        ].join(" ").toLowerCase(),
+    );
+
+    const implementationSessionCount = countMatchingSessions(
+        summaries,
+        /implement|implemented|ship|built|fix|fixed|refactor|add(ed)?|完成|实现|修复|提交|新增/,
+    );
+    const reviewSessionCount = countMatchingSessions(
+        summaries,
+        /review|audit|inspect|acceptance|验收|审查|审计|回放/,
+    );
+    const discussionSessionCount = countMatchingSessions(
+        summaries,
+        /design|plan|discuss|architecture|机制|计划|架构|讨论|梳理/,
+    );
+    const bugfixSessionCount = countMatchingSessions(
+        summaries,
+        /bug|fix|regression|ci|failure|修复|失败|回归/,
+    );
+    const sessionValidationCount = countMatchingSessions(
+        summaries,
+        /test|tests|passed|build|acceptance|验收|测试|通过|回放/,
+    );
+
+    const [testFiles, docsFiles] = await Promise.all([
+        countProjectFiles(ctx.paths.root, relativePath =>
+            /(^|\/)(test|tests|__tests__)\//.test(relativePath)
+            || /\.(test|spec)\.[cm]?[jt]sx?$/.test(relativePath)
+            || relativePath.includes("acceptance"),
+        ),
+        countProjectFiles(ctx.paths.root, relativePath =>
+            relativePath === "README.md"
+            || relativePath.startsWith("docs/")
+            || relativePath.endsWith(".md") && !relativePath.startsWith(".cairn/"),
+        ),
+    ]);
+
+    return {
+        implementationSessionCount,
+        reviewSessionCount,
+        discussionSessionCount,
+        acceptanceEvidenceCount: sessionValidationCount + Math.min(testFiles, 10),
+        docsEvidenceCount: Math.min(docsFiles, 20),
+        bugfixSessionCount,
+    };
 }
 
 async function runCompressionInference(
@@ -78,6 +177,7 @@ async function runStageInference(
 ): Promise<StageInferenceResult> {
     const projectAgeMonths = await ctx.gitEar.getProjectAge();
     const commitStats = await ctx.gitEar.getCommitStats();
+    const runtimeMaturity = await collectRuntimeMaturitySignals(ctx);
     const inferred = ctx.stageEngine.infer({
         projectAgeMonths,
         commitCount30d: commitStats.count30d,
@@ -85,6 +185,7 @@ async function runStageInference(
         dependencyChangeRate: await ctx.gitEar.getDependencyChangeRate(30),
         newFileRatio: await ctx.gitEar.getNewFileRatio(30),
         contributorCount: await ctx.gitEar.getContributorCount(30),
+        ...runtimeMaturity,
     });
 
     const currentPhase = state.stage.phase;

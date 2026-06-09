@@ -32,7 +32,7 @@ Cairn works through two layers:
 | `cairn plan` | Before architecture work | Surfaces historical constraints + DNA guidance |
 | `cairn signal` | On decision / rejection / constraint | Routes through TrustRouter |
 | `cairn observe` | Before git commit | Extracts and routes candidate signals |
-| `cairn session-end` | Session close | Git scan → decay → calibration → stage → DNA compression |
+| `cairn session-end` | Session close | Git scan → decay → calibration → evidence-based stage inference → DNA compression |
 | `cairn session-recover` | When stale session detected | Runs session-end pipeline for interrupted session |
 
 **Mandatory every session**: `cairn context` (start) + `cairn session-end` (close).
@@ -47,7 +47,7 @@ Cairn works through two layers:
 | `cairn plan --task <t>` | Surfaces historical constraints + DNA guidance |
 | `cairn signal --type <t> --what <w>` | Routes through TrustRouter |
 | `cairn observe --summary <s>` | Extracts and routes candidate signals |
-| `cairn session-end --summary <s>` | Git scan → decay → calibration → stage → DNA compression |
+| `cairn session-end --summary <s>` | Git scan → decay → calibration → evidence-based stage inference → DNA compression |
 | `cairn session-recover` | Runs session-end pipeline for interrupted session |
 
 **Management commands**:
@@ -57,7 +57,9 @@ Cairn works through two layers:
 | `cairn init [--empty]` | Initialize `.cairn/` scaffold |
 | `cairn status` | Cognitive status snapshot |
 | `cairn doctor [--fix\|--recover\|--metrics]` | Consistency checks, repairs |
-| `cairn review` | List pending staged entries |
+| `cairn review [--json]` | List pending staged entries with confidence and evidence |
+| `cairn review --clusters [--json]` | Group review backlog by safe human action |
+| `cairn review dismiss --cluster noisy-large-refactor --dry-run\|--yes [--json]` | Reject legacy large-refactor noise after preview |
 | `cairn audit` | Governance audit log |
 | `cairn dna show \| list \| accept \| reject \| reevaluate` | DNA trait management |
 | `cairn skeleton show` | Domain map |

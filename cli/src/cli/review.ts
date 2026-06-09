@@ -1,10 +1,140 @@
 import { createContext } from "../context.js";
+import type { StagedEntry } from "../schemas/index.js";
+
+export interface ReviewCluster {
+    id: string;
+    count: number;
+    sample_ids: string[];
+    reason: string;
+    suggested_action: string;
+}
+
+function eventSummary(entry: StagedEntry): string {
+    return `${entry.draft_event.trigger} ${entry.draft_event.decision_or_change} ${entry.routing_reason}`.toLowerCase();
+}
+
+export function isLegacyNoisyLargeRefactor(entry: StagedEntry): boolean {
+    const ev = entry.draft_event;
+    if (ev.source.type !== "runtime_observed") return false;
+    if (ev.evidence) return false;
+    if (ev.type !== "architecture_decision") return false;
+    if (entry.gravity !== "G2") return false;
+
+    const text = eventSummary(entry);
+    return text.includes("large refactor")
+        && (
+            text.includes("files changed")
+            || text.includes("refactored apps")
+            || text.includes("refactored docs")
+            || text.includes("refactored agents.md")
+            || text.includes("refactored claude.md")
+            || text.includes("refactored .gitignore")
+        );
+}
+
+export function clusterStagedEntries(entries: StagedEntry[]): ReviewCluster[] {
+    const clusters: ReviewCluster[] = [];
+    const noisyLargeRefactors = entries.filter(isLegacyNoisyLargeRefactor);
+    if (noisyLargeRefactors.length > 0) {
+        clusters.push({
+            id: "noisy-large-refactor",
+            count: noisyLargeRefactors.length,
+            sample_ids: noisyLargeRefactors.slice(0, 5).map(entry => entry.id),
+            reason: "legacy large-refactor entries without mapper evidence or domain confidence",
+            suggested_action: "dismiss after dry-run review if samples are non-decisions",
+        });
+    }
+
+    const missingEvidence = entries.filter(entry =>
+        !entry.draft_event.evidence
+        && !isLegacyNoisyLargeRefactor(entry)
+        && entry.draft_event.source.type === "runtime_observed",
+    );
+    if (missingEvidence.length > 0) {
+        clusters.push({
+            id: "missing-evidence",
+            count: missingEvidence.length,
+            sample_ids: missingEvidence.slice(0, 5).map(entry => entry.id),
+            reason: "runtime-observed staged entries predate evidence metadata",
+            suggested_action: "review manually; do not batch dismiss by default",
+        });
+    }
+
+    return clusters;
+}
+
+function printClusters(clusters: ReviewCluster[]): void {
+    if (clusters.length === 0) {
+        console.log("No review clusters detected");
+        return;
+    }
+    console.log(`${clusters.length} review cluster(s):\n`);
+    for (const cluster of clusters) {
+        console.log(`  id:      ${cluster.id}`);
+        console.log(`  count:   ${cluster.count}`);
+        console.log(`  samples: ${cluster.sample_ids.join(", ")}`);
+        console.log(`  reason:  ${cluster.reason}`);
+        console.log(`  action:  ${cluster.suggested_action}`);
+        console.log();
+    }
+}
 
 export async function runReview(args: string[] = []): Promise<void> {
     const ctx = await createContext(process.cwd());
     const asJson = args.includes("--json");
+    const wantsClusters = args.includes("--clusters");
 
     const pending = await ctx.stagedStore.findPending();
+
+    if (args[0] === "dismiss") {
+        const clusterIndex = args.indexOf("--cluster");
+        const clusterId = clusterIndex >= 0 ? args[clusterIndex + 1] : null;
+        const yes = args.includes("--yes");
+        const dryRun = args.includes("--dry-run") || !yes;
+
+        if (clusterId !== "noisy-large-refactor") {
+            throw new Error("Only --cluster noisy-large-refactor is currently batch-dismissible");
+        }
+
+        const matches = pending.filter(isLegacyNoisyLargeRefactor);
+        if (!dryRun) {
+            const nowIso = new Date().toISOString();
+            for (const entry of matches) {
+                entry.review_status = "rejected";
+                await ctx.stagedStore.save(entry);
+                await ctx.governanceStore.appendAudit({
+                    time: nowIso,
+                    action: "rejected",
+                    target: entry.id,
+                    actor: "system",
+                    reason: "batch dismissed noisy legacy large-refactor review cluster",
+                });
+            }
+        }
+
+        const result = {
+            cluster: clusterId,
+            dry_run: dryRun,
+            matched: matches.length,
+            affected_ids: matches.map(entry => entry.id),
+        };
+        if (asJson) {
+            console.log(JSON.stringify(result, null, 2));
+        } else {
+            console.log(`${dryRun ? "Would reject" : "Rejected"} ${matches.length} staged entr${matches.length === 1 ? "y" : "ies"} from ${clusterId}`);
+        }
+        return;
+    }
+
+    if (wantsClusters) {
+        const clusters = clusterStagedEntries(pending);
+        if (asJson) {
+            console.log(JSON.stringify({ clusters }, null, 2));
+        } else {
+            printClusters(clusters);
+        }
+        return;
+    }
 
     if (pending.length === 0) {
         if (asJson) {

@@ -61,6 +61,28 @@ Two paths:
 - **Wrong cognitive mode** — you're on `institutional` when your team is willing to pay `standard`-level overhead. Edit `config.yaml.cognitive_mode`. Existing staged entries don't auto-resolve, but the inflow drops.
 - **No one is reviewing** — schedule a 10-minute review at the start of standups, or use `cairn review` to batch-process. The AI is supposed to surface staged count after `cairn_session_end`; if it isn't, re-check the skill installation.
 
+For old queues created before evidence metadata existed:
+
+```bash
+cairn review --clusters
+cairn review dismiss --cluster noisy-large-refactor --dry-run
+cairn review dismiss --cluster noisy-large-refactor --yes
+```
+
+The dismiss command only supports known legacy noise clusters. It marks entries `rejected` and writes governance audit records; it does not delete staged files.
+
+### "Stage is stuck at exploration"
+
+Symptom: `views/stage.md` or `cairn status` shows low confidence even though the project has implementation, test, and documentation history.
+
+Run a normal lifecycle close:
+
+```bash
+cairn session-end --summary "close current work"
+```
+
+Stage inference now combines git age/activity with recent session summaries, test/acceptance evidence, docs presence, and bugfix/review cadence. Phase changes still go through hysteresis and staged human review, but confidence and evidence update on every session close.
+
 ### "DNA emerged, then immediately drifted"
 
 Symptom: `cairn doctor --metrics` shows `DNA reevaluation: ACTIVE`.
