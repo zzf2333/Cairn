@@ -54,6 +54,15 @@ export const EvolutionEventSchema = z.object({
 
     health: HealthSchema.default({}),
     trauma: TraumaSchema.default({}),
+    evidence: z.object({
+        source_signal_id: z.string().optional(),
+        mapper_version: z.string().optional(),
+        routing_reason: z.string().optional(),
+        confidence: z.number().min(0).max(1).optional(),
+        domain_confidence: z.number().min(0).max(1).optional(),
+        domain_evidence: z.array(z.string()).default([]),
+        signal_snapshot: z.record(z.unknown()).optional(),
+    }).optional(),
 
     created_at: z.string(),
     updated_at: z.string(),

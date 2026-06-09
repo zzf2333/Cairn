@@ -1,5 +1,6 @@
 import { createContext } from "../context.js";
 import type { ConsistencyReport } from "../engines/index.js";
+import { readFile } from "node:fs/promises";
 
 export async function runDoctor(args: string[] = []): Promise<void> {
     const flags = new Set(args);
@@ -7,6 +8,11 @@ export async function runDoctor(args: string[] = []): Promise<void> {
 
     if (flags.has("--metrics")) {
         await runMetrics(ctx);
+        return;
+    }
+
+    if (flags.has("--runtime-audit")) {
+        await runRuntimeAudit(ctx, flags.has("--json"));
         return;
     }
 
@@ -21,6 +27,123 @@ export async function runDoctor(args: string[] = []): Promise<void> {
     }
 
     await runStandard(ctx);
+}
+
+async function runRuntimeAudit(ctx: Awaited<ReturnType<typeof createContext>>, asJson: boolean): Promise<void> {
+    const [sessions, staged, blood] = await Promise.all([
+        ctx.sessionStore.loadAll(),
+        ctx.stagedStore.findPending(),
+        ctx.bloodStore.loadAll(),
+    ]);
+
+    const complianceLines = await loadComplianceLines(ctx.paths.complianceLog);
+    const mismatchedSessions = sessions
+        .filter(session => {
+            if (session.telemetry?.schema_version === 2) {
+                const expected = session.telemetry.explicit_signals
+                    + session.telemetry.git_signals_detected
+                    + session.telemetry.calibration_signals_detected
+                    + session.telemetry.safety_valve_signals;
+                return session.telemetry.signals_total !== expected;
+            }
+            const routed = Object.values(session.signals_routed).reduce((sum, count) => sum + count, 0);
+            return session.signals_captured !== routed
+                || (session.compliance !== undefined && session.signals_captured !== session.compliance.signals_count);
+        })
+        .map(session => session.id);
+
+    const missingEvidence = [
+        ...blood
+            .filter(event => event.source.type !== "conversation" && !event.evidence)
+            .map(event => event.id),
+        ...staged
+            .filter(entry => !entry.draft_event.evidence)
+            .map(entry => entry.id),
+    ];
+
+    const complianceCount = complianceLines.length;
+    const pct = (count: number): number => complianceCount === 0 ? 0 : Number((count / complianceCount).toFixed(3));
+    const domainAttributed = complianceLines.filter(line => Array.isArray(line.domains) && line.domains.length > 0).length;
+
+    const duplicateComplianceSessions = Object.entries(
+        complianceLines.reduce<Record<string, number>>((acc, line) => {
+            if (typeof line.session === "string") {
+                acc[line.session] = (acc[line.session] ?? 0) + 1;
+            }
+            return acc;
+        }, {}),
+    ).filter(([, count]) => count > 1).map(([session]) => session);
+
+    const result = {
+        schema_version: 1,
+        sessions: {
+            total: sessions.length,
+            telemetry_v2: sessions.filter(s => s.telemetry?.schema_version === 2).length,
+            mismatched: mismatchedSessions,
+        },
+        compliance: {
+            total: complianceCount,
+            context_rate: pct(complianceLines.filter(line => line.context).length),
+            plan_rate: pct(complianceLines.filter(line => line.plan).length),
+            observe_rate: pct(complianceLines.filter(line => line.observe).length),
+            explicit_signal_rate: pct(complianceLines.filter(line => (line.signals ?? 0) > 0).length),
+            domain_attribution_rate: pct(domainAttributed),
+            duplicate_sessions: duplicateComplianceSessions,
+        },
+        evidence: {
+            missing_generated_event_evidence: missingEvidence,
+        },
+        staged: {
+            pending: staged.length,
+            missing_evidence: staged.filter(entry => !entry.draft_event.evidence).length,
+        },
+        issues: [
+            ...mismatchedSessions.map(id => `session telemetry mismatch: ${id}`),
+            ...duplicateComplianceSessions.map(id => `duplicate compliance entry: ${id}`),
+            ...missingEvidence.map(id => `generated event missing evidence: ${id}`),
+        ],
+    };
+
+    if (asJson) {
+        console.log(JSON.stringify(result, null, 2));
+        return;
+    }
+
+    console.log("=== Runtime Audit ===");
+    console.log(`  sessions:              ${result.sessions.total}`);
+    console.log(`  telemetry v2:          ${result.sessions.telemetry_v2}`);
+    console.log(`  mismatched sessions:   ${result.sessions.mismatched.length}`);
+    console.log(`  compliance entries:    ${result.compliance.total}`);
+    console.log(`  context rate:          ${result.compliance.context_rate}`);
+    console.log(`  observe rate:          ${result.compliance.observe_rate}`);
+    console.log(`  plan rate:             ${result.compliance.plan_rate}`);
+    console.log(`  explicit signal rate:  ${result.compliance.explicit_signal_rate}`);
+    console.log(`  domain attribution:    ${result.compliance.domain_attribution_rate}`);
+    console.log(`  staged pending:        ${result.staged.pending}`);
+    console.log(`  missing evidence:      ${result.evidence.missing_generated_event_evidence.length}`);
+    if (result.issues.length > 0) {
+        console.log("\nIssues:");
+        for (const issue of result.issues) console.log(`  - ${issue}`);
+    }
+}
+
+async function loadComplianceLines(path: string): Promise<Array<Record<string, any>>> {
+    try {
+        const raw = await readFile(path, "utf-8");
+        return raw
+            .split("\n")
+            .filter(Boolean)
+            .map(line => {
+                try {
+                    return JSON.parse(line);
+                } catch {
+                    return {};
+                }
+            });
+    } catch (err: any) {
+        if (err.code === "ENOENT") return [];
+        throw err;
+    }
 }
 
 async function runStandard(ctx: Awaited<ReturnType<typeof createContext>>): Promise<void> {

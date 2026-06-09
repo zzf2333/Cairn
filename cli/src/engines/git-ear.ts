@@ -11,6 +11,118 @@ export interface GitEarResult {
     signals: GitSignal[];
 }
 
+interface DomainInference {
+    domain: string | undefined;
+    confidence: number;
+    evidence: string[];
+}
+
+const GLOBAL_FILES = new Set([
+    ".gitignore",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+]);
+
+const GLOBAL_PREFIXES = [
+    "docs/",
+    ".github/",
+];
+
+const GENERATED_OR_LOCK_SUFFIXES = [
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "routeTree.gen.ts",
+];
+
+function normalizePrefix(prefix: string): string {
+    return prefix.endsWith("/") ? prefix : `${prefix}/`;
+}
+
+function isGlobalOrConfigFile(file: string): boolean {
+    if (GLOBAL_FILES.has(file)) return true;
+    if (GLOBAL_PREFIXES.some(prefix => file.startsWith(prefix))) return true;
+    if (file.startsWith(".")) return true;
+    return false;
+}
+
+function isGeneratedOrLockFile(file: string): boolean {
+    return GENERATED_OR_LOCK_SUFFIXES.some(suffix => file.endsWith(suffix));
+}
+
+export function inferDomainFromFiles(files: string[], nodes: SkeletonNode[]): DomainInference {
+    const meaningfulFiles = files.filter(f => !isGeneratedOrLockFile(f));
+    if (meaningfulFiles.length === 0) {
+        return { domain: "global", confidence: 0.4, evidence: ["only generated or lock files changed"] };
+    }
+
+    if (meaningfulFiles.every(isGlobalOrConfigFile)) {
+        return { domain: "global", confidence: 0.8, evidence: ["all changed files are docs or global config"] };
+    }
+
+    const scores = new Map<string, number>();
+    const evidence = new Map<string, string[]>();
+
+    for (const node of nodes) {
+        scores.set(node.domain, 0);
+        evidence.set(node.domain, []);
+    }
+
+    for (const file of meaningfulFiles) {
+        for (const node of nodes) {
+            const ownsMatch = node.owns.some(prefix => file === prefix || file.startsWith(normalizePrefix(prefix)));
+            const doesNotOwnMatch = node.does_not_own.some(prefix => file === prefix || file.startsWith(normalizePrefix(prefix)));
+            if (ownsMatch) {
+                scores.set(node.domain, (scores.get(node.domain) ?? 0) + 3);
+                evidence.get(node.domain)!.push(`owns:${file}`);
+            }
+            if (doesNotOwnMatch) {
+                scores.set(node.domain, (scores.get(node.domain) ?? 0) - 1);
+                evidence.get(node.domain)!.push(`does_not_own:${file}`);
+            }
+        }
+    }
+
+    const hasPathEvidence = Array.from(scores.values()).some(score => score > 0);
+    if (!hasPathEvidence) {
+        const joined = meaningfulFiles.join(" ").toLowerCase();
+        for (const node of nodes) {
+            for (const keyword of node.causal_keywords) {
+                if (joined.includes(keyword.toLowerCase())) {
+                    scores.set(node.domain, (scores.get(node.domain) ?? 0) + 1);
+                    evidence.get(node.domain)!.push(`keyword:${keyword}`);
+                }
+            }
+        }
+    }
+
+    const ranked = Array.from(scores.entries())
+        .filter(([, score]) => score > 0)
+        .sort((a, b) => b[1] - a[1]);
+
+    if (ranked.length === 0) {
+        return { domain: "global", confidence: 0.3, evidence: ["no skeleton path or keyword match"] };
+    }
+
+    const total = ranked.reduce((sum, [, score]) => sum + score, 0);
+    const [topDomain, topScore] = ranked[0];
+    const confidence = total > 0 ? topScore / total : 0;
+    if (ranked.length > 1 && confidence < 0.7) {
+        return {
+            domain: "multi",
+            confidence,
+            evidence: ranked.flatMap(([domain]) => evidence.get(domain)!.slice(0, 3)),
+        };
+    }
+
+    return {
+        domain: topDomain,
+        confidence,
+        evidence: evidence.get(topDomain)!.slice(0, 6),
+    };
+}
+
 export class GitEar {
     private readonly git: SimpleGit;
 
@@ -99,15 +211,19 @@ export class GitEar {
                 }
 
                 if (changedFiles.length > 10) {
+                    const domain = inferDomainFromFiles(changedFiles, skeletonNodes);
                     signals.push({
                         id: `sig_git_${Date.now()}_large_refactor_${index++}`,
                         signal_type: "large_refactor",
                         raw_data: {
                             commits: [commit.hash],
                             files_changed: changedFiles,
+                            commit_message: commit.message,
+                            domain_evidence: domain.evidence,
                         },
                         inferred_gravity: "G2",
-                        inferred_domain: this.inferDomainFromFiles(changedFiles, skeletonNodes),
+                        inferred_domain: domain.domain,
+                        inferred_domain_confidence: domain.confidence,
                         confidence: 0.6,
                         captured_at: now,
                     });
@@ -228,21 +344,6 @@ export class GitEar {
         for (const node of nodes) {
             for (const keyword of node.causal_keywords) {
                 if (lower.includes(keyword.toLowerCase())) {
-                    return node.domain;
-                }
-            }
-        }
-        return undefined;
-    }
-
-    private inferDomainFromFiles(
-        files: string[],
-        nodes: SkeletonNode[],
-    ): string | undefined {
-        const joined = files.join(" ").toLowerCase();
-        for (const node of nodes) {
-            for (const keyword of node.causal_keywords) {
-                if (joined.includes(keyword.toLowerCase())) {
                     return node.domain;
                 }
             }

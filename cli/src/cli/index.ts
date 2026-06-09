@@ -31,6 +31,7 @@ Commands:
   doctor --fix                  Scan for corrupted yaml files + orphan refs; quarantine broken files
   doctor --recover              Clear an incomplete session_in_progress checkpoint
   doctor --metrics              Print .cairn/ health snapshot (blood/DNA/staged/last session)
+  doctor --runtime-audit [--json] Report lifecycle telemetry consistency and coverage
   review                        List pending staged entries
   audit                         Show governance audit log
   dna show                      List current DNA traits
@@ -84,7 +85,7 @@ async function main() {
                 await runDoctor(args.slice(1));
                 break;
             case "review":
-                await runReview();
+                await runReview(args.slice(1));
                 break;
             case "audit":
                 await runAudit();

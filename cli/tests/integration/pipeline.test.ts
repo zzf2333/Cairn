@@ -72,7 +72,7 @@ beforeEach(async () => {
     const activationEngine = new ActivationEngine(bloodStore, skeletonStore, dnaStore, domainStore, stateStore, challengeEngine);
     const stageEngine = new StageEngine();
     const decayEngine = new DecayEngine(bloodStore);
-    const compressionEngine = new CompressionEngine(bloodStore);
+    const compressionEngine = new CompressionEngine(bloodStore, sessionStore);
     const resurrectionEngine = new ResurrectionEngine(bloodStore, stateStore);
     const consistencyEngine = new ConsistencyEngine(bloodStore, skeletonStore, dnaStore, stateStore);
     const governanceEngine = new GovernanceEngine(governanceStore, configStore);
@@ -242,7 +242,7 @@ describe("Compression to DNA pipeline", () => {
         expect(pending.some(p => p.trait_name === "infra_aggressiveness")).toBe(true);
 
         const output = await readFile(ctx.paths.viewsOutput, "utf-8");
-        expect(output).toContain("DNA Candidates");
+        expect(output).toContain("Emerging DNA");
         expect(output).toContain("infra_aggressiveness");
     });
 
@@ -265,6 +265,39 @@ describe("Compression to DNA pipeline", () => {
         await handleSessionEnd(ctx, { summary: "second session" });
         const secondCount = (await ctx.dnaStagedStore.findPending()).length;
         expect(secondCount).toBe(firstCount);
+    });
+
+    it("stages project-specific fast-cycle DNA from repeated runtime corrections", async () => {
+        const summaries = [
+            "用户确认团队聊天实现偏离设计，要求按设计文档对齐回退，不再继续叠加 runtime 补丁。",
+            "完成按文档对齐的回退：撤销团队讨论补丁，移除隐藏二次 Leader council 调用。",
+            "审计团队聊天实现是否偏离产品设计，不继续写功能代码，先按文档对齐。",
+            "修复 Leader 和 Worker 边界：Leader 只负责调度，Worker 只执行 Council Review。",
+            "排查 @成员未唤醒 Worker 的 Council Review，修复 Leader/Worker 协作边界。",
+            "复审 Leader/Worker 职责边界，确认 Leader 不直接执行 Worker 的审查任务。",
+            "团队聊天回归必须用 scripts/test-chat.ts 验收，覆盖 CEO→Leader→@成员→Worker。",
+            "使用 test-chat 脚本验收团队聊天链路，不只看前端截图。",
+            "补充团队聊天验收脚本，覆盖 Leader 点名 Worker 后的 Council Review。",
+        ];
+
+        for (let i = 0; i < summaries.length; i++) {
+            await ctx.sessionStore.save({
+                id: `sess_fast_${i}`,
+                started_at: `2026-06-0${i + 1}T00:00:00Z`,
+                ended_at: `2026-06-0${i + 1}T00:05:00Z`,
+                summary: summaries[i],
+                signals_captured: 0,
+                signals_routed: { G0: 0, G1: 0, G2: 0, G3: 0 },
+                domains_touched: [],
+                decisions_made: [],
+                unresolved: [],
+            });
+        }
+
+        const candidates = await ctx.compressionEngine.detectCandidates(3, 3);
+        expect(candidates.some(c => c.trait_name === "design_doc_alignment_bias")).toBe(true);
+        expect(candidates.some(c => c.trait_name === "leader_worker_boundary_sensitivity")).toBe(true);
+        expect(candidates.some(c => c.trait_name === "script_based_team_chat_validation")).toBe(true);
     });
 });
 

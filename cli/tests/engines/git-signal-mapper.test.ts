@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { mapGitSignalToEvent } from "../../src/engines/git-signal-mapper.js";
+import { inferDomainFromFiles } from "../../src/engines/git-ear.js";
 import type { GitSignal } from "../../src/schemas/index.js";
+import { makeSkeletonNode } from "../test-helpers.js";
 
 const NOW = "2026-05-16T10:00:00Z";
 
@@ -11,6 +13,7 @@ function makeGitSignal(overrides: Partial<GitSignal> & Pick<GitSignal, "signal_t
         raw_data: overrides.raw_data ?? {},
         inferred_gravity: overrides.inferred_gravity ?? "G1",
         inferred_domain: overrides.inferred_domain ?? "api-layer",
+        inferred_domain_confidence: overrides.inferred_domain_confidence,
         confidence: overrides.confidence ?? 0.8,
         captured_at: overrides.captured_at ?? NOW,
     };
@@ -68,20 +71,59 @@ describe("mapGitSignalToEvent", () => {
         expect(event!.behavior_effect.type).toBe("prefer_approach");
     });
 
-    it("maps large_refactor to an architecture_decision", () => {
+    it("drops large_refactor when file count is the only evidence", () => {
         const sig = makeGitSignal({
             signal_type: "large_refactor",
             raw_data: {
                 commits: ["aaa1111"],
-                files_changed: ["src/api/foo.ts", "src/api/bar.ts", "src/api/baz.ts"],
+                files_changed: ["src/misc/foo.ts", "src/misc/bar.ts", "src/misc/baz.ts"],
             },
+            inferred_gravity: "G2",
+        });
+        const event = mapGitSignalToEvent(sig, NOW);
+        expect(event).toBeNull();
+    });
+
+    it("drops docs/config-only large_refactor without architecture message", () => {
+        const sig = makeGitSignal({
+            signal_type: "large_refactor",
+            raw_data: {
+                commits: ["aaa1111"],
+                files_changed: ["AGENTS.md", "CLAUDE.md", ".gitignore", "docs/readme.md"],
+            },
+            inferred_domain: "frontend",
+            inferred_gravity: "G2",
+        });
+        expect(mapGitSignalToEvent(sig, NOW)).toBeNull();
+    });
+
+    it("maps semantic frontend migration refactor with evidence metadata", () => {
+        const sig = makeGitSignal({
+            signal_type: "large_refactor",
+            raw_data: {
+                commits: ["aaa1111"],
+                commit_message: "feat: migrate frontend from Next.js to Vite",
+                files_changed: [
+                    "apps/web/src/main.tsx",
+                    "apps/web/src/routes/index.tsx",
+                    "apps/web/vite.config.ts",
+                    "apps/web/package.json",
+                ],
+                domain_evidence: ["owns:apps/web/src/main.tsx"],
+            },
+            inferred_domain: "frontend",
+            inferred_domain_confidence: 0.95,
             inferred_gravity: "G2",
         });
         const event = mapGitSignalToEvent(sig, NOW);
         expect(event).not.toBeNull();
         expect(event!.type).toBe("architecture_decision");
-        expect(event!.subject.name).toContain("src");
-        expect(event!.behavior_effect.type).toBe("prefer_approach");
+        expect(event!.subject.name).toContain("frontend");
+        expect(event!.behavior_effect.type).toBe("require_review");
+        expect(event!.reasoning).toContain("architecture-like commit message");
+        expect(event!.evidence?.source_signal_id).toBe(sig.id);
+        expect(event!.evidence?.mapper_version).toBe("git-signal-mapper:v2");
+        expect(event!.evidence?.domain_confidence).toBe(0.95);
     });
 
     it("uses 'global' domain when inferred_domain is missing", () => {
@@ -95,5 +137,45 @@ describe("mapGitSignalToEvent", () => {
         };
         const event = mapGitSignalToEvent(sig, NOW);
         expect(event!.domain).toBe("global");
+    });
+});
+
+describe("inferDomainFromFiles", () => {
+    const nodes = [
+        makeSkeletonNode("frontend", {
+            owns: ["apps/web/"],
+            does_not_own: ["apps/server/"],
+            causal_keywords: ["react", "component", "route", "ui"],
+        }),
+        makeSkeletonNode("runtime", {
+            owns: ["apps/server/src/runtime/"],
+            does_not_own: ["apps/web/"],
+            causal_keywords: ["runtime", "leader", "worker"],
+        }),
+        makeSkeletonNode("queue", {
+            owns: ["apps/server/src/queue/"],
+            does_not_own: ["apps/server/src/runtime/"],
+            causal_keywords: ["queue", "bullmq"],
+        }),
+    ];
+
+    it("uses skeleton ownership paths before broad keywords", () => {
+        const result = inferDomainFromFiles(["apps/server/src/runtime/loop.ts"], nodes);
+        expect(result.domain).toBe("runtime");
+        expect(result.confidence).toBeGreaterThanOrEqual(0.7);
+        expect(result.evidence[0]).toContain("owns:");
+    });
+
+    it("does not map docs and global config files to frontend", () => {
+        const result = inferDomainFromFiles(["docs/design/frontend-prd.md", "AGENTS.md", ".gitignore"], nodes);
+        expect(result.domain).toBe("global");
+    });
+
+    it("returns multi when frontend and runtime ownership are balanced", () => {
+        const result = inferDomainFromFiles([
+            "apps/web/src/main.tsx",
+            "apps/server/src/runtime/loop.ts",
+        ], nodes);
+        expect(result.domain).toBe("multi");
     });
 });

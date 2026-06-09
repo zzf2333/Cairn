@@ -272,7 +272,10 @@ export async function sessionEndAction(ctx: CairnContext, args: SessionEndArgs):
 
     for (const signal of gitScan.signals) {
         const event = mapGitSignalToEvent(signal, nowIso);
-        if (!event) continue;
+        if (!event) {
+            gitDropped.push(signal.id);
+            continue;
+        }
 
         const routing = await ctx.trustRouter.route({
             domain: event.domain,
@@ -302,6 +305,7 @@ export async function sessionEndAction(ctx: CairnContext, args: SessionEndArgs):
             event.governance_status = "pending";
             await ctx.stagedStore.save({
                 id: event.id,
+                origin_signal: signal.id,
                 draft_event: event,
                 review_status: "pending",
                 routing_reason: routing.reason,
@@ -398,6 +402,25 @@ export async function sessionEndAction(ctx: CairnContext, args: SessionEndArgs):
             captured_candidates_count: activeSession?.captured_candidates_count ?? 0,
             recovered: activeSession?.recovered ?? false,
         },
+        telemetry: {
+            schema_version: 2,
+            explicit_signals: activeSession?.signals_count ?? 0,
+            degraded_explicit_signals: activeSession?.degraded_signals_count ?? 0,
+            git_signals_detected: gitScan.signals.length,
+            git_signals_routed: Object.values(signalsRouted).reduce((sum, count) => sum + count, 0),
+            calibration_signals_detected: calibration.signals.length,
+            safety_valve_signals: safetyValve.signals.length,
+            observed_candidates: activeSession?.observed_candidates_count ?? 0,
+            captured_candidates: activeSession?.captured_candidates_count ?? 0,
+            events_auto_confirmed: gitNewBlood.length,
+            events_staged: gitNewStaged.length,
+            events_dropped: gitDropped.length,
+            signals_total: (activeSession?.signals_count ?? 0)
+                + gitScan.signals.length
+                + calibration.signals.length
+                + safetyValve.signals.length,
+            domains_attributed: changedDomains ?? [],
+        },
     };
 
     await ctx.sessionStore.save(record);
@@ -415,6 +438,7 @@ export async function sessionEndAction(ctx: CairnContext, args: SessionEndArgs):
         degraded: activeSession?.degraded_signals_count ?? 0,
         observed_candidates: activeSession?.observed_candidates_count ?? 0,
         captured_candidates: activeSession?.captured_candidates_count ?? 0,
+        telemetry: record.telemetry,
         recovered: activeSession?.recovered ?? false,
         session_closed: true,
         domains: changedDomains ?? [],

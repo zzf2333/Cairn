@@ -1,9 +1,8 @@
 import { z } from "zod";
-import { KNOWN_DNA_TRAITS } from "../constants.js";
 
 export const DNAStagedEntrySchema = z.object({
     id: z.string(),
-    trait_name: z.enum(KNOWN_DNA_TRAITS),
+    trait_name: z.string().min(1),
     level: z.enum(["low", "medium", "high"]),
     confidence: z.number().min(0).max(1),
     evidence_events: z.array(z.string()).default([]),

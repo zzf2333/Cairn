@@ -30,20 +30,20 @@ Blood events accumulate            CompressionEngine runs at session_end
                                    if accepted: identity.yaml.traits.simplicity_bias
 ```
 
-The path is deliberately gated. A trait that emerges from 23 rejections over 14 months is a different statement than one inferred from 3 rejections in a week. Cairn's defaults err strict — min_evidence ≥ 3, min_timespan ≥ 3 months, confidence ≥ 0.6 — because **wrong DNA silently distorts every future decision**.
+The path is deliberately gated. A trait that emerges from 23 rejections over 14 months is a different statement than one inferred from 3 rejections in a week. Cairn's strategic trait defaults err strict — min_evidence ≥ 3, min_timespan ≥ 3 months, confidence ≥ 0.6 — because **wrong DNA silently distorts every future decision**.
+
+Cairn also has a fast-cycle lane for active projects. It proposes **emerging** project-specific traits from dense repeated corrections, session summaries, rejected paths, and staged clusters. These candidates are not active DNA; they must still be human-ratified before they affect routing.
 
 ---
 
-## The two traits that currently emerge
+## Trait types
 
-CompressionEngine today produces only two named traits:
+CompressionEngine has two classes of candidates:
 
-- **`simplicity_bias`** — emerges from a high density of "rejected complex thing in favor of simpler thing" patterns. Levels: low / medium / high.
-- **`infra_aggressiveness`** — emerges from the rate of new-infrastructure introductions vs rejections. Levels: low / medium / high (where low = "we resist adding infra," high = "we add infra readily").
+- **Known traits** such as `simplicity_bias` and `infra_aggressiveness`. These are consumed by TrustRouter / ChallengeEngine.
+- **Project-specific emerging traits** such as "script-based validation discipline" or "Leader/Worker boundary sensitivity". These are surfaced for human ratification and documentation before any routing behavior depends on them.
 
-These are the two traits that downstream consumers — TrustRouter and ChallengeEngine — actually consume to modulate behavior. Other traits could be detected, but if nothing acts on them, surfacing them is theater.
-
-More trait kinds (`risk_tolerance`, `velocity_preference`, `coupling_tolerance`) are on the 0.5 roadmap. Each requires both detection logic in CompressionEngine *and* consumption logic in TrustRouter / ChallengeEngine.
+Only ratified known traits modulate behavior today. Project-specific traits are still useful: they give the team a reviewable name for repeated project behavior without pretending the router understands it yet.
 
 ---
 
@@ -77,6 +77,8 @@ reasoning: "23 rejections of complex tooling over 14 months consistently chose b
 proposed_at: "2026-05-17T08:00:00Z"
 review_status: "pending"
 ```
+
+Project-specific candidates use the same shape, with a free-form `trait_name` and evidence that may include session IDs as well as blood event IDs.
 
 `cairn_dna_accept({ id })` promotes the candidate. `cairn_dna_reject({ id, reason })` records the rejection so the same pattern doesn't re-surface immediately.
 
@@ -147,7 +149,7 @@ This is the same difference as between someone *saying* they're kind and someone
 
 ## Failure modes
 
-- **Trait noise from short timeline** — 3 rejections in a week look like a pattern but are circumstance. Mitigation: min_timespan_months threshold.
+- **Trait noise from short timeline** — 3 rejections in a week look like a pattern but are circumstance. Mitigation: known traits keep the min_timespan_months threshold; fast-cycle traits remain staged and inactive until human review.
 - **Trait reified from a confused mode change** — team switched from `lightweight` to `institutional` and decisions look different post-switch. Mitigation: CompressionEngine uses raw event count, not mode-weighted; mode change is itself a captured event.
 - **Reject loop** — a real trait keeps being proposed and rejected. Mitigation: rejected candidates have a cooldown before re-surfacing; review accumulated rejections in `cairn doctor` output.
 

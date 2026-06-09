@@ -43,10 +43,10 @@ The AI does **not** signal: routine bug fixes, formatting, vague statements, dup
 At `cairn_session_end`, `GitEar` scans commits since the previous session's anchor. It looks for:
 
 - **Reverts** — `Revert "feat: ..."` patterns suggest a tried-and-rejected direction
-- **Refactors** — `refactor: ...` suggests a corrected approach
-- **Features** with high churn — frequent edits after merge suggest the original feat was contested
+- **Dependency removals / replacements** — package changes may imply rejected or preferred tooling
+- **Semantic refactors** — large changes are only staged when there is extra evidence: migration/refactor wording, architecture/design docs, API/runtime boundary changes, or strong skeleton path ownership
 
-These produce conservative signals — git history is signal-poor compared to conversation. But it catches what the AI forgot to capture in real time.
+File count alone is not enough. Docs/config-only churn, generated files, lockfiles, and local agent instruction changes are treated as low signal unless the commit also carries architecture evidence. Each generated event stores mapper version, confidence, routing reason, and domain evidence so review is auditable.
 
 ### Calibration signals (`CalibrationEar`)
 

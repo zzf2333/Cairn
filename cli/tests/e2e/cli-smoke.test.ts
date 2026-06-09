@@ -72,6 +72,16 @@ describe.skipIf(!existsSync(CLI))("CLI E2E smoke", () => {
         expect(r.stdout).toContain("blood events");
     });
 
+    it("doctor --runtime-audit --json reports lifecycle coverage", () => {
+        runCli(["init", "--empty"], tmpDir);
+        const r = runCli(["doctor", "--runtime-audit", "--json"], tmpDir);
+        expect(r.code).toBe(0);
+        const data = JSON.parse(r.stdout);
+        expect(data.sessions.total).toBe(0);
+        expect(data.compliance.context_rate).toBe(0);
+        expect(data.evidence.missing_generated_event_evidence).toEqual([]);
+    });
+
     it("doctor --recover with no checkpoint exits 0", () => {
         runCli(["init", "--empty"], tmpDir);
         const r = runCli(["doctor", "--recover"], tmpDir);

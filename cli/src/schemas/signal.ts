@@ -12,6 +12,8 @@ export const GitSignalSchema = z.object({
     raw_data: z.object({
         commits: z.array(z.string()).optional(),
         files_changed: z.array(z.string()).optional(),
+        commit_message: z.string().optional(),
+        domain_evidence: z.array(z.string()).optional(),
         packages: z.object({
             added: z.array(z.string()).optional(),
             removed: z.array(z.string()).optional(),
@@ -27,6 +29,7 @@ export const GitSignalSchema = z.object({
     }).default({}),
     inferred_gravity: GravityLevelEnum,
     inferred_domain: z.string().optional(),
+    inferred_domain_confidence: z.number().min(0).max(1).optional(),
     confidence: z.number().min(0).max(1),
     captured_at: z.string(),
 });

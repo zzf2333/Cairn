@@ -1,9 +1,10 @@
 import type { BloodStore } from "../stores/index.js";
-import type { EvolutionEvent } from "../schemas/index.js";
+import type { EvolutionEvent, SessionRecord } from "../schemas/index.js";
+import type { SessionStore } from "../stores/session-store.js";
 import { type KnownDnaTrait } from "../constants.js";
 
 export interface DNACandidate {
-    trait_name: KnownDnaTrait;
+    trait_name: string;
     level: "low" | "medium" | "high";
     confidence: number;
     evidence_events: string[];
@@ -82,7 +83,10 @@ function inferKnownTrait(group: EvolutionEvent[]): {
 }
 
 export class CompressionEngine {
-    constructor(private readonly bloodStore: BloodStore) {}
+    constructor(
+        private readonly bloodStore: BloodStore,
+        private readonly sessionStore?: SessionStore,
+    ) {}
 
     async detectCandidates(minEvidence: number, minTimespanMonths: number): Promise<DNACandidate[]> {
         const events = await this.bloodStore.findActive();
@@ -124,6 +128,90 @@ export class CompressionEngine {
                 confidence,
                 evidence_events: group.map(e => e.id),
                 reasoning: `${group.length} events over ${span} months in ${key} matched ${inferred.trait_name} pattern (${sources.size} source types)`,
+            });
+        }
+
+        const fastCycleCandidates = await this.detectFastCycleCandidates(events);
+        const existing = new Set(candidates.map(c => c.trait_name));
+        for (const candidate of fastCycleCandidates) {
+            if (!existing.has(candidate.trait_name)) {
+                candidates.push(candidate);
+                existing.add(candidate.trait_name);
+            }
+        }
+
+        return candidates;
+    }
+
+    private async detectFastCycleCandidates(events: EvolutionEvent[]): Promise<DNACandidate[]> {
+        const sessions = this.sessionStore ? await this.sessionStore.loadRecent(80) : [];
+        const corpus = [
+            ...events.map(event => ({
+                id: event.id,
+                text: [
+                    event.subject.name,
+                    event.trigger,
+                    event.decision_or_change,
+                    event.reasoning,
+                    event.behavior_effect.instruction,
+                ].join(" "),
+            })),
+            ...sessions.map(session => ({
+                id: session.id,
+                text: session.summary,
+            })),
+        ];
+
+        const patterns: Array<{
+            trait_name: string;
+            keywords: string[];
+            reasoning: string;
+        }> = [
+            {
+                trait_name: "design_doc_alignment_bias",
+                keywords: ["设计", "文档", "对齐", "回退", "runtime 补丁", "patch"],
+                reasoning: "Repeated corrections prefer aligning with design documents over stacking runtime patches",
+            },
+            {
+                trait_name: "leader_worker_boundary_sensitivity",
+                keywords: ["Leader", "Worker", "边界", "职责", "Council Review", "@成员"],
+                reasoning: "Repeated events show sensitivity around Leader/Worker role boundaries and coordination rules",
+            },
+            {
+                trait_name: "script_based_team_chat_validation",
+                keywords: ["test-chat", "脚本", "验收", "团队聊天", "回归"],
+                reasoning: "Repeated evidence requires script-based validation for team chat behavior",
+            },
+            {
+                trait_name: "cross_project_feature_contamination_caution",
+                keywords: ["另一个项目", "不应加入", "当前项目", "先确认", "产业链报告"],
+                reasoning: "Corrections indicate caution against importing features from other projects without confirming scope",
+            },
+            {
+                trait_name: "agent_onboarding_context_bias",
+                keywords: ["入职", "Onboarding", "Agent Profile", "公司", "团队", "业务"],
+                reasoning: "Repeated design events frame agents as coworkers with onboarding context rather than role-play personas",
+            },
+        ];
+
+        const candidates: DNACandidate[] = [];
+        for (const pattern of patterns) {
+            const evidence = corpus.filter(item => {
+                const lower = item.text.toLowerCase();
+                let hits = 0;
+                for (const keyword of pattern.keywords) {
+                    if (lower.includes(keyword.toLowerCase())) hits++;
+                }
+                return hits >= 2;
+            });
+            if (evidence.length < 3) continue;
+
+            candidates.push({
+                trait_name: pattern.trait_name,
+                level: evidence.length >= 7 ? "high" : evidence.length >= 5 ? "medium" : "low",
+                confidence: Math.min(0.55 + evidence.length * 0.04, 0.85),
+                evidence_events: evidence.slice(0, 12).map(item => item.id),
+                reasoning: `${pattern.reasoning}; ${evidence.length} supporting blood/session evidence items found in the recent runtime corpus`,
             });
         }
 

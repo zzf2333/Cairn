@@ -173,6 +173,15 @@ trauma:
   severity: "high"
   sensitivity_multiplier: 1.8
 
+evidence:                             # optional; present on generated events
+  source_signal_id: "sig_git_..."
+  mapper_version: "git-signal-mapper:v2"
+  routing_reason: "staged large refactor: architecture-like commit message"
+  confidence: 0.72
+  domain_confidence: 0.91
+  domain_evidence:
+    - "owns:apps/server/src/runtime/loop.ts"
+
 created_at: "2024-11-03T14:22:00Z"
 updated_at: "2024-11-03T14:22:00Z"
 governance_status: "ratified"       # auto_confirmed | ratified | pending
@@ -189,6 +198,7 @@ governance_status: "ratified"       # auto_confirmed | ratified | pending
 | `health.state` | `stale` = archived (still readable, doesn't influence routing unless reactivated) |
 | `lifecycle.decay_policy: "never"` | Overrides DecayEngine for this event |
 | `affects.dna: true` | Counts toward CompressionEngine evidence |
+| `evidence` | Audit trail for generated events: source signal, mapper version, routing reason, and domain evidence |
 
 ---
 
@@ -196,6 +206,7 @@ governance_status: "ratified"       # auto_confirmed | ratified | pending
 
 ```yaml
 id: "evt_pending_042"
+origin_signal: "sig_git_..."          # optional
 draft_event:                        # full EvolutionEvent shape, ready to promote
   id: "evt_pending_042"
   # ... 40 fields ...
@@ -206,7 +217,7 @@ governance_required: "human_ratified"   # auto_confirmable | human_ratified
 created_at: "2026-05-17T10:00:00Z"
 ```
 
-`cairn_stage_accept` promotes `draft_event` to Blood; `cairn_stage_reject` writes to audit and removes.
+`cairn_stage_accept` promotes `draft_event` to Blood; `cairn_stage_reject` writes to audit and removes. `cairn review --json` exposes confidence, domain evidence, and suggested action for each pending entry.
 
 ---
 
@@ -287,7 +298,7 @@ DNA trait candidates from `CompressionEngine`.
 
 ```yaml
 id: "stg_dna_simplicity_bias_1715234567890"
-trait_name: "simplicity_bias"
+trait_name: "simplicity_bias"         # known trait or project-specific emerging trait
 level: "high"
 confidence: 0.78
 evidence_events: ["evt_021", "evt_044", "evt_087"]
@@ -335,13 +346,36 @@ signals_routed:
 domains_touched: ["auth"]
 decisions_made: ["Drop session-token middleware"]
 unresolved: ["Verify JWT TTL meets compliance window"]
+telemetry:
+  schema_version: 2
+  explicit_signals: 1
+  git_signals_detected: 3
+  git_signals_routed: 1
+  calibration_signals_detected: 0
+  safety_valve_signals: 0
+  events_auto_confirmed: 0
+  events_staged: 1
+  events_dropped: 2
+  signals_total: 4
 ```
+
+`signals_captured` and `compliance.signals_count` are retained for older records. New records include `telemetry.schema_version: 2` so runtime audits can distinguish explicit signals from git/calibration/safety-valve signals.
 
 ---
 
 ## `views/output.md` and friends
 
 Auto-generated markdown. Read-only artifact for degraded mode. Regenerated on every `cairn_session_end` and `cairn doctor`. Never hand-edit.
+
+The main output view is organized for operation, not just recall:
+
+- `Architecture`
+- `Behavioral Constraints`
+- `Pending Review`
+- `Emerging DNA`
+- `Runtime Health`
+
+Domain views remain scoped to skeleton ownership, rejected paths, pitfalls, and trajectory.
 
 ---
 

@@ -25,6 +25,22 @@ export const SessionRecordSchema = z.object({
         captured_candidates_count: z.number().default(0),
         recovered: z.boolean().default(false),
     }).optional(),
+    telemetry: z.object({
+        schema_version: z.literal(2),
+        explicit_signals: z.number().int().default(0),
+        degraded_explicit_signals: z.number().int().default(0),
+        git_signals_detected: z.number().int().default(0),
+        git_signals_routed: z.number().int().default(0),
+        calibration_signals_detected: z.number().int().default(0),
+        safety_valve_signals: z.number().int().default(0),
+        observed_candidates: z.number().int().default(0),
+        captured_candidates: z.number().int().default(0),
+        events_auto_confirmed: z.number().int().default(0),
+        events_staged: z.number().int().default(0),
+        events_dropped: z.number().int().default(0),
+        signals_total: z.number().int().default(0),
+        domains_attributed: z.array(z.string()).default([]),
+    }).optional(),
 });
 
 export type SessionRecord = z.infer<typeof SessionRecordSchema>;
