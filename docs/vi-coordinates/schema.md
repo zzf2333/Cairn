@@ -402,6 +402,8 @@ The main output view is organized for operation, not just recall:
 - `Emerging DNA`
 - `Runtime Health`
 
+`Runtime Health` includes stage confidence, active/incomplete session state, pending review count, generated events missing evidence, processed signal archive count, and generated events missing processed archives.
+
 Domain views remain scoped to skeleton ownership, rejected paths, pitfalls, and trajectory.
 
 ---

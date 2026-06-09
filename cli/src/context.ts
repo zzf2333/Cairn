@@ -72,7 +72,7 @@ export async function createContext(projectRoot: string): Promise<CairnContext> 
     const viewsEngine = new ViewsEngine(
         bloodStore, skeletonStore, domainStore, dnaStore, stateStore,
         paths.viewsOutput, paths.viewsStage, paths.viewsDomains,
-        dnaStagedStore, stagedStore,
+        dnaStagedStore, stagedStore, signalStore,
     );
     const bloodEngine = new BloodEngine(bloodStore, domainStore, viewsEngine);
     const gitEar = new GitEar(paths.root, skeletonStore);

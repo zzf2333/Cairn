@@ -1,6 +1,6 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { BloodStore, SkeletonStore, DomainStore, DnaStore, StateStore, DnaStagedStore, StagedStore } from "../stores/index.js";
+import type { BloodStore, SkeletonStore, DomainStore, DnaStore, StateStore, DnaStagedStore, StagedStore, SignalStore } from "../stores/index.js";
 import { approxTokens } from "../tokens.js";
 import { VIEWS_TOKEN_TARGETS } from "../constants.js";
 
@@ -22,6 +22,7 @@ export class ViewsEngine {
         private readonly viewsDomainsDir: string,
         private readonly dnaStagedStore?: DnaStagedStore,
         private readonly stagedStore?: StagedStore,
+        private readonly signalStore?: SignalStore,
     ) {}
 
     async regenerate(): Promise<void> {
@@ -151,6 +152,23 @@ export class ViewsEngine {
         output += `## Runtime Health\n\n`;
         output += `- **Stage**: ${stage.phase} (confidence ${stage.confidence})\n`;
         output += `- **Active session**: ${state.active_session ? "yes" : "no"}\n`;
+        if (this.stagedStore) {
+            const allStaged = await this.stagedStore.loadAll();
+            const pending = allStaged.filter(entry => entry.review_status === "pending");
+            const missingEvidence = allStaged.filter(entry => !entry.draft_event.evidence).length
+                + allEvents.filter(event => event.source.type !== "conversation" && !event.evidence).length;
+            output += `- **Pending review**: ${pending.length}\n`;
+            output += `- **Generated events missing evidence**: ${missingEvidence}\n`;
+        }
+        if (this.signalStore) {
+            const processedSignals = await this.signalStore.loadAllProcessedSignals();
+            const processedSignalIds = new Set(processedSignals.map(record => record.signal_id));
+            const missingArchive = allEvents.filter(event =>
+                event.evidence?.source_signal_id && !processedSignalIds.has(event.evidence.source_signal_id),
+            ).length;
+            output += `- **Processed signal archives**: ${processedSignals.length}\n`;
+            output += `- **Generated events missing processed archive**: ${missingArchive}\n`;
+        }
         if (state.session_in_progress) {
             output += `- **Incomplete session checkpoint**: ${state.session_in_progress.step}\n`;
         }

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import {
     createTmpDir, cleanTmpDir,
     makeEvolutionEvent, makeTraumaEvent,
-    makeSkeletonNode, makeDNA, makeConfig, makeState,
+    makeSkeletonNode, makeDNA, makeConfig, makeState, makeStagedEntry,
 } from "../test-helpers.js";
 import { buildPaths } from "../../src/paths.js";
 import { BloodStore } from "../../src/stores/blood-store.js";
@@ -14,6 +14,8 @@ import { DomainStore } from "../../src/stores/domain-store.js";
 import { StateStore } from "../../src/stores/state-store.js";
 import { ConfigStore } from "../../src/stores/config-store.js";
 import { GovernanceStore } from "../../src/stores/governance-store.js";
+import { SignalStore } from "../../src/stores/signal-store.js";
+import { StagedStore } from "../../src/stores/staged-store.js";
 import { GovernanceEngine } from "../../src/engines/governance-engine.js";
 import { TrustRouter } from "../../src/engines/trust-router.js";
 import { BloodEngine } from "../../src/engines/blood-engine.js";
@@ -29,13 +31,15 @@ let domainStore: DomainStore;
 let stateStore: StateStore;
 let configStore: ConfigStore;
 let governanceStore: GovernanceStore;
+let signalStore: SignalStore;
+let stagedStore: StagedStore;
 
 beforeEach(async () => {
     tmpDir = await createTmpDir();
     paths = buildPaths(tmpDir);
     for (const dir of [paths.cairn, paths.blood, paths.skeleton, paths.dna,
         paths.domains, paths.staged, paths.signals, paths.signalsGit,
-        paths.signalsCalibration, paths.signalsConversation,
+        paths.signalsCalibration, paths.signalsConversation, paths.signalsProcessed,
         paths.governance, paths.views, paths.viewsDomains, paths.sessions]) {
         await mkdir(dir, { recursive: true });
     }
@@ -46,6 +50,8 @@ beforeEach(async () => {
     stateStore = new StateStore(paths.state);
     configStore = new ConfigStore(paths.config);
     governanceStore = new GovernanceStore(paths.governancePolicy, paths.governanceAudit);
+    signalStore = new SignalStore(paths.signalsGit, paths.signalsCalibration, paths.signalsConversation, paths.signalsProcessed);
+    stagedStore = new StagedStore(paths.staged);
     await configStore.save(makeConfig());
     await stateStore.save(makeState());
 });
@@ -289,6 +295,39 @@ describe("ViewsEngine", () => {
         const { readFile } = await import("node:fs/promises");
         const content = await readFile(join(paths.viewsDomains, "api-layer.md"), "utf-8");
         expect(content).toContain("api-layer");
+    });
+
+    it("includes runtime evidence and processed archive health", async () => {
+        engine = new ViewsEngine(
+            bloodStore, skeletonStore, domainStore, dnaStore, stateStore,
+            paths.viewsOutput, paths.viewsStage, paths.viewsDomains,
+            undefined, stagedStore, signalStore,
+        );
+        await stagedStore.save(makeStagedEntry("staged_missing_evidence", {
+            draft_event: makeEvolutionEvent("evt_missing_evidence", {
+                source: { type: "runtime_observed", confidence: 0.6, verified: false, refs: [] },
+                evidence: undefined,
+            }),
+            gravity: "G2",
+        }));
+        await signalStore.saveProcessedSignal({
+            id: "proc_git_staged_sig_git_001",
+            source: "git",
+            signal_id: "sig_git_001",
+            processed_at: "2026-05-15T10:00:00Z",
+            outcome: "staged",
+            event_id: "evt_missing_evidence",
+            signal: { id: "sig_git_001", signal_type: "large_refactor" },
+        });
+
+        await engine.regenerate();
+
+        const { readFile } = await import("node:fs/promises");
+        const content = await readFile(paths.viewsOutput, "utf-8");
+        expect(content).toContain("Runtime Health");
+        expect(content).toContain("Pending review**: 1");
+        expect(content).toContain("Generated events missing evidence**: 1");
+        expect(content).toContain("Processed signal archives**: 1");
     });
 });
 
